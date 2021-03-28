@@ -1,10 +1,15 @@
+import numpy as np
 def __parse_vertex_line_to_tuple(file) :
-    vertex = tuple(map(lambda x: float(x),file.readline().split(" ")))
-    return vertex
+    line = file.readline().strip()
+    if line!="":
+        return np.array([float(i) for i in line.strip().split(" ")])
+    return None
 
 def __parse_faces_to_tuple(file):
-    face = tuple(map(lambda x: int(x),file.readline().split(" ")))
-    return face
+    line = file.readline().strip()
+    if line!="":
+        return np.array([int(i) for i in line.strip().split(" ")])
+    return None
 
 def read_off(path):
     f = open(path,"r")
