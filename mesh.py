@@ -52,7 +52,7 @@ class Mesh(object):
         edge1 = self.v[face[1]]-self.v[face[2]]
         edge2 = self.v[face[1]]-self.v[face[3]]
         normal=np.cross(edge1,edge2)
-        normal = normal/np.linalg.norm(normal)        
+        ginormal = normal/np.linalg.norm(normal)        
         return normal
 
     def calculate_face_normals(self):
@@ -61,16 +61,16 @@ class Mesh(object):
 
     def calculate_face_barycenters(self):
         vertex = np.array(self.v)
+        vertex[self.f[0][0]] = vertex[self.f[0][0]]*0
         calc = self.vertex_face_adjacency().transpose()*vertex
-        return sklearn.preprocessing.normalize(calc,axis=1,norm='l2')  
+        return calc/3
+        #return sklearn.preprocessing.normalize(calc,axis=1,norm='l2')  
 
     def calculate_face_areas(self):
         areas = np.apply_along_axis(self.calculate_area,axis=1,arr=self.f)
         return areas
 
-    def calculate_barycentric_face_area(self):
-        print(self.vertex_face_adjacency().shape)
-        print(self.calculate_face_areas().shape)
+    def calculate_barycentric_vertex_area(self):
         return self.vertex_face_adjacency()*self.calculate_face_areas()/3
 
     def calculate_vertex_normals(self):
@@ -79,8 +79,40 @@ class Mesh(object):
         normed_by_area=f_normals*f_areas[:,np.newaxis]
         return self.vertex_face_adjacency()*normed_by_area
 
-mesh =Mesh("example.off")
+    #def edge_face_adjacency(self):
+
+    """def gaussian_curvature(self):
+        vertex_areas = self.calculate_barycentric_vertex_area()
+        for col in self.vertex_face_adjacency().transpose():
+            
+            #print(col[1])
+            #print("hi")"""
+
+    def visualize_vertex_normals(self, normalized=True, mag=0.05):
+        plotter=pv.Plotter()
+        vectors = self.calculate_vertex_normals()
+        if normalized:
+            mag = mag/np.mean(np.linalg.norm(vectors, axis=1))
+        self.mesh_poly.vectors = vectors
+        plotter.add_mesh(self.mesh_poly.arrows, scalars = "GlyphScale", mag=mag)
+        plotter.show()
+
+    def visualize_face_normals(self, normalized=True, mag=1):
+        plotter=pv.Plotter()
+        vectors = self.calculate_face_normals()
+        if normalized:
+            mag = mag/np.mean(np.linalg.norm(vectors, axis=1))
+        plotter.add_arrows(self.calculate_face_barycenters(), vectors, mag=mag)
+        plotter.show()
+    
+        
+
+    
+            
+mesh =Mesh("torus_fat_r2.off")
 # print(len(mesh.f))
-print(mesh.calculate_vertex_normals())
+#print(mesh.gaussian_curvature())
+#mesh.visualize_vertex_normals()
+mesh.visualize_face_normals(normalized=False)
 
 # mesh.render_surface(vert_deg)
