@@ -33,7 +33,7 @@ class Mesh(object):
 
     def render_pointcloud(self,color_func):
         plotter=pv.Plotter()
-        plotter.add_mesh(self.mesh_poly,cmap="Sequential",style="points",point_size=100,render_points_as_spheres=True,scalars=color_func)
+        plotter.add_mesh(self.mesh_poly,style="points",point_size=100,render_points_as_spheres=True,scalars=color_func)
         plotter.show()
 
     def render_surface(self,color_func,**kwargs):
@@ -105,14 +105,21 @@ class Mesh(object):
         plotter.add_arrows(self.calculate_face_barycenters(), vectors, mag=mag)
         plotter.show()
     
-        
+    def calculate_vertex_centroid(self):
+        vertices = np.array(self.v)
+        mean_vertices = np.mean(vertices, axis=0)
+        scalar_func = np.linalg.norm(vertices - mean_vertices, axis=1)
+        plotter=pv.Plotter()
+        plotter.add_mesh(self.mesh_poly,style="points",point_size=10,render_points_as_spheres=True, scalars=scalar_func)
+        plotter.add_points(mean_vertices, render_points_as_spheres=True, point_size = 20, color = 'red')
+        plotter.show()
 
     
             
-mesh =Mesh("torus_fat_r2.off")
+mesh =Mesh("vase.off")
 # print(len(mesh.f))
 #print(mesh.gaussian_curvature())
 #mesh.visualize_vertex_normals()
-mesh.visualize_face_normals(normalized=False)
+mesh.calculate_vertex_centroid()
 
 # mesh.render_surface(vert_deg)
