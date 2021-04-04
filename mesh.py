@@ -4,7 +4,6 @@ import numpy as np
 import pyvista as pv
 import matplotlib.colors 
 import sklearn.preprocessing 
-blue = np.array([12/256, 238/256, 246/256, 1])
 
 class Mesh(object):
     def __init__(self,path):
@@ -31,14 +30,21 @@ class Mesh(object):
     def render_wireframe(self):
         pv.plot(pv.PolyData(self.v,self.f),style="wireframe")
 
-    def render_pointcloud(self,color_func):
+    def render_pointcloud(self,color_func=None):
+        if color_func == None:
+            color_func=np.random.rand(len(self.f))
         plotter=pv.Plotter()
         plotter.add_mesh(self.mesh_poly,style="points",point_size=100,render_points_as_spheres=True,scalars=color_func)
         plotter.show()
 
-    def render_surface(self,color_func,**kwargs):
+    def render_surface(self,color_func=None,**kwargs):
         plotter=pv.Plotter()
-        plotter.add_mesh(self.mesh_poly,cmap=kwargs["cmap"],scalars=np.random.rand(len(self.f)))
+        if color_func == None:
+            color_func=np.random.rand(len(self.f))
+        if "cmap" in kwargs:
+            plotter.add_mesh(self.mesh_poly,cmap=kwargs["cmap"],scalars=color_func)
+        else:
+            plotter.add_mesh(self.mesh_poly,scalars=color_func)
         plotter.show()
 
     def calculate_area(self,face):
@@ -52,7 +58,7 @@ class Mesh(object):
         edge1 = self.v[face[1]]-self.v[face[2]]
         edge2 = self.v[face[1]]-self.v[face[3]]
         normal=np.cross(edge1,edge2)
-        ginormal = normal/np.linalg.norm(normal)        
+        normal = normal/np.linalg.norm(normal)        
         return normal
 
     def calculate_face_normals(self):
@@ -62,9 +68,7 @@ class Mesh(object):
     def calculate_face_barycenters(self):
         vertex = np.array(self.v)
         vertex[self.f[0][0]] = vertex[self.f[0][0]]*0
-        calc = self.vertex_face_adjacency().transpose()*vertex
-        return calc/3
-        #return sklearn.preprocessing.normalize(calc,axis=1,norm='l2')  
+        return self.vertex_face_adjacency().transpose()*vertex/3
 
     def calculate_face_areas(self):
         areas = np.apply_along_axis(self.calculate_area,axis=1,arr=self.f)
@@ -88,13 +92,13 @@ class Mesh(object):
             #print(col[1])
             #print("hi")"""
 
-    def visualize_vertex_normals(self, normalized=True, mag=0.05):
+    def visualize_vertex_normals(self, normalized=True, mag=1):
         plotter=pv.Plotter()
         vectors = self.calculate_vertex_normals()
         if normalized:
             mag = mag/np.mean(np.linalg.norm(vectors, axis=1))
         self.mesh_poly.vectors = vectors
-        plotter.add_mesh(self.mesh_poly.arrows, scalars = "GlyphScale", mag=mag)
+        plotter.add_arrows(np.array(self.v), vectors, mag=mag)
         plotter.show()
 
     def visualize_face_normals(self, normalized=True, mag=1):
