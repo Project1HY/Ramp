@@ -15,8 +15,8 @@ def read_off(path):
     f = open(path,"r")
     next(f)
     metadata = list(map(lambda x: int(x),f.readline().split(" ")))
-    vertices = list(map(lambda index: __parse_vertex_line_to_tuple(f),range(metadata[0])))
-    faces = list(map(lambda index: __parse_faces_to_tuple(f),range(metadata[1])))
+    vertices = np.stack(list(map(lambda index: __parse_vertex_line_to_tuple(f),range(metadata[0]))))
+    faces = np.stack(list(map(lambda index: __parse_faces_to_tuple(f),range(metadata[1]))))
     return (vertices,faces)
 
 def write_off(path,vertices_faces):
