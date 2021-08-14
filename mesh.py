@@ -36,9 +36,9 @@ class Mesh(object):
         plotter.add_mesh(self.mesh_poly,style="points",point_size=100,render_points_as_spheres=True,scalars=color_func)
         plotter.show()
 
-    def render_surface(self,color_func,**kwargs):
+    def render_surface(self,color_func=0,**kwargs):
         plotter=pv.Plotter()
-        plotter.add_mesh(self.mesh_poly,cmap=kwargs["cmap"],scalars=np.random.rand(len(self.f)))
+        plotter.add_mesh(self.mesh_poly,scalars=np.random.rand(len(self.f)))
         plotter.show()
 
     def calculate_area(self,face):
@@ -52,7 +52,7 @@ class Mesh(object):
         edge1 = self.v[face[1]]-self.v[face[2]]
         edge2 = self.v[face[1]]-self.v[face[3]]
         normal=np.cross(edge1,edge2)
-        ginormal = normal/np.linalg.norm(normal)        
+        normal = normal/np.linalg.norm(normal)        
         return normal
 
     def calculate_face_normals(self):
@@ -88,13 +88,13 @@ class Mesh(object):
             #print(col[1])
             #print("hi")"""
 
-    def visualize_vertex_normals(self, normalized=True, mag=0.05):
+    def visualize_vertex_normals(self, normalized=True):
         plotter=pv.Plotter()
         vectors = self.calculate_vertex_normals()
-        if normalized:
-            mag = mag/np.mean(np.linalg.norm(vectors, axis=1))
+        #if normalized:
+            #mag = mag/np.mean(np.linalg.norm(vectors, axis=1))
         self.mesh_poly.vectors = vectors
-        plotter.add_mesh(self.mesh_poly.arrows, scalars = "GlyphScale", mag=mag)
+        plotter.add_mesh(self.mesh_poly.arrows, scalars = "GlyphScale")
         plotter.show()
 
     def visualize_face_normals(self, normalized=True, mag=1):
@@ -116,10 +116,12 @@ class Mesh(object):
 
     
             
-mesh =Mesh("vase.off")
+mesh =Mesh("sphere_s0.off")
+#mesh.render_surface()
 # print(len(mesh.f))
 #print(mesh.gaussian_curvature())
 #mesh.visualize_vertex_normals()
-mesh.calculate_vertex_centroid()
+mesh.visualize_face_normals()
+#mesh.calculate_vertex_centroid()
 
 # mesh.render_surface(vert_deg)
