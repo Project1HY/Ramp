@@ -40,7 +40,6 @@ class Mesh(object):
         plotter.add_mesh(self.mesh_poly,style="points",point_size=20,render_points_as_spheres=True,scalars=color_func)
         plotter.show()
 
-<<<<<<< HEAD
     def render_surface(self,color_func=0,**kwargs):
         plotter=pv.Plotter()
         plotter.add_mesh(self.mesh_poly,scalars=np.random.rand(len(self.f)))
@@ -60,18 +59,6 @@ class Mesh(object):
         normal = normal/np.linalg.norm(normal)        
         return normal
 
-=======
-    def render_surface(self,color_func=None,**kwargs):
-        plotter=pv.Plotter()
-        if color_func == None:
-            color_func=np.random.rand(len(self.f))
-        if "cmap" in kwargs:
-            plotter.add_mesh(self.mesh_poly,cmap=kwargs["cmap"],scalars=color_func)
-        else:
-            plotter.add_mesh(self.mesh_poly,scalars=color_func)
-        plotter.show()
-
->>>>>>> cb40f619c6bcf1563993ba620d84fdae2bf03ef3
     def calculate_face_normals(self):
         vec1 = self.v[self.f[:,0]]-self.v[self.f[:,1]]
         vec2 = self.v[self.f[:,0]]-self.v[self.f[:,2]]
