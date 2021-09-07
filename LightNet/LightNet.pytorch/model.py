@@ -108,7 +108,10 @@ class LightNetCls(pl.LightningModule):
         pred, trans, trans_feat = self.forward(points)
         loss = F.nll_loss(pred, target)
         loss += feature_transform_regularizer(trans_feat) * 0.001
-        #correct = pred_choice.eq(target.data).cpu().sum()
+        pred_choice = pred.data.max(1)[1]
+        correct = pred_choice.eq(target.data).cpu().sum()
+        self.log("train loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log("correct count", correct, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         return loss
 
     def test_step(self, batch, batch_idx):
@@ -117,4 +120,8 @@ class LightNetCls(pl.LightningModule):
         points = points.transpose(2, 1)
         pred, _, _ = self.forward(points)
         loss = F.nll_loss(pred, target)
+        pred_choice = pred.data.max(1)[1]
+        correct = pred_choice.eq(target.data).cpu().sum()
+        self.log("test loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log("correct count", correct, on_step=True, on_epoch=True, prog_bar=True, logger=True)   
         return loss   
