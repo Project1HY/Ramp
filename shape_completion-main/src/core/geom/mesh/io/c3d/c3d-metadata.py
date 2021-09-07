@@ -1,0 +1,71 @@
+#!/usr/bin/env python
+
+'''Display C3D group and parameter information.'''
+import c3d
+import argparse
+import sys
+
+parser = argparse.ArgumentParser(description='Display C3D group and parameter information.')
+parser.add_argument('input', default='-', metavar='FILE', nargs='+',
+                help='process C3D data from this input FILE')
+
+
+def print_metadata(reader):
+    print('Header information:\n{}'.format(reader.header))
+    groups = ((k, v) for k, v in reader.groups.items() if isinstance(k, str))
+    for key, g in sorted(groups):
+        if not isinstance(key, int):
+            print('')
+            for key, p in sorted(g.params.items()):
+                print_param(g, p)
+
+
+def print_param(g, p):
+    print('{0.name}.{1.name}: {1.total_bytes}B {1.dimensions}'.format(g, p))
+
+    if len(p.dimensions) == 0:
+        val = None
+        width = len(p.bytes)
+        if width == 2:
+            val = p.int16_value
+        elif width == 4:
+            val = p.float_value
+        else:
+            val = p.int8_value
+        print('{0.name}.{1.name} = {2}'.format(g, p, val))
+
+    if len(p.dimensions) == 1 and p.dimensions[0] > 0:
+        arr = []
+        width = p.total_bytes // p.dimensions[0]
+        if width == 2:
+            arr = p.int16_array
+        elif width == 4:
+            arr = p.float_array
+        else:
+            arr = p.int8_array
+        for r, v in enumerate(arr):
+            print('{0.name}.{1.name}[{2}] = {3}'.format(g, p, r, v))
+
+    if len(p.dimensions) == 2:
+        C, R = p.dimensions
+        for r in range(R):
+            print('{0.name}.{1.name}[{2}] = {3}'.format(
+                g, p, r, repr(p.bytes[r * C:(r+1) * C])))
+
+
+def main(args):
+    for filename in args.input:
+        try:
+            if filename == '-':
+                print('*** (stdin) ***')
+                print_metadata(c3d.Reader(sys.stdin))
+            else:
+                print('*** {} ***'.format(filename))
+                with open(filename, 'rb') as handle:
+                    print_metadata(c3d.Reader(handle))
+        except Exception as err:
+            print(err)
+
+
+if __name__ == '__main__':
+    main(parser.parse_args())
