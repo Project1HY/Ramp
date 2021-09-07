@@ -25,8 +25,9 @@ class LightSTNkd(nn.Module):
         x = self.conv_layers(x)
         x = torch.max(x, 2, keepdim=True)[0].view(-1, 1024)
         x = self.fc_layers(x)
-        iden = torch.eye(self.k,self.k).view(1,-1).float()
+        iden = torch.eye(self.k,self.k).view(1,-1).float().to(device=x.device)
         x = x + iden
+
         x = x.view(-1, self.k, self.k)
         return x
 
@@ -76,7 +77,7 @@ class LightNetModel(nn.Module):
 def feature_transform_regularizer(trans):
     d = trans.size()[1]
     batchsize = trans.size()[0]
-    I = torch.eye(d)[None, :, :]
+    I = torch.eye(d)[None, :, :].to(device=trans.device)
     loss = torch.mean(torch.norm(torch.bmm(trans, trans.transpose(2,1)) - I, dim=(1,2)))
     return loss
 
@@ -92,6 +93,7 @@ class LightNetCls(pl.LightningModule):
         self.fc_layers = nn.Sequential(*self.fc_layers)
 
     def forward(self, x):
+        x.to(device=self.device)
         x, trans, trans_feat = self.feat(x)
         x = self.fc_layers(x)
         return x, trans, trans_feat
@@ -124,4 +126,4 @@ class LightNetCls(pl.LightningModule):
         correct = pred_choice.eq(target.data).cpu().sum()
         self.log("test loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         self.log("correct count", correct, on_step=True, on_epoch=True, prog_bar=True, logger=True)   
-        return loss   
+        return loss
