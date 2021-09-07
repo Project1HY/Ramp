@@ -113,7 +113,8 @@ class LightNetCls(pl.LightningModule):
         pred_choice = pred.data.max(1)[1]
         correct = pred_choice.eq(target.data).cpu().sum()
         self.log("train loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
-        self.log("correct count", correct, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        self.log("train accuracy", float(correct)/len(batch),on_step=True,on_epoch=True,prog_bar=True,logger=True)
+        # self.log("correct count", correct, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         return loss
 
     def test_step(self, batch, batch_idx):
@@ -125,5 +126,5 @@ class LightNetCls(pl.LightningModule):
         pred_choice = pred.data.max(1)[1]
         correct = pred_choice.eq(target.data).cpu().sum()
         self.log("test loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
-        self.log("correct count", correct, on_step=True, on_epoch=True, prog_bar=True, logger=True)   
+        self.log("test accuracy", float(correct)/len(batch),on_step=True,on_epoch=True,prog_bar=True,logger=True)
         return loss
