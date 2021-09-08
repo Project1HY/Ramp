@@ -4,7 +4,7 @@ from plyfile import PlyData
 import pyvista as pv
 import meshio
 from itertools import chain
-
+import pickle as pk
 # ---------------------------------------------------------------------------------------------------------------------#
 #                                                Collectors
 # ---------------------------------------------------------------------------------------------------------------------#
@@ -153,6 +153,11 @@ def read_off(fp):
         return np.array(v), np.array(f)
     except Exception as e:
         raise OSError(f"Could not read or open mesh file {fp}") from e
+
+# TODO: Add PKL Reader for meshes
+#def read_pkl(pickle_file):
+#   with open(pickle_file, 'rb') as p:
+
 
 
 def read_ply_verts(fp):
