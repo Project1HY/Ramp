@@ -86,6 +86,7 @@ def feature_transform_regularizer(trans):
 class LightNetCls(pl.LightningModule):
     def __init__(self, k=2, feature_transform=False):
         super().__init__()
+        self.save_hyperparameters()
         self.feature_transform = feature_transform
         self.feat = LightNetModel(global_feat=True, feature_transform=feature_transform)
         self.fc_layers = [nn.Linear(1024, 512), nn.BatchNorm1d(512), nn.ReLU(),
@@ -110,13 +111,24 @@ class LightNetCls(pl.LightningModule):
         points = points.transpose(2, 1)
         pred, trans, trans_feat = self.forward(points)
         loss = F.nll_loss(pred, target)
-        if trans_feat is not None:
+        if self.feature_transform:
             loss += feature_transform_regularizer(trans_feat) * 0.001
         pred_choice = pred.data.max(1)[1]
         correct = pred_choice.eq(target.data).cpu().sum()
         self.log("performance", {'loss': loss, 'accuracy': float(correct) / len(target)}, on_step=True, on_epoch=True,
                  prog_bar=True, logger=True)
         # self.log("correct count", correct, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        return loss
+    def validation_step(self, batch,batch_idx):
+        points, target = batch
+        target = target[:, 0]
+        points = points.transpose(2, 1)
+        pred, _, _ = self.forward(points)
+        loss = F.nll_loss(pred, target)
+        pred_choice = pred.data.max(1)[1]
+        correct = pred_choice.eq(target.data).cpu().sum()
+        self.log("performance", {'loss': loss, 'accuracy': float(correct) / len(target)}, on_step=True, on_epoch=True,
+                 prog_bar=True, logger=True)
         return loss
 
     def test_step(self, batch, batch_idx):

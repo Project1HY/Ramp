@@ -28,12 +28,12 @@ class DFaustHIT(CompletionDataset):  # TODO
         super().__init__(data_dir_override=data_dir_override, deformation=deformation,
                          cls='scan', suspected_corrupt=False)
 
-def _construct_hit(self):
-    hit = {}
-    for sub_id in range(10):
-        hit[str(sub_id)] = {}
-        for pose_id in range(self.num_pose_per_sub):
-            hit[str(sub_id)][str(pose_id + sub_id * self.num_pose_per_sub)] = {}
-            for frame_num in range(self.frames_per_pose_and_sub):
-                hit[str(sub_id)][str(pose_id + sub_id * self.num_pose_per_sub)][frame_num+(pose_id+sub_id*self.num_pose_per_sub)*self.frames_per_pose_and_sub]=self.num_proj_per_frame
-    return HierarchicalIndexTree(hit, in_memory=True)
+    def _construct_hit(self):
+        hit = {}
+        for sub_id in range(10):
+            hit[str(sub_id)] = {}
+            for pose_id in range(self.num_pose_per_sub):
+                hit[str(sub_id)][str(pose_id + sub_id * self.num_pose_per_sub)] = {}
+                for frame_num in range(self.frames_per_pose_and_sub):
+                    hit[str(sub_id)][str(pose_id + sub_id * self.num_pose_per_sub)][frame_num+(pose_id+sub_id*self.num_pose_per_sub)*self.frames_per_pose_and_sub]=self.num_proj_per_frame
+        return HierarchicalIndexTree(hit, in_memory=True)
