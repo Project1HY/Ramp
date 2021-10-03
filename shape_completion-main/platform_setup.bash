@@ -21,8 +21,8 @@
 
 eval "$(conda shell.bash hook)"
 conda update -y -n base -c defaults conda
-conda create -y -n DeepShape python=3.8.11 
-conda activate DeepShape
+conda create -y -n ProjectHY python=3.8.11 
+conda activate ProjectHY
 #---------------------------------------------------------------------------------------------#
 #                                     	Primary Dependencies
 #---------------------------------------------------------------------------------------------#
@@ -50,7 +50,11 @@ pip install pycollada
 pip install psutil
 pip install yagmail
 pip install meshio
-pip install plyfile # Consider removing 
+pip install plyfile # Consider removing
+pip install matplotlib
+pip install scipy
+pip install scikit_learn
+pip install npzviewer
 
 # TO REMOVE: 
 # gdist

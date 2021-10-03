@@ -2,7 +2,7 @@ from pathlib import Path
 
 import numpy as np
 
-from vis.vista.multi_plot import plot_mesh_montage, add_mesh, plotter
+from multi_plot import plot_mesh_montage, add_mesh, plotter
 from util.container import stringify
 from util.execution import busy_wait
 
@@ -114,3 +114,30 @@ def animate_color(colors, v, f=None, gif_name=None, titles=None, first_frame_ind
         p.update()
     p.show(full_screen=False)  # To allow for screen hanging
 
+if __name__ == "__main__":
+    dfaust_path = r"C:\Users\ido.iGIP1\hy\Ramp\shape_completion-main\src\core\results\debug_experiment\version_19\completions\DFaustProj"
+    # file = meshio.read(r"R:\Mano\data\DFaust\DFaust\full\50002\hips\00000.OFF","off")
+    # _,faces = file.points,file.get_cells_type("triangle")
+
+    from os import listdir
+    from os.path import isfile, join
+    onlyfiles = [f for f in listdir(dfaust_path) if isfile(join(dfaust_path, f)) and f.startswith("gt_50007") and f.endswith("res.ply")]
+    files_and_digits = [(f,[int(s) for s in f.split("_") if s.isdigit()][-1]) for f in onlyfiles]
+    animation = {}
+    for (f,digit) in files_and_digits:
+        if digit not in animation:
+            animation[digit] = f
+    anim_plys = list(animation.values())
+    # print(dfaust_path+"\\"+anim_plys[0])
+    # print(onlyfiles[4])
+    # print((onlyfiles[4][-12:-8]))
+    # meshio.read(r"R:\Mano\data\DFaust\DFaust\full\50002\hips\00000.OFF","off")
+    # print(onlyfiles[0])
+    from plyfile import PlyData, PlyElement
+    # plydata = PlyData.read(dfaust_path)
+    plys = [PlyData.read(dfaust_path + "\\" +f) for f in anim_plys]
+    # print(plys[0]["face"])
+    faces = np.array(list([list(face) for face in plys[0]["face"].data])).squeeze() 
+    # np.array(list([list(vertex) for vertex in vertices]))
+    vs = [np.array(list([list(vertex) for vertex in ply["vertex"].data])) for ply in plys]
+    animate(vs,faces,gif_name=r"C:\Users\ido.iGIP1\hy\Ramp\animate.gif")

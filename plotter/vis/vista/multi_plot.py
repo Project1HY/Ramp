@@ -3,7 +3,7 @@ import math
 import numpy as np
 
 from external import center_by_l2_mean,hybrid_kwarg_index
-from vis.vista.basic_plot import plotter, add_mesh
+from basic_plot import plotter, add_mesh
 from util.container import is_number
 
 
@@ -154,10 +154,15 @@ def plot_mesh_grid(vs, fs=None, ns=None, lines=None, spacer_x=2, spacer_y=2, col
 
 
 def _mesh_grid_test():
-    from cfg import Assets
-    v, f = Assets.MAN.load()
+    # from cfg import Assessssts
+    # v, f = Assets.MAN.load()
+    # v = np.load(r"R:\Mano\data\DFaust\DFAUST_VERT_PICK\50002\chicken_wings\00000.npy")
     from vis.color import all_colormap_names
-
+    file = meshio.read(r"R:\Mano\data\DFaust\DFaust\full\50002\hips\00000.OFF", "off")
+    # print(mesh)
+    # print(file.__dict__)
+    v, f = file.points, file.get_cells_type("triangle")
+    # print(f)
     plot_mesh_grid(vs=[v] * 16, fs=f, cmap=all_colormap_names()[:16], colors=v[:, 0],
                    spacer_x=1, spacer_y=1)
 

@@ -2,7 +2,7 @@ import numpy as np
 import pyvista as pv
 from sklearn.neighbors import NearestNeighbors
 
-from vis.color import parse_color
+from color import parse_color
 from external import torch2numpy
 
 
@@ -36,6 +36,8 @@ def plotter(theme='document', **kwargs):
 #
 # ---------------------------------------------------------------------------------------------------------------------#
 def concat_cell_qualifier(arr):
+    # arr = np.expand_dims(arr,axis=1)
+    print(arr.shape)
     return np.concatenate((np.full((arr.shape[0], 1), arr.shape[1]), arr), 1)
 
 

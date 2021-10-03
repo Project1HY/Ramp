@@ -71,7 +71,6 @@ class LightningTrainer:
         # For internal trainer:
         self.early_stop = EarlyStopping(monitor='val_loss', patience=self.hp.early_stop_patience, verbose=True,
                                         mode='min')
-
         if self.hp.plotter_class is not None:
             plt_class = getattr(lightning.assets.plotter, self.hp.plotter_class)
             self.plt = plt_class(faces=self.data.faces(),
@@ -79,6 +78,13 @@ class LightningTrainer:
 
     def _init_trainer(self, fast_dev_run):
 
+        print('were screwed')
+        if self.hp.plotter_class is not None:
+            plt_class = getattr(lightning.assets.plotter, self.hp.plotter_class)
+            print(plt_class)
+            print('hi')
+            self.plt = plt_class(faces=self.data.faces(),
+                                 n_verts=self.data.num_verts())  # TODO - Cannot currently train on Scans due to this:
         # Checkpointing and Logging:
         tb_log = TestTubeLogger(save_dir=self.hp.PRIMARY_RESULTS_DIR, description=f"{self.hp.exp_name} Experiment",
                                 name=self.hp.exp_name, version=self.hp.version)

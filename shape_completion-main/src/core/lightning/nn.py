@@ -121,9 +121,17 @@ class CompletionLightningModel(PytorchNet):
                 "progress_bar": progbar_dict,
                 "log": log_dict}
 
-    def test_step(self, b, _, set_id=0):
+    def test_step(self, b, batch_idx, set_id=0):
 
         pred = self.complete(b)
+        if self.assets.plt is None:
+            print('bye')
+        if batch_idx == 0 and set_id == 0 and self.assets.plt is not None and self.assets.plt.cache_is_filled():
+            # On first batch, of first dataset, only if plotter exists and only if training step has been activated
+            # before (last case does not happen if we run in dev mode).
+            new_data = (self.assets.plt.uncache(), self.assets.plt.prepare_plotter_dict(b, pred))
+            self.assets.plt.push(new_data=new_data, new_epoch=self.current_epoch)
+
         if self.assets.saver is not None:  # TODO - Generalize this
             self.assets.saver.save_completions_by_batch(pred, b, set_id)
         return self.loss.compute(b, pred)

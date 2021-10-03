@@ -3,7 +3,7 @@ import pyvista as pv
 
 from external import face_barycenters, num_edges, edge_centers, point_cloud_radius, edges, last_axis_norm, torch2numpy, \
     unique_rows, l2_normalize
-from vis.vista.utils import concat_cell_qualifier, plotter, color_to_pyvista_color_params
+from utils import concat_cell_qualifier, plotter, color_to_pyvista_color_params
 
 # TODO -
 #  * Add Shadow Support
@@ -324,6 +324,7 @@ def _mesh_plot_test():
         p.show()
         pass
 
+
     plot(lines=e, line_color=[0, 0, 1])  # Lines
     plot(lines=e, line_color=[0, 255, 0])
     plot(lines=e, line_color='cyan')
@@ -392,9 +393,21 @@ def _mesh_plot_test():
     plot(style='wireframe', color=np.random.rand(v.shape[0], 3), )
     plot(style='sphered_wireframe', color=np.random.rand(v.shape[0], 3), )
 
+def comp(path):
+    from plyfile import PlyData, PlyElement
+    plydata = PlyData.read(path)
 
-# ---------------------------------------------------------------------------------------------------------------------#
+    vertices, faces =  plydata['vertex'].data,  plydata['face'].data
+    # print(vertices)
+    vert_new = np.array(list([list(vertex) for vertex in vertices]))
+    faces_new = np.array(list([list(face) for face in faces])).squeeze()
+    # print(faces_new.squeeze().shape)
+    # print(faces_new[1])
+    # print(faces_new.shape)
+    plot_mesh(vert_new, faces_new)
+# -------------------------------------------------------asd--------------------------------------------------------------#
 #
 # ---------------------------------------------------------------------------------------------------------------------#
 if __name__ == '__main__':
-    _lines_test()
+    #_lines_test()
+    comp(r"C:\Users\ido.iGIP1\hy\Ramp\shape_completion-main\src\core\results\debug_experiment\version_19\completions\DFaustProj\gt_50007_jiggle_on_toes_64_8_tp_50007_jiggle_on_toes_271_res.ply")

@@ -25,7 +25,7 @@ def parser():
                    help='Only works if version != None and and weight_dir exists. '
                         '1st Bool: Whether to attempt restore of early stopping callback. '
                         '2nd Bool: Whether to attempt restore learning rate scheduler')
-    p.add_argument('--save_completions', type=int, choices=[0, 1, 2, 3], default=3,
+    p.add_argument('--save_completions', type=int, choices=[0, 1, 2, 3], default=2,
                    help='Use 0 for no save. Use 1 for vertex only save in obj file. Use 2 for a full mesh save (v&f). '
                         'Use 3 for gt,tp,gt_part,tp_part save as well.')
 
@@ -114,17 +114,22 @@ def train_main():
 def test_main():
     banner('Network Init')
     nn = F2PEncoderDecoderBase(parser())
-
-    ldrs = f2p_completion_loaders(nn.hp)
-
-    banner('Testing')
+    # print(nn.hp)
+    #ldrs = f2p_completion_loaders(nn.hp)
+    ldrs = new_loaders(nn.hp)
+    # banner('Testing')
     trainer = LightningTrainer(nn, ldrs)
     trainer.test()
     trainer.finalize()
-
+#
+# def run_completion():
+#     nn = F2PEncoderDecoderBase(parser())
+#     nn = F2PEncoderDecoderBase.load_from_checkpoint(r"C:\Users\ido.iGIP1\hy\Ramp\shape_completion-main\src\core\results\debug_experiment\version_19\checkpoints\weight_ckpt_epoch_13.ckpt")
+#     print(nn)
+#
 
 # ----------------------------------------------------------------------------------------------------------------------
 #
 # ----------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
-    train_main()
+    test_main()

@@ -80,7 +80,14 @@ class HierarchicalIndexTree:
         return sorted(list(key_set))
 
     def keep_ids_by_depth(self, keepers, depth):
-        raise NotImplementedError  # TODO - Implement this - along with dataset decimation
+        if depth > self._depth - 1 or depth <= 0:
+            # We don't allow getting of ids from the lowest level - seeing they are not unique
+            raise AssertionError(f"Invalid depth requested. Valid inputs are: {list(range(1, self._depth))}")
+
+        if type(keepers) is not list:
+            keepers = [keepers]
+        reduced_hit = self._keep_ids_by_depth(self._hit, depth - 1, set(keepers))
+        return HierarchicalIndexTree(reduced_hit, self._in_memory)
 
     def remove_ids_by_depth(self, goners, depth):
         if depth > self._depth - 1 or depth <= 0:
@@ -175,6 +182,19 @@ class HierarchicalIndexTree:
         else:
             for v in hit.values():
                 HierarchicalIndexTree._get_id_union_by_depth(v, depth - 1, dump)
+
+    @staticmethod
+    def _keep_ids_by_depth(hit, depth, keepers):
+        modified_dict = {}
+        for key, value in hit.items():
+            if depth != 0 or key in keepers:  # Keep it
+                if isinstance(value, MutableMapping):
+                    child_dict = HierarchicalIndexTree._keep_ids_by_depth(value, depth - 1, keepers)
+                    if child_dict:  # Assert it is not empty
+                        modified_dict[key] = child_dict
+                else:
+                    modified_dict[key] = value
+        return modified_dict
 
     @staticmethod
     def _remove_ids_by_depth(hit, depth, goners):

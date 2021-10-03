@@ -66,7 +66,7 @@ def pytorch_net_tutorial():
 def dataset_tutorial():
     # Use the menu to see which datasets are implemented
     print(DatasetMenu.all_sets())
-    ds = DatasetMenu.order('FaustPyProj')  # This will fail if you don't have the data on disk
+    ds = DatasetMenu.order('FaustProj')  # This will fail if you don't have the data on disk
     # ds.validate_dataset()  # Make sure all files are available - Only run this once, to make sure.
 
     # For simplicity's sake, we support the old random dataloader as well:
@@ -135,3 +135,5 @@ def dataset_tutorial():
     # You'll receive len(split) dataloaders, where each part i is split[i]*num_point_clouds size. From this split,
     # s_nums[i] will be taken for the dataloader, and transformed by s_transform[i].
     # s_shuffle and global_shuffle controls the shuffling of the different partitions - see doc inside function
+
+dataset_tutorial()

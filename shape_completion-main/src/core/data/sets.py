@@ -169,7 +169,7 @@ class SMALTest(SMALBase):
 
 class DFaust(ParametricCompletionDataset):
     def __init__(self, data_dir_override, deformation):
-        super().__init__(n_verts=6890, data_dir_override=data_dir_override, deformation=deformation, cls='synthetic',
+        super().__init__(n_verts=6890, data_dir_override=r"R:\Mano\data\DFaust\DFaust", deformation=deformation, cls='synthetic',
                          suspected_corrupt=False)
 
     def _hi2proj_path_default(self, hi):
@@ -372,7 +372,6 @@ class DatasetMenu:
         'SMALTestEleProj': (SMALTest, OrbitalProjection()),
         'SMALValdEleProj': (SMALVald, OrbitalProjection()),
         'SMALTrainEleProj': (SMALTrain, OrbitalProjection()),
-
         'FaustProj': (Faust, AzimuthalProjection()),
         'FaustEleProj': (Faust, OrbitalProjection()),
         'FaustSemCuts': (Faust, SemanticCut()),

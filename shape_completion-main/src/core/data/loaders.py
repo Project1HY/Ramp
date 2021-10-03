@@ -16,13 +16,13 @@ LARGE_DATASET_THERSHOLD = 1000  # Maybe use in_memory from the hit?
 #                                                       Loader Sets
 # ----------------------------------------------------------------------------------------------------------------------
 
-#def f2p_completion_loaders(hp, train='FaustEleProj',
+#def Ff2p_completion_loaders(hp, train='FaustEleProj',
 #                           vald_test='FaustTrainScansEleProj',
 #                           test='FaustTrainScansEleProj'):
 #def f2p_completion_loaders(hp, train='FaustEleProj',
 #                           vald_test='FaustEleProj',
 #                           test='FaustEleProj'):
-def f2p_completion_loaders(hp, train='FaustEleProj',
+def f2p_completion_loaders(hp, train='DFaustProj',
                            vald_test=None,
                            test=None):
     """
@@ -179,6 +179,7 @@ def _loaders(hp, ds_name='DFaust', cls='train', transforms: Union[List, Tuple] =
         raise AssertionError
 
 
+
 def _multiloaders(hp, train_names, vald_test_names, test_names, method='rand_f2p',
                   transforms: Union[List, Tuple] = tuple()):
     if not isinstance(train_names, (list, tuple)):
@@ -220,3 +221,29 @@ def _join_loader_sets(*args):
 # ----------------------------------------------------------------------------------------------------------------------
 #
 # ----------------------------------------------------------------------------------------------------------------------
+#our new loader
+
+def new_loaders(hp, ds_name='DFaustProj', transforms: Union[List, Tuple] = tuple(), method='rand_f2p'):
+    transforms = list(transforms)
+    # transforms.append(L2BallNormalize())  # Always normalize to the L2 Ball
+    transforms.append(Center())
+    # Small Rule Corrections:
+    batch_size = 1 if 'scan' in ds_name.lower() else hp.batch_size  # TODO - is this needed? Do we need CPU?
+    ds: CompletionDataset = DatasetMenu.order(ds_name)
+    print("bdckcksfvkjdvdbkfsbldkf")
+
+    ds._hit = ds._hit.keep_ids_by_depth(["50007"], 1)
+    ds._hit = ds._hit.keep_ids_by_depth(["jiggle_on_toes"], 2)
+    print(ds._hit)
+    if ds.num_full_shapes() > LARGE_DATASET_THERSHOLD:
+        train_dynamic_partition = True  # TODO - Move inside loaders - doesn't belong here.
+    else:
+        train_dynamic_partition = False
+        if method == 'rand_f2p':
+            method = 'f2p'
+
+    return [None, None, ds.loaders(split=[1], s_nums=hp.counts[2], s_transform=transforms,
+                                    batch_size=batch_size, device=hp.dev, n_channels=hp.in_channels,
+                                    method=method, s_shuffle=[False], s_dynamic=[False])]
+
+
