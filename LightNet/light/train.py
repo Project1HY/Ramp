@@ -23,7 +23,7 @@ if __name__ == "__main__":
     val_dataloader = torch.utils.data.DataLoader(
         val_dataset,
         batch_size=32,
-        num_workers=int(4))
+        num_workers=int(1))
 
     test_dataset = ShapeNetDataset(
         root=root,
@@ -33,7 +33,7 @@ if __name__ == "__main__":
     test_dataloader = torch.utils.data.DataLoader(
         test_dataset,
         batch_size=32,
-        num_workers=int(4))
+        num_workers=int(1))
 
     trainer = pl.Trainer(gpus=1,max_epochs=10)
     model = model.LightNetCls(k=16,feature_transform=False)

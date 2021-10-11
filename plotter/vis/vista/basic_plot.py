@@ -410,4 +410,5 @@ def comp(path):
 # ---------------------------------------------------------------------------------------------------------------------#
 if __name__ == '__main__':
     #_lines_test()
-    comp(r"C:\Users\ido.iGIP1\hy\Ramp\shape_completion-main\src\core\results\debug_experiment\version_19\completions\DFaustProj\gt_50007_jiggle_on_toes_64_8_tp_50007_jiggle_on_toes_271_res.ply")
+    comp(r"C:\Users\ido.iGIP1\hy\Ramp\shape_complFFcometion-main\src\core\results\debug_experiment\version_19\completions\DFaustProj\gt_50007_jiggle_on_toes_5_2_tp_50007_jiggle_on_toes_0_res.ply")
+    # 284

@@ -104,7 +104,7 @@ def train_main():
     #
 
     # Commence Training
-    trainer = LightningTrainer(nn, ldrs)
+    trainer = F(nn, ldrs)
     trainer.train(debug_mode=False)
 
     trainer.test()

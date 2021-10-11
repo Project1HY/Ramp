@@ -232,8 +232,8 @@ def new_loaders(hp, ds_name='DFaustProj', transforms: Union[List, Tuple] = tuple
     ds: CompletionDataset = DatasetMenu.order(ds_name)
     print("bdckcksfvkjdvdbkfsbldkf")
 
-    ds._hit = ds._hit.keep_ids_by_depth(["50007"], 1)
-    ds._hit = ds._hit.keep_ids_by_depth(["jiggle_on_toes"], 2)
+    ds._hit = ds._hit.keep_ids_by_depth(["50020"], 1)
+    ds._hit = ds._hit.keep_ids_by_depth(["shake_arms"], 2)
     print(ds._hit)
     if ds.num_full_shapes() > LARGE_DATASET_THERSHOLD:
         train_dynamic_partition = True  # TODO - Move inside loaders - doesn't belong here.

@@ -18,7 +18,7 @@ def plot_mesh_montage(vs, fs=None, ns=None, lines=None, colors='w',  # Input
                       normal_color='lightblue', edge_color='darkblue', line_color='darkblue', cmap='rainbow',
                       show_edges=False, clim=None, show_scalar_bar=False,  # Color options
                       normal_scale=1, point_size=6, line_width=1,  # Scales
-                      grid_on=False, opacity=1.0, titles=None, axes_on=False,  # Misc
+                      grid_on=False, oofpacity=1.0, titles=None, axes_on=False,  # Misc
                       auto_close=True, link_plots=True, ext_func=None, max_plots_per_screen=16, ret_meshes=False,
                       unit_sphere_on=False
                       # Singletons
@@ -157,13 +157,14 @@ def _mesh_grid_test():
     # from cfg import Assessssts
     # v, f = Assets.MAN.load()
     # v = np.load(r"R:\Mano\data\DFaust\DFAUST_VERT_PICK\50002\chicken_wings\00000.npy")
-    from vis.color import all_colormap_names
-    file = meshio.read(r"R:\Mano\data\DFaust\DFaust\full\50002\hips\00000.OFF", "off")
+    from color import all_colormap_names
+    import meshio
+    file = meshio.read(r"R:\Mano\data\DFaust\DFaust\full\50007\jiggle_on_toes\00076.OFF", "off")
     # print(mesh)
     # print(file.__dict__)
     v, f = file.points, file.get_cells_type("triangle")
     # print(f)
-    plot_mesh_grid(vs=[v] * 16, fs=f, cmap=all_colormap_names()[:16], colors=v[:, 0],
+    plot_mesh_grid(vs=[v], fs=f, cmap=all_colormap_names()[0], colors=v[:, 0],
                    spacer_x=1, spacer_y=1)
 
 
