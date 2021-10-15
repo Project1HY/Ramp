@@ -20,6 +20,7 @@ from util.func import handles_scalars
 from util.strings import warn, banner
 from util.time import time_me
 from util.torch.data import determine_worker_num, ReconstructableLoader, ParametricLoader, SubsetChoiceSampler
+from torch.utils.data import SequentialSampler
 
 # from torch.utils.data.distributed import DistributedSampler
 NP_STR_OBJ_ARRAY_PATTERN = re.compile(r'[SaUO]')
@@ -436,7 +437,10 @@ class CompletionDataset(HitIndexedDataset, ABC):
         sampler_length = min(set_size, len(ids))  # Allows for dynamic partitions
         # if device == 'ddp': #TODO - Add distributed support here. What does num_workers need to be?
         # data_sampler == DistributedSampler(dataset,num_replicas=self.num_gpus,ranks=self.logger.rank)
-        data_sampler = SubsetChoiceSampler(ids, sampler_length)
+
+        #SequentialSampler
+        #data_sampler = SubsetChoiceSampler(ids, sampler_length)
+        data_sampler = SequentialSampler(ids)
 
         # Compiler Transforms:
         transforms = self._transformation_finalizer_by_method(method, transforms, n_channels)
@@ -509,7 +513,8 @@ class CompletionDataset(HitIndexedDataset, ABC):
 
     def _datapoint_via_rand_f2p(self, si):
         gt_dict = self._datapoint_via_part(si)  # si is gt_si
-        tp_hi = self._hit.random_path_from_partial_path([gt_dict['gt_hi'][0]])[:-1]  # Shorten hi by 1
+        # tp_hi = self._hit.random_path_from_partial_path([gt_dict['gt_hi'][0]])[:-1]  # Shorten hi by 1
+        tp_hi = gt_dict['gt_hi'][:-1]
         tp_dict = self._full_dict_by_hi(tp_hi)
         gt_dict['tp'], gt_dict['tp_hi'], gt_dict['tp_f'] = tp_dict['gt'], tp_dict['gt_hi'], tp_dict['gt_f']
         return gt_dict

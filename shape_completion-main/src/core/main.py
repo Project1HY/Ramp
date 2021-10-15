@@ -116,6 +116,7 @@ def test_main():
     nn = F2PEncoderDecoderBase(parser())
     # print(nn.hp)
     #ldrs = f2p_completion_loaders(nn.hp)
+    nn.hp.counts = (1000000,1000000,1000000)
     ldrs = new_loaders(nn.hp)
     # banner('Testing')
     trainer = LightningTrainer(nn, ldrs)
