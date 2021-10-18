@@ -18,7 +18,7 @@ def plot_mesh_montage(vs, fs=None, ns=None, lines=None, colors='w',  # Input
                       normal_color='lightblue', edge_color='darkblue', line_color='darkblue', cmap='rainbow',
                       show_edges=False, clim=None, show_scalar_bar=False,  # Color options
                       normal_scale=1, point_size=6, line_width=1,  # Scales
-                      grid_on=False, oofpacity=1.0, titles=None, axes_on=False,  # Misc
+                      grid_on=False, opacity=1.0, titles=None, axes_on=False,  # Misc
                       auto_close=True, link_plots=True, ext_func=None, max_plots_per_screen=16, ret_meshes=False,
                       unit_sphere_on=False
                       # Singletons
@@ -76,7 +76,7 @@ def plot_mesh_montage(vs, fs=None, ns=None, lines=None, colors='w',  # Input
                                                  line_color=line_color,
                                                  cmap=cmap, show_scalar_bar=show_scalar_bar, show_edges=show_edges,
                                                  normal_scale=normal_scale, point_size=point_size,
-                                                 line_width=line_width, grid_on=grid_on, opacity=opacity, title=titles,
+                                                 line_width=line_width, grid_on=grid_on, opacity=1, title=titles,
                                                  axes_on=axes_on, unit_sphere_on=unit_sphere_on),
                          camera_pos=camera_pos_i, clim=clim_i)
             if ret_meshes:
