@@ -11,7 +11,6 @@ import meshio
 import meshplex
 from plyfile import PlyData, PlyElement
 from tqdm import tqdm
-import os
 from scipy.spatial.distance import directed_hausdorff
 
 # TODO - insert explicit mesh naming, so we do not relay on updating the last mesh.
@@ -19,20 +18,17 @@ from scipy.spatial.distance import directed_hausdorff
 #
 # ---------------------------------------------------------------------------------------------------------------------#
 
-def multianimate(vss, fs=None,gif_name=None, titles=None, color='lightcoral', **plt_args):
+def multianimate(vss, fs=None, titles=None, color='lightcoral', **plt_args):
     print('Orient the view, then press "q" to start animation')
     p, ms = plot_mesh_montage(vs=[vs[0] for vs in vss], fs=fs, titles=titles, auto_close=False, colors=color,
                               ret_meshes=True, **plt_args)
-    if gif_name is not None:
-        p.open_gif(gif_name)
+
     num_frames_per_vs = [len(vs) for vs in vss]
     longest_sequence = max(num_frames_per_vs)
     for i in range(longest_sequence):  # Iterate over all frames
         for mi, m in enumerate(ms):
             if i < num_frames_per_vs[mi]:
                 p.update_coordinates(points=vss[mi][i], mesh=m, render=False)
-                if gif_name is not None:
-                    p.write_frame()
                 if i == num_frames_per_vs[mi] - 1:
                     for k, actor in p.renderers[mi]._actors.items():
                         if k.startswith('PolyData'):
@@ -232,9 +228,9 @@ def create_best_animation_by_metric(subject,pose, metric):
         if digit not in poses:
             poses[digit]=[]
         poses[digit]+=[f]
-    file_dir = r"R:\Mano\data\DFaust\DFaust\full\{}\{}".format(subject,pose)
-    file_count = len([name for name in os.listdir(file_dir)])
-    file_names = [(r"R:\Mano\data\DFaust\DFaust\full\{}\{}".format(subject,pose,d)+"\\{0:05d}.OFF".format(d),d) for d in range(file_count)]
+    # main_list = list(set(range(285))-set(poses.keys()))
+    # print(main_list)
+    file_names = [(r"R:\Mano\data\DFaust\DFaust\full\50007\jiggle_on_toes\{0:05d}.OFF".format(d),d) for d in range(285)]
     geometries_gt = [load_off(f) for f,_ in file_names]
     metrics_gt = None
     if(metric != "hausdorff" and metric != "L2"):
@@ -257,24 +253,11 @@ def create_best_animation_by_metric(subject,pose, metric):
     faces = np.array(list([list(face) for face in plys[0]["face"].data])).squeeze() 
     # np.array(list([list(vertex) for vertex in vertices]))
     vs = [np.array(list([list(vertex) for vertex in ply["vertex"].data])) for ply in plys]
-    return vs,faces, geometries_gt
+    animate(vs,faces,gif_name=r"C:\Users\ido.iGIP1\hy\animate_{}_{}_{}.gif".format(metric, subject, pose))
 
-def animate_subject_pose_by_metric(subject,pose,metric):
-    vs,f,_ = create_best_animation_by_metric(subject,pose,metric)
-    animate(vs,f,gif_name=r"C:\Users\ido.iGIP1\hy\animate_{}_{}_{}.gif".format(metric, subject, pose))
-
-def multianimate_comparison(subject,pose,metric):
-    completion_vs,_, gt_geomtries = create_best_animation_by_metric(subject,pose,metric)
-    # file_dir = r"R:\Mano\data\DFaust\DFaust\full\{}\{}".format(subject,pose)
-    # file_count = len([name for name in os.listdir(file_dir)])
-    # file_names = [(r"R:\Mano\data\DFaust\DFaust\full\{}\{}".format(subject,pose,d)+"\\{0:05d}.OFF".format(d),d) for d in range(file_count)]
-    # gt_geomtries = [load_off(f) for f,_ in file_names]
-    gt_vs = [vs for (vs,fs) in gt_geomtries]
-    f = gt_geomtries[0][1]
-    multianimate([completion_vs,gt_vs],[f]*2,gif_name=None,titles=["completion","gt"])
 
     # print(poses)
-multianimate_comparison(50020,"shake_arms", "volume")
+create_best_animation_by_metric(50020,"shake_arms", "geodesic")
 if __name__ == "__main__":
     import meshplex
     import numpy as np
