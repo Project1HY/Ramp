@@ -1,5 +1,5 @@
 import torch
-from geom.mesh.op.gpu.base import batch_vnrmls, batch_fnrmls_fareas, batch_moments
+from geom.mesh.op.gpu.base import batch_vnrmls, batch_fnrmls_fareas, batch_moments, batch_surface_volume
 from geom.mesh.op.gpu.dist import batch_l2_pdist
 from util.strings import warn
 
@@ -19,13 +19,14 @@ class BasicLoss:
         :param network_output: The lightning output
         :return: loss
         """
-        completion_gt = x['gt']
+        completion_gt = x['gt']        completion_gt = x['gt']
+
         completion_rec = network_output['completion_xyz']
         if 'gt_f' in x:  # TODO
             face_override = True
         else:
             face_override = False
-        loss_dict_comp = self.shape_diff.compute(shape_1=completion_gt, shape_2=completion_rec, w=1,face_override=face_override)
+        loss_dict_comp = self.shape_diff.compute(shape_1=completion_gt, shape_2=completion_rec, w=FFh1,face_override=face_override)
         # TODO calculate mask: w, w.r.t to mask penalty and distnat vertices (only for completion)
         loss_dict_comp = {f'{k}_comp': v for k, v in loss_dict_comp.items()}
 
@@ -98,7 +99,7 @@ class ShapeDiffLoss:
         self.def_prec = getattr(torch, hp.UNIVERSAL_PRECISION)
 
         # Handle Faces:
-        if f is not None and (self.lambdas[1] > 0 or self.lambdas[4] > 0 or self.lambdas[5] > 0):
+        if f is not None and (self.lambdas[1] > 0 or self.lambdas[4] > 0 or self.lambdas[5] > 0  or self.lamdas[6]>0):
             self.torch_f = torch.from_numpy(f).long().to(device=self.dev, non_blocking=self.non_blocking)
 
         # Sanity Check - Input Channels:
@@ -194,7 +195,14 @@ class ShapeDiffLoss:
                     loss_dict['Areas'] = loss_areas
                     loss += loss_areas
                 elif i == 6:  # Volume:
-                    pass
+                    f_volume_1 = batch_surface_volume(shape_1[:, :, 0:3], self.torch_f.unsqueeze(0))
+                    try:
+                        f_volume_2
+                    except NameError:
+                        f_volume_2 = batch_surface_volume(shape_2, self.torch_f.unsqueeze(0))
+                    loss_volumes = self._l2_loss(f_volume_1, f_volume_2, lamb=lamb, vertex_mask=w)
+                    loss_dict['Volumes'] = loss_volumes
+                    loss += loss_volumes
                 # TODO: implement chamfer distance loss
                 else:
                     raise AssertionError
@@ -213,7 +221,7 @@ class ShapeDiffLoss:
         for i in range(b):
             w[i, mask_b[i], :] = 1
         return w.to(device=self.dev, non_blocking=self.non_blocking)  # Transfer after looping
-
+    def _calculate_volume(self,)
     def _mask_penalty_weight(self, mask_b, nv, p):
         """ TODO - This function was never checked
         :param mask_b: A list of mask indices as numpy arrays

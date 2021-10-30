@@ -49,10 +49,27 @@ def batch_surface_area(vb, fb):
     """
     idx = torch.arange(vb.shape[0])
     tris = vb[:, fb, :][idx, idx, :, :]
+    print(tris)
     a = tris[:, :, 1, :] - tris[:, :, 0, :]
+    print(a)
     b = tris[:, :, 2, :] - tris[:, :, 0, :]
-    areas = torch.sum(torch.norm(torch.cross(a, b, dim=2), dim=2)/2.0, dim=1)
+    print(b)
+    areas = torch.sum(torch.norm(torch.cross(a, b, dim=2), dim=2) / 2.0, dim=1)
     return areas
+
+
+def batch_surface_volume(vb, fb):
+    """
+    Compute the surface area of the batch of triangle meshes defined by v and f
+    :param v: A [b, nv, 3] tensor where each [i, :, :] are the vertices of a mesh
+    :param f: A [b, nf, 3] tensor where each [i, :, :] are the triangle indices into v[i, :, :] of the mesh
+    :return: A tensor of shape [b, 1] with the surface area of each mesh
+    """
+    idx = torch.arange(vb.shape[0])
+    tris = vb[:, fb, :][idx, idx, :, :]
+    volume = (tris[:, :, 0, :] * torch.cross(tris[:, :, 1, :], tris[:, :, 2, :], dim=-1)) \
+                 .sum(dim=0).sum(dim=1).unsqueeze(dim=1) / 6.0
+    return volume
 
 
 def batch_moments(vb):
