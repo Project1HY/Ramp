@@ -48,12 +48,9 @@ def batch_surface_area(vb, fb):
     :return: A tensor of shape [b, 1] with the surface area of each mesh
     """
     idx = torch.arange(vb.shape[0])
-    tris = vb[:, fb, :][idx, idx, :, :]
-    print(tris)
+    tris = vb[:, fb, :][idx,idx,:,:]
     a = tris[:, :, 1, :] - tris[:, :, 0, :]
-    print(a)
     b = tris[:, :, 2, :] - tris[:, :, 0, :]
-    print(b)
     areas = torch.sum(torch.norm(torch.cross(a, b, dim=2), dim=2) / 2.0, dim=1)
     return areas
 
@@ -66,9 +63,9 @@ def batch_surface_volume(vb, fb):
     :return: A tensor of shape [b, 1] with the surface area of each mesh
     """
     idx = torch.arange(vb.shape[0])
-    tris = vb[:, fb, :][idx, idx, :, :]
+    tris = vb[:, fb, :][idx, 0, :, :]
     volume = (tris[:, :, 0, :] * torch.cross(tris[:, :, 1, :], tris[:, :, 2, :], dim=-1)) \
-                 .sum(dim=0).sum(dim=1).unsqueeze(dim=1) / 6.0
+                 .sum(dim=1).sum(dim=1).unsqueeze(dim=1) / 6.0
     return volume
 
 

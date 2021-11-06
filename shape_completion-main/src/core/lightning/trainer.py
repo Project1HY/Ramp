@@ -112,6 +112,7 @@ class LightningTrainer:
 
         self.trainer = Trainer(fast_dev_run=fast_dev_run, num_sanity_val_steps=0, weights_summary=None,
                                gpus=self.hp.gpus, distributed_backend=self.hp.distributed_backend,
+                               # accelerator="cpu",
                                early_stop_callback=self.early_stop, checkpoint_callback=checkpoint,
                                logger=tb_log,
                                min_epochs=self.hp.force_train_epoches,

@@ -16,9 +16,9 @@ def parser():
     p = HyperOptArgumentParser(strategy='random_search')
 
     # Check-pointing
-    p.add_argument('--exp_name', type=str, default='debug_experiment',  # TODO - Don't forget to change me!
+    p.add_argument('--exp_name', type=str, default='volume=20_and_others_real_bigger_batch',  # TODO - Don't forget to change me!
                    help='The experiment name. Leave empty for default')
-    p.add_argument('--version', type=none_or_int, default=19,
+    p.add_argument('--version', type=none_or_int, default=2,
                    help='Weights will be saved at weight_dir=exp_name/version_{version}. '
                         'Use None to automatically choose an unused version')
     p.add_argument('--resume_cfg', nargs=2, type=bool, default=(False, True),
@@ -29,9 +29,10 @@ def parser():
                    help='Use 0 for no save. Use 1 for vertex only save in obj file. Use 2 for a full mesh save (v&f). '
                         'Use 3 for gt,tp,gt_part,tp_part save as well.')
 
+
     # Dataset Config:
     # NOTE: A well known ML rule: double the learning rate if you double the batch size.
-    p.add_argument('--batch_size', type=int, default=10, help='SGD batch size')
+    p.add_argument('--batch_size', type=int, default=20, help='SGD batch size')
     # TODO: This parameter applies for P & Q, however it can be overridden is some architecture
     p.add_argument('--in_channels', choices=[3, 6, 12], default=6,
                    help='Number of input channels')
@@ -41,7 +42,7 @@ def parser():
                    help="Force train for this amount. Usually we'd early stop using the callback. Use 1 to disable")
     p.add_argument('--max_epochs', type=int, default=None,  # Must be over 1
                    help='Maximum epochs to train for. Use None for close to infinite epochs')
-    p.add_argument('--lr', type=float, default=0.003, help='The learning step to use')
+    p.add_argument('--lr', type=float, default=0.006, help='The learning step to use')
     p.add_argument('--counts', nargs=3, type=none_or_int, default=(10000, 1000, 1000), # TODO - Change me as needed
                    help='The default train,validation and test counts. Recommended [8000-20000, 500-1000, 500-1000]. '
                         'Use None to take all examples in the partition - '
@@ -58,7 +59,7 @@ def parser():
     # Without early stop callback, we'll train for cfg.MAX_EPOCHS
 
     # L2 Losses: Use 0 to ignore, >0 to lightning
-    p.add_argument('--lambdas', nargs=7, type=float, default=(1, 0.01, 0, 0, 0, 0, 0),
+    p.add_argument('--lambdas', nargs=7, type=float, default=(1, 0.1, 0, 0, 0, 0, 20),
                    help='[XYZ,Normal,Moments,EuclidDistMat,EuclidNormalDistMap,FaceAreas,Volume]'
                         'loss multiplication modifiers')
     p.add_argument('--mask_penalties', nargs=7, type=float, default=(0, 0, 0, 0, 0, 0, 0),
@@ -104,7 +105,7 @@ def train_main():
     #
 
     # Commence Training
-    trainer = F(nn, ldrs)
+    trainer = LightningTrainer(nn, ldrs)
     trainer.train(debug_mode=False)
 
     trainer.test()
@@ -117,7 +118,7 @@ def test_main():
     # print(nn.hp)
     #ldrs = f2p_completion_loaders(nn.hp)
     nn.hp.counts = (1000000,1000000,1000000)
-    ldrs = new_loaders(nn.hp)
+    ldrs = new_loaders(nn.hp,subject_keep="50022",pose_keep="punching")
     # banner('Testing')
     trainer = LightningTrainer(nn, ldrs)
     trainer.test()
@@ -133,4 +134,4 @@ def test_main():
 #
 # ----------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
-    test_main()
+    train_main()

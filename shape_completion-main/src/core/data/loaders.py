@@ -223,18 +223,22 @@ def _join_loader_sets(*args):
 # ----------------------------------------------------------------------------------------------------------------------
 #our new loader
 
-def new_loaders(hp, ds_name='DFaustProj', transforms: Union[List, Tuple] = tuple(), method='rand_f2p'):
+def new_loaders(hp, ds_name='DFaustProj', transforms: Union[List, Tuple] = tuple(), method='rand_f2p',subject_keep = None, pose_keep = None):
     transforms = list(transforms)
     # transforms.append(L2BallNormalize())  # Always normalize to the L2 Ball
     transforms.append(Center())
     # Small Rule Corrections:
     batch_size = 1 if 'scan' in ds_name.lower() else hp.batch_size  # TODO - is this needed? Do we need CPU?
     ds: CompletionDataset = DatasetMenu.order(ds_name)
-    print("bdckcksfvkjdvdbkfsbldkf")
+    # print("bdckcksfvkjdvdbkfsbldkf")
 
-    ds._hit = ds._hit.keep_ids_by_depth(["50020"], 1)
-    ds._hit = ds._hit.keep_ids_by_depth(["shake_arms"], 2)
-    print(ds._hit)
+    """
+    TODO: generalize this for generating"""
+    if subject_keep is not None:
+        ds._hit = ds._hit.keep_ids_by_depth([subject_keep], 1)
+    if pose_keep is not None:
+        ds._hit = ds._hit.keep_ids_by_depth([pose_keep], 2)
+    # print(ds._hit)
     if ds.num_full_shapes() > LARGE_DATASET_THERSHOLD:
         train_dynamic_partition = True  # TODO - Move inside loaders - doesn't belong here.
     else:
