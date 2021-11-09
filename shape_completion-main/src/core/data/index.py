@@ -53,7 +53,7 @@ class HierarchicalIndexTree:
             self.init_cluster_hi_list()
         return len(self._csi_list)
 
-    def random_path_from_partial_path(self, partial_path=tuple()):
+    def random_path_from_partial_path(self, partial_path=tuple(), should_return_sequence=False):
         # Init
         partial_tree = self._rhit
         path = to_list(partial_path)
@@ -67,8 +67,16 @@ class HierarchicalIndexTree:
             path.append(rkey)
             partial_tree = partial_tree[rkey]
         # Handle last value: [Remember, range is inclusive]
+        if should_return_sequence:
+            path[-1] = 0
         path.append(random.randint(0, partial_tree - 1))
         return tuple(path)
+
+    def get_path_union_by_depth(self, depth):
+        if depth > self._depth -1 or depth<= 0:
+            # We don't allow getting of ids from the lowest level - seeing they are not unique
+            raise AssertionError(f"Invalid depth requested. Valid inputs are: {list(range(1, self._depth))}")
+        return self._get_path_union_by_depth(self._hit, depth-1)
 
     def get_id_union_by_depth(self, depth):
         if depth > self._depth - 1 or depth <= 0:
@@ -182,6 +190,17 @@ class HierarchicalIndexTree:
         else:
             for v in hit.values():
                 HierarchicalIndexTree._get_id_union_by_depth(v, depth - 1, dump)
+
+    @staticmethod
+    def _get_path_union_by_depth(hit, depth):
+        paths = []
+        if depth == 0:
+            paths = [(v,) for v in list(hit.keys())]
+        else:
+            for k,v in hit.items():
+                sub_paths = HierarchicalIndexTree._get_path_union_by_depth(v, depth - 1)
+                paths += [(k,)+sub_path for sub_path in sub_paths]
+        return paths
 
     @staticmethod
     def _keep_ids_by_depth(hit, depth, keepers):

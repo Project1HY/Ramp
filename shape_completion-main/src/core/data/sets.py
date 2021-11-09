@@ -169,7 +169,7 @@ class SMALTest(SMALBase):
 
 class DFaust(ParametricCompletionDataset):
     def __init__(self, data_dir_override, deformation):
-        super().__init__(n_verts=6890, data_dir_override=r"R:\Mano\data\DFaust\DFaust", deformation=deformation, cls='synthetic',
+        super().__init__(n_verts=6890, data_dir_override=r"~/mnt/Mano/data/DFaust/DFaust", deformation=deformation, cls='synthetic',
                          suspected_corrupt=False)
 
     def _hi2proj_path_default(self, hi):
@@ -181,6 +181,152 @@ class DFaust(ParametricCompletionDataset):
     def _hi2proj_path_semantic_cuts(self, hi):
         return self._proj_dir / hi[0] / hi[1] / f'{hi[2]:>05}_{hi[3]}.npz'
 
+class DFaust(ParametricCompletionDataset):
+    def __init__(self, data_dir_override, deformation):
+        super().__init__(n_verts=6890, data_dir_override=r"~/mnt/Mano/data/DFaust/DFaust", deformation=deformation, cls='synthetic',
+                         suspected_corrupt=False)
+
+    def _hi2proj_path_default(self, hi):
+        return self._proj_dir / f'{hi[0]}{hi[1]}{hi[2]:>05}_{hi[3]}.npz'
+
+    def _hi2full_path_default(self, hi):
+        return self._full_dir / hi[0] / hi[1] / f'{hi[2]:>05}.OFF'
+
+    def _hi2proj_path_semantic_cuts(self, hi):
+        return self._proj_dir / hi[0] / hi[1] / f'{hi[2]:>05}_{hi[3]}.npz'
+
+class DFaustSequential(ParametricCompletionDataset):
+    NULL_SHAPE_SI=0
+
+    def __init__(self, data_dir_override, deformation,n_verts=6890):
+        super().__init__(n_verts=6890, data_dir_override=r"~/mnt/Mano/data/DFaust/DFaust", deformation=deformation, cls='synthetic',
+                         suspected_corrupt=False)
+    def _datapoint_via_path_tup(self,path_tup):
+        m = self._full_dict_by_hi(path_tup)
+        return None
+    def _hi2proj_path_default(self, hi):
+        return self._proj_dir / f'{hi[0]}{hi[1]}{hi[2]:>05}_{hi[3]}.npz'
+
+    def _hi2full_path_default(self, hi):
+        return self._full_dir / hi[0] / hi[1] / f'{hi[2]:>05}.OFF'
+
+    def _hi2proj_path_semantic_cuts(self, hi):
+        return self._proj_dir / hi[0] / hi[1] / f'{hi[2]:>05}_{hi[3]}.npz'
+
+    def loaders(self, s_nums=None, s_shuffle=True, s_transform=None, split=(.8,.1,.1), s_dynamic=False,
+                global_shuffle=False, batch_size=16, device='cuda', method='f2p', n_channels=6):
+        """
+        # s for split
+        :param split: A list of fracs summing to 1: e.g.: [0.9,0.1] or [0.8,0.15,0.05]. Don't specify anything for a
+        single loader
+        :param s_nums: A list of integers: e.g. [1000,50] or [1000,5000,None] - The number of objects to take from each
+        range split. If None, it will take the maximal number possible.
+        WARNING: Remember that the data loader will ONLY load from these examples unless s_dynamic[i] == True
+        :param s_dynamic: A list of booleans: If s_dynamic[i]==True, the ith split will take s_nums[i] examples at
+        random from the partition [which usually includes many more examples]. On the next load, will take another
+        random s_nums[i] from the partition. If False - will take always the very same examples. Usually, we'd want
+        s_dynamic to be True only for the training set.
+        :param s_shuffle: A list of booleans: If s_shuffle[i]==True, the ith split will be shuffled before truncations
+        to s_nums[i] objects
+        :param s_transform: A list - s_transforms[i] is the transforms for the ith split
+        :param global_shuffle: If True, shuffles the entire set before split
+        :param batch_size: Integer > 0
+        :param device: 'cuda' or 'cpu' or 'cpu-single' or pytorch device
+        :param method: One of ('full', 'part', 'f2p', 'rand_f2p','frand_f2p', 'p2p', 'rand_p2p','frand_p2p')
+        :param n_channels: One of cfg.SUPPORTED_IN_CHANNELS - The number of channels required per datapoint
+        :return: A list of (loaders,num_samples)
+        """
+        # Handle inpput arguments:
+        s_shuffle = to_list(s_shuffle)
+        s_dynamic = to_list(s_dynamic)
+        s_nums = to_list(s_nums)
+        if s_transform is None or not s_transform:
+            s_transform = [None] * len(split)
+        elif not isinstance(s_transform[0], Sequence):
+            s_transform = list_dup(s_transform, len(split))
+            # Transforms must be a list, all others are non-Sequence
+        assert sum(split) == 1, "Split fracs must sum to 1"
+        # TODO - Clean up this function, add in smarter defaults, simplify
+        if (method == 'f2p' or method == 'p2p') and not self._hit_in_memory:
+            method = 'rand_' + method
+            warn(f'Tuple dataset index is too big for this dataset. Reverting to {method} instead')
+        if (method == 'frand_f2p' or method == 'frand_p2p') and len(split) != 1:
+            raise ValueError("Seeing the fully-rand methods have no connection to the partition, we cannot support "
+                             "a split dataset here")
+        # Logic:
+        subjects = list(self._hit.get_id_union_by_depth(depth=1))
+        subjects = split_frac(subjects, split)
+        n_parts = len(split)
+        loaders = []
+        for i in range(n_parts):
+            set_subjects, req_set_size, do_shuffle, transforms, is_dynamic = subjects[i], None,None,None,None
+
+            partial_hit = self._hit.keep_ids_by_depth(keepers=list(set_subjects),depth=1)
+            if req_set_size is None:
+                req_set_size = partial_hit.num_indexed()
+            eff_set_size = min(partial_hit.num_indexed(), req_set_size)
+            if eff_set_size != req_set_size:
+                warn(f'At Loader {i + 1}/{n_parts}: Requested {req_set_size} objects while set has only {eff_set_size}.'
+                     f' Reverting to latter')
+            # if not is_dynamic:  # Truncate only if not dynamic
+            #     set_ids = set_ids[:eff_set_size]  # Truncate
+            recon_stats = {
+                'dataset_name': self.name(),
+                'batch_size': batch_size,
+                'split': split,
+                'id_in_split': i,
+                'set_size': eff_set_size,
+                'transforms': str(transforms),
+                'global_shuffle': global_shuffle,
+                'partition_shuffle': do_shuffle,
+                'method': method,
+                'n_channels': n_channels,
+                'in_memory_index': self._hit_in_memory,
+                'is_dynamic': is_dynamic
+            }
+            ids = list(range(eff_set_size))
+            n_parts = len((1,))
+            ids = split_frac(ids, (1,))
+            ldr = self._loader(method=method, transforms=transforms, n_channels=n_channels, ids=None,
+                               batch_size=batch_size, device=device, set_size=eff_set_size,partial_hit=partial_hit)
+            ldr.init_recon_table(recon_stats)
+            loaders.append(ldr)
+
+        if n_parts == 1:
+            loaders = loaders[0]
+        return loaders
+
+    def _loader(self, method, transforms, n_channels, ids, batch_size, device, set_size,partial_hit):
+
+        # Handle Device:
+        device = str(device).split(':')[0]  # Compatible for both strings & pytorch devs
+        assert device in ['cuda', 'cpu', 'cpu-single']
+        pin_memory = (device == 'cuda')
+        if device == 'cpu-single':
+            n_workers = 0
+        else:
+            n_workers = determine_worker_num(len(ids), batch_size)
+        length = partial_hit.num_indexed()
+        ids = partial_hit.get_path_union_by_depth(2)
+        ids = [ident+(0,) for ident in ids]
+        # Compile Sampler:
+        if set_size is None:
+            set_size = len(ids)
+        assert len(ids) > 0, "Found loader with no data samples inside"
+        sampler_length = min(set_size, len(ids))  # Allows for dynamic partitions
+        # if device == 'ddp': #TODO - Add distributed support here. What does num_workers need to be?
+        # data_sampler == DistributedSampler(dataset,num_replicas=self.num_gpus,ranks=self.logger.rank)
+
+        # SequentialSampler
+        data_sampler = SubsetChoiceSampler(ids, sampler_length)
+        # data_sampler = SequentialSampler(ids)
+
+        # Compiler Transforms:
+        transforms = self._transformation_finalizer_by_method(method, transforms, n_channels)
+
+        return self.LOADER_CLASS(FullPartSequentialTorchDataset(self, transforms, method), batch_size=batch_size,
+                                 sampler=data_sampler, num_workers=n_workers, pin_memory=pin_memory,
+                                 collate_fn=completion_collate, drop_last=True)
 
 # ----------------------------------------------------------------------------------------------------------------------
 #                                                       DFaust Scans
@@ -377,7 +523,7 @@ class DatasetMenu:
         'FaustSemCuts': (Faust, SemanticCut()),
 
         'DFaustProj': (DFaust, AzimuthalProjection()),
-        # 'DFaustEleProj': (Faust, OrbitalProjection()),
+        'DFaustProjSequential': (DFaustSequential, AzimuthalProjection()),
         'DFaustSemCuts': (DFaust, SemanticCut(n_expected_proj=4)),
 
         # 'DFaustAccessories' : (DFaustAccessories, AzimuthalProjection()),
