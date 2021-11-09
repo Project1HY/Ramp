@@ -654,7 +654,9 @@ class CompletionDataset(HitIndexedDataset, ABC):
         # Default Implementation
         # _index_dir
         # self._index_dir = "~/mnt/Mano/data/DFaust/DFaust/"
-        hit_fp = list(self._index_dir.glob(f'*{self._deformation.name()}_hit.pkl'))
+        #TODO: change back
+        import pathlib
+        hit_fp = list([pathlib.Path("/Users/yiftachedelstain/Development/Technion/Project/Ramp/shape_completion-main/DFaust_azimuthal_projections_hit.pkl")])
         if len(hit_fp) != 1:
             raise AssertionError(f"Could not find hit file in for deformation {self._deformation.name()} "
                                  f"in index directory:\n{self._index_dir}")
@@ -763,7 +765,8 @@ class ParametricCompletionDataset(CompletionDataset, ABC):
     # This adds the assumption that each mesh has the same connectivity, and the same number of vertices
     def __init__(self, n_verts, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._f = pkl_load(self._index_dir / 'face_template.pkl')
+        #TODO yiftach change back
+        self._f = pkl_load('/Users/yiftachedelstain/Development/Technion/Project/Ramp/shape_completion-main/face_template.pkl')
         # self._f.flags.writeable = False  # TODO - Turned this off due to a PyTorch warning on tensor support
 
         self._n_v = n_verts
@@ -1046,9 +1049,9 @@ def completion_collate(batch, stop: bool = False):
         # return {key: default_collate([d[key] for d in batch],rec_level=1) for key in elem}
     elif isinstance(elem, tuple) and hasattr(elem, '_fields'):  # namedtuple
         return elem_type(*(completion_collate(samples) for samples in zip(*batch)))
-    elif isinstance(elem, container_abcs.Sequence):
-        transposed = zip(*batch)
-        return [completion_collate(samples) for samples in transposed]
+    # elif isinstance(elem, container_abcs.Sequence):
+    #     transposed = zip(*batch)
+    #     return [completion_collate(samples) for samples in transposed]
     raise TypeError(
         f"default_collate: batch must contain tensors, numpy arrays, numbers, dicts or lists; found {elem.dtype}")
 
@@ -1059,7 +1062,7 @@ def completion_collate(batch, stop: bool = False):
 
 def _base_tester():
     from data.sets import DatasetMenu
-    ds = DatasetMenu.order('DFaustProjSequential')
+    ds = DatasetMenu.order('DFaustProjSequential',data_dir_override=r"~/mnt/Mano/data/DFaust/DFaust/")
     ldr = ds.loaders(n_channels=6, method='rand_f2p', batch_size=10, device='cpu-single')
 
     for dp in ldr:

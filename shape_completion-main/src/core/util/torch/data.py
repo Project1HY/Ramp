@@ -35,7 +35,11 @@ def none_or_int(value):
 # ----------------------------------------------------------------------------------------------------------------------
 #
 # ----------------------------------------------------------------------------------------------------------------------
+# def collate_func(batch):
+#     return batch
+
 class ReconstructableLoader(DataLoader):
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._recon_table = None
@@ -109,10 +113,11 @@ class SubsetChoiceSampler(Sampler):
 
     def __iter__(self):
         # Inefficient, without replacement:
-        #return iter(self.indices[:self.length])
+        # return iter(self.indices[:self.length])
         return (self.indices[i] for i in torch.randperm(len(self.indices))[:self.length])
         # Efficient, with replacement:
         # return (self.indices[i] for i in torch.randint(low=0,high=len(self.indices),size=(self.length,)))
 
     def __len__(self):
         return self.length
+

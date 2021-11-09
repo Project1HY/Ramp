@@ -85,7 +85,8 @@ def read_obj(fp):
 def read_off_verts(fp):
     v = []
     try:
-        with open(fp, "r") as fh:
+        #TODO: yiftach change this back
+        with open("/Users/yiftachedelstain/Development/Technion/Project/Ramp/shape_completion-main/00000.OFF", "r") as fh:
             first = fh.readline().strip()
             if first != "OFF" and first != "COFF":
                 raise (Exception(f"Could not find OFF header for file: {fp}"))
@@ -113,8 +114,8 @@ def read_off_verts(fp):
 
         return np.array(v)
     except Exception as e:
-        raise OSError(f"Could not read or open mesh file {fp}") from e
 
+        raise OSError(f"Could not read or open mesh file {fp}") from e
 
 def read_off(fp):
     v, f = [], []
@@ -261,10 +262,10 @@ def write_collada(fp, v, f, mesh_name="exported_mesh"):
 
 def read_npz_mask(fp):
     try:
-        return np.load(fp)["mask"]
+        #TODO: yiftach change this back
+        return np.load("/Users/yiftachedelstain/Development/Technion/Project/Ramp/shape_completion-main/50002chicken_wings00000_0.npz")["mask"]
     except Exception as e:
         raise OSError(f"Could not read or open npz file {fp}") from e
-
 
 def numpy2open3d_cloud(v):
     import open3d as o3d

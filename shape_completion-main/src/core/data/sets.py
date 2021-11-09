@@ -3,6 +3,8 @@ from data.index import HierarchicalIndexTree
 from geom.mesh.io.base import *
 from geom.mesh.op.cpu.remesh import clean_mesh
 import os
+from torch.utils.data.sampler import Sampler
+
 
 try:
     # This snippet is needed to solve the unpickling error. See shorturl.at/jktw2
@@ -199,7 +201,7 @@ class DFaustSequential(ParametricCompletionDataset):
     NULL_SHAPE_SI=0
 
     def __init__(self, data_dir_override, deformation,n_verts=6890):
-        super().__init__(n_verts=6890, data_dir_override=r"R:\Mano\data\DFaust\DFaust", deformation=deformation, cls='synthetic',
+        super().__init__(n_verts=6890, data_dir_override=data_dir_override, deformation=deformation, cls='synthetic',
                          suspected_corrupt=False)
     def _datapoint_via_path_tup(self,path_tup):
         gt_dict = self._full_dict_by_hi(path_tup)
@@ -325,7 +327,7 @@ class DFaustSequential(ParametricCompletionDataset):
         # data_sampler == DistributedSampler(dataset,num_replicas=self.num_gpus,ranks=self.logger.rank)
 
         # SequentialSampler
-        data_sampler = SubsetChoiceSampler(ids, sampler_length)
+        data_sampler = SequentialBatchSampler(ids, sampler_length)
         # data_sampler = SequentialSampler(ids)
 
         # Compiler Transforms:
@@ -605,6 +607,44 @@ class DatasetMenu:
                 # print(f'Stack Trace:')
                 # traceback.print_tb(the_traceback)
 
+
+# ----------------------------------------------------------------------------------------------------------------------
+#TODO: Move to correct location!
+# ----------------------------------------------------------------------------------------------------------------------
+# noinspection DuplicatedCode
+class SequentialBatchSampler(Sampler):
+    def __init__(self, indices, len_dict=None, batch_size=10, length=None):
+        self.indices = indices
+        if length is None:
+            length = len(self.indices)
+        self.length = length
+        self.batch_size = batch_size
+        self.len_dict = len_dict
+
+    def __iter__(self):
+        # Inefficient, without replacement:
+        # return iter(self.indices[:self.length])
+        for i in range(self.length // self.batch_size):
+            sliced_indices = self.indices[i * self.batch_size:(i+1) * self.batch_size]
+            max_len = self._max_from_slice(sliced_indices)
+            for _ in range(max_len):
+                for index in range(len(sliced_indices)):
+                    yield sliced_indices[index]
+                    sliced_indices[index] = (*sliced_indices[index][:-1], sliced_indices[index][-1] + 1)
+
+        sliced_indices = self.indices[self.length * self.batch_size:]
+        max_len = self._max_from_slice(sliced_indices)
+        for _ in range(max_len):
+            for index in range(len(sliced_indices)):
+                yield sliced_indices[index]
+                sliced_indices[index] = (*sliced_indices[:-1], sliced_indices[-1] + 1)
+
+        # Efficient, with replacement:
+        # return (self.indices[i] for i in torch.randint(low=0,high=len(self.indices),size=(self.length,)))
+    def __len__(self):
+        return self.length
+    def _max_from_slice(self,indices):
+        return 500
 
 # ----------------------------------------------------------------------------------------------------------------------
 #                                                 Helper Functions

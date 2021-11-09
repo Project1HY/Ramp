@@ -314,10 +314,10 @@ def face_adjacency(nv, f):
 
 def padded_part_by_mask(vi, v):
     # Pad the mask to length:
-    needed_padding_len = v.shape[0] - len(vi)  # Truncates ALL input channels
-    mask_vi_padded = np.append(vi, np.random.choice(vi, needed_padding_len, replace=True))  # Copies
-    return v[mask_vi_padded, :]
-
+    # needed_padding_len = v.shape[0] - len(vi)  # Truncates ALL input channels
+    # mask_vi_padded = np.append(vi, np.random.choice(vi, needed_padding_len, replace=True))  # Copies
+    # return v[mask_vi_padded, :]
+    pass
 
 def flip_vertex_mask(nv, vi):
     indicator = vertex_mask_indicator(nv, vi)
