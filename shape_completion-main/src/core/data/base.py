@@ -226,15 +226,15 @@ class CompletionDataset(HitIndexedDataset, ABC):
             from cfg import PRIMARY_DATA_DIR
             self._data_dir = (PRIMARY_DATA_DIR / cls / self.name(short=True)).resolve()
         else:
-            self._data_dir = Path(data_dir_override).resolve()
-        assert self._data_dir.is_dir(), f"Data dir of {self.name()} is invalid: \nCould not find {self._data_dir}"
+            self._data_dir = Path(data_dir_override)
+        # assert self._data_dir.is_dir(), f"Data dir of {self.name()} is invalid: \nCould not find {self._data_dir}"
 
         # Set all other directories:
         self._proj_dir = self._data_dir / deformation.name()
         self._full_dir = self._data_dir / 'full'
         self._index_dir = self._data_dir / 'index'
-        assert self._proj_dir.is_dir(), f"Projection dir of {self.name()} is invalid: \nCould not find {self._proj_dir}"
-        assert self._full_dir.is_dir(), f"Full Shape dir of {self.name()} is invalid: \nCould not find {self._full_dir}"
+        # assert self._proj_dir.is_dir(), f"Projection dir of {self.name()} is invalid: \nCould not find {self._proj_dir}"
+        # assert self._full_dir.is_dir(), f"Full Shape dir of {self.name()} is invalid: \nCould not find {self._full_dir}"
 
         # Deformation Specfic loading support:
         self._hi2proj_path_func = getattr(self, f'_hi2proj_path_{self._deformation.name()}', self._hi2proj_path_default)
@@ -653,7 +653,8 @@ class CompletionDataset(HitIndexedDataset, ABC):
     def _construct_hit(self):
         # Default Implementation
         # _index_dir
-        hit_fp = list(self._index_dir.glob(f'*{self._deformation.name()}_hit.pkl'))
+        # self._index_dir = "~/mnt/Mano/data/DFaust/DFaust/"
+        hit_fp = list([Path(r"/Users/yiftachedelstain/Development/Technion/Project/Ramp/shape_completion-main/DFaust_azimuthal_projections_hit.pkl")])
         if len(hit_fp) != 1:
             raise AssertionError(f"Could not find hit file in for deformation {self._deformation.name()} "
                                  f"in index directory:\n{self._index_dir}")
@@ -714,6 +715,42 @@ class FullPartTorchDataset(Dataset):
                         if si == self.self_len:  # Double back
                             si = 0
 
+class FullPartSequentialTorchDataset(Dataset):
+    SAME_SHAPE_RETRY_BOUND = 3
+    RETRY_BOUND = SAME_SHAPE_RETRY_BOUND * 7  # Try to retry atleast 7 shapes before dying
+
+    # Note that changes to Dataset will be seen in any loader derived from it before
+    # This should be taken into account when decimating the Dataset index
+    def __init__(self, ds_inst, transforms, method):
+        self._ds_inst = ds_inst
+        self._transforms = transforms
+        self._method = method
+        self.get_func = getattr(self._ds_inst, f'_datapoint_via_path_tup')
+        self.self_len = self._ds_inst.num_datapoints_by_method(self._method)
+        self.use_unsafe_meth = not self._ds_inst._suspected_corrupt
+
+    def __len__(self):
+        return self.self_len
+
+    def __getitem__(self, pose_tup):
+        if self.use_unsafe_meth:
+            return self._transforms(self.get_func(pose_tup))
+        else:  # This is a hack to enable reloading
+            global_retries = 0
+            local_retries = 0
+            while 1:
+                try:
+                    return self._transforms(self.get_func(si))
+                except Exception as e:
+                    global_retries += 1
+                    local_retries += 1
+                    if global_retries == self.RETRY_BOUND:
+                        raise e
+                    if local_retries == self.SAME_SHAPE_RETRY_BOUND:
+                        local_retries = 0
+                        si += 1  # TODO - Find better way
+                        if si == self.self_len:  # Double back
+                            si = 0
 
 # ----------------------------------------------------------------------------------------------------------------------
 #
@@ -726,7 +763,7 @@ class ParametricCompletionDataset(CompletionDataset, ABC):
     # This adds the assumption that each mesh has the same connectivity, and the same number of vertices
     def __init__(self, n_verts, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._f = pkl_load(self._index_dir / 'face_template.pkl')
+        self._f = pkl_load(r'/Users/yiftachedelstain/Development/Technion/Project/Ramp/shape_completion-main/face_template.pkl')
         # self._f.flags.writeable = False  # TODO - Turned this off due to a PyTorch warning on tensor support
 
         self._n_v = n_verts
@@ -783,10 +820,15 @@ class ParametricCompletionDataset(CompletionDataset, ABC):
         return read_mesh(fp, verts_only=True)
 
 
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 #
 # ----------------------------------------------------------------------------------------------------------------------
 
+# ----------------------------------------------------------------------------------------------------------------------
+#
+# ----------------------------------------------------------------------------------------------------------------------
 
 class ParametricSkinningDataset(ParametricCompletionDataset, ABC):
     DEFINED_SAMP_METHODS = ('rand_f2j', 'rand_f2jp', 'rand_f2p', 'f2p', 'skinning')
@@ -1017,8 +1059,8 @@ def completion_collate(batch, stop: bool = False):
 
 def _base_tester():
     from data.sets import DatasetMenu
-    ds = DatasetMenu.order('FaustEleProj')
-    ldr = ds.loaders(s_nums=100, n_channels=6, method='rand_f2p', batch_size=3, device='cpu-single')
+    ds = DatasetMenu.order('DFaustProjSequential')
+    ldr = ds.loaders(n_channels=6, method='rand_f2p', batch_size=10, device='cpu-single')
 
     for dp in ldr:
         pass
@@ -1077,4 +1119,4 @@ def skinning_tutorial():
 
 
 if __name__ == '__main__':
-    skinning_tutorial()
+    _base_tester()
