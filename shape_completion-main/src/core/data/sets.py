@@ -169,7 +169,7 @@ class SMALTest(SMALBase):
 
 class DFaust(ParametricCompletionDataset):
     def __init__(self, data_dir_override, deformation):
-        super().__init__(n_verts=6890, data_dir_override=r"~/mnt/Mano/data/DFaust/DFaust", deformation=deformation, cls='synthetic',
+        super().__init__(n_verts=6890, data_dir_override=r"R:\Mano\data\DFaust\DFaust", deformation=deformation, cls='synthetic',
                          suspected_corrupt=False)
 
     def _hi2proj_path_default(self, hi):
@@ -183,7 +183,7 @@ class DFaust(ParametricCompletionDataset):
 
 class DFaust(ParametricCompletionDataset):
     def __init__(self, data_dir_override, deformation):
-        super().__init__(n_verts=6890, data_dir_override=r"~/mnt/Mano/data/DFaust/DFaust", deformation=deformation, cls='synthetic',
+        super().__init__(n_verts=6890, data_dir_override=r"R:\Mano\data\DFaust\DFaust", deformation=deformation, cls='synthetic',
                          suspected_corrupt=False)
 
     def _hi2proj_path_default(self, hi):
@@ -199,11 +199,18 @@ class DFaustSequential(ParametricCompletionDataset):
     NULL_SHAPE_SI=0
 
     def __init__(self, data_dir_override, deformation,n_verts=6890):
-        super().__init__(n_verts=6890, data_dir_override=r"~/mnt/Mano/data/DFaust/DFaust", deformation=deformation, cls='synthetic',
+        super().__init__(n_verts=6890, data_dir_override=r"R:\Mano\data\DFaust\DFaust", deformation=deformation, cls='synthetic',
                          suspected_corrupt=False)
     def _datapoint_via_path_tup(self,path_tup):
-        m = self._full_dict_by_hi(path_tup)
-        return None
+        gt_dict = self._full_dict_by_hi(path_tup)
+        tp_hi = self._hit.random_path_from_partial_path([gt_dict['gt_hi'][0]])[:-1]  # Shorten hi by 1
+        # tp_hi = gt_dict['gt_hi'][:-1]
+        tp_dict = self._full_dict_by_hi(tp_hi)
+        gt_dict['tp'], gt_dict['tp_hi'], gt_dict['tp_f'] = tp_dict['gt'], tp_dict['gt_hi'], tp_dict['gt_f']
+        gt_dict['gt_mask'] = self._mask_by_hi(path_tup+(0,))
+
+        return gt_dict
+
     def _hi2proj_path_default(self, hi):
         return self._proj_dir / f'{hi[0]}{hi[1]}{hi[2]:>05}_{hi[3]}.npz'
 
