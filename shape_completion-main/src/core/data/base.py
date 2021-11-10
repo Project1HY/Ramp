@@ -226,8 +226,8 @@ class CompletionDataset(HitIndexedDataset, ABC):
             from cfg import PRIMARY_DATA_DIR
             self._data_dir = (PRIMARY_DATA_DIR / cls / self.name(short=True)).resolve()
         else:
-            self._data_dir = Path(data_dir_override)
-        # assert self._data_dir.is_dir(), f"Data dir of {self.name()} is invalid: \nCould not find {self._data_dir}"
+            self._data_dir = Path(data_dir_override).resolve()
+        assert self._data_dir.is_dir(), f"Data dir of {self.name()} is invalid: \nCould not find {self._data_dir}"
 
         # Set all other directories:
         self._proj_dir = self._data_dir / deformation.name()
@@ -656,7 +656,7 @@ class CompletionDataset(HitIndexedDataset, ABC):
         # self._index_dir = "~/mnt/Mano/data/DFaust/DFaust/"
         #TODO: change back
         import pathlib
-        hit_fp = list([pathlib.Path("/Users/yiftachedelstain/Development/Technion/Project/Ramp/shape_completion-main/DFaust_azimuthal_projections_hit.pkl")])
+        hit_fp = list(self._index_dir.glob(f'*{self._deformation.name()}_hit.pkl'))
         if len(hit_fp) != 1:
             raise AssertionError(f"Could not find hit file in for deformation {self._deformation.name()} "
                                  f"in index directory:\n{self._index_dir}")
@@ -766,7 +766,7 @@ class ParametricCompletionDataset(CompletionDataset, ABC):
     def __init__(self, n_verts, *args, **kwargs):
         super().__init__(*args, **kwargs)
         #TODO yiftach change back
-        self._f = pkl_load('/Users/yiftachedelstain/Development/Technion/Project/Ramp/shape_completion-main/face_template.pkl')
+        self._f = pkl_load(self._index_dir / 'face_template.pkl')
         # self._f.flags.writeable = False  # TODO - Turned this off due to a PyTorch warning on tensor support
 
         self._n_v = n_verts
@@ -1045,7 +1045,6 @@ def completion_collate(batch, stop: bool = False):
                 stop = False
             d[k] = completion_collate([d[k] for d in batch], stop)
         return d
-
         # return {key: default_collate([d[key] for d in batch],rec_level=1) for key in elem}
     elif isinstance(elem, tuple) and hasattr(elem, '_fields'):  # namedtuple
         return elem_type(*(completion_collate(samples) for samples in zip(*batch)))
@@ -1062,11 +1061,12 @@ def completion_collate(batch, stop: bool = False):
 
 def _base_tester():
     from data.sets import DatasetMenu
-    ds = DatasetMenu.order('DFaustProjSequential',data_dir_override=r"~/mnt/Mano/data/DFaust/DFaust/")
+    ds = DatasetMenu.order('DFaustProjSequential',data_dir_override=r"/home/adminpassis123/gipfs/Mano/data/DFaust/DFaust")
     ldr = ds.loaders(n_channels=6, method='rand_f2p', batch_size=10, device='cpu-single')
 
     for dp in ldr:
         pass
+    print("cool")
 
 
 # TODO - Oshri, Haitham - Run me with a debugger step by step

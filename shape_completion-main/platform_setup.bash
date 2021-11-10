@@ -20,9 +20,11 @@
 # git remote set-url origin https://github.com/iimanu/Deep-Shape.git
 
 eval "$(conda shell.bash hook)"
+#echo 123 | sudo -S mount -t cifs -w -o username=yiftach.e -o password=Lagoonparon1995 //132.68.39.206/gipfs ~/gipfs
 conda update -y -n base -c defaults conda
 conda create -y -n ProjectHY python=3.8.11 
 conda activate ProjectHY
+
 #---------------------------------------------------------------------------------------------#
 #                                     	Primary Dependencies
 #---------------------------------------------------------------------------------------------#

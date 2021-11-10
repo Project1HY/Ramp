@@ -184,8 +184,8 @@ class DFaust(ParametricCompletionDataset):
         return self._proj_dir / hi[0] / hi[1] / f'{hi[2]:>05}_{hi[3]}.npz'
 
 class DFaust(ParametricCompletionDataset):
-    def __init__(self, data_dir_override, deformation):
-        super().__init__(n_verts=6890, data_dir_override=r"R:\Mano\data\DFaust\DFaust", deformation=deformation, cls='synthetic',
+    def __init__(self, deformation,data_dir_override=r"/home/adminpassis123/gipfs/Mano/data/DFaust/DFaust/"):
+        super().__init__(n_verts=6890, data_dir_override=data_dir_override, deformation=deformation, cls='synthetic',
                          suspected_corrupt=False)
 
     def _hi2proj_path_default(self, hi):
@@ -333,9 +333,9 @@ class DFaustSequential(ParametricCompletionDataset):
         # Compiler Transforms:
         transforms = self._transformation_finalizer_by_method(method, transforms, n_channels)
 
-        return self.LOADER_CLASS(FullPartSequentialTorchDataset(self, transforms, method), batch_size=batch_size,
-                                 sampler=data_sampler, num_workers=n_workers, pin_memory=pin_memory,
-                                 collate_fn=completion_collate, drop_last=True)
+        return self.LOADER_CLASS(FullPartSequentialTorchDataset(self, transforms, method),
+                                 batch_sampler=data_sampler, num_workers=n_workers, pin_memory=pin_memory,
+                                 collate_fn=completion_collate)
 
 # ----------------------------------------------------------------------------------------------------------------------
 #                                                       DFaust Scans
@@ -575,7 +575,7 @@ class DatasetMenu:
     def order(cls, dataset_name, data_dir_override=None):
         if dataset_name in cls._IMPLEMENTED:
             tup = cls._IMPLEMENTED[dataset_name]
-            return tup[0](data_dir_override=data_dir_override, deformation=tup[1])
+            return tup[0](data_dir_override=r"/home/adminpassis123/gipfs/Mano/data/DFaust/DFaust/", deformation=tup[1])
         else:
             raise ValueError(f'Could not find dataset {dataset_name} - check spelling')
 
@@ -628,19 +628,15 @@ class SequentialBatchSampler(Sampler):
             sliced_indices = self.indices[i * self.batch_size:(i+1) * self.batch_size]
             max_len = self._max_from_slice(sliced_indices)
             for _ in range(max_len):
+                yield sliced_indices
                 for index in range(len(sliced_indices)):
-                    yield sliced_indices[index]
                     sliced_indices[index] = (*sliced_indices[index][:-1], sliced_indices[index][-1] + 1)
-
         sliced_indices = self.indices[self.length * self.batch_size:]
         max_len = self._max_from_slice(sliced_indices)
-        for _ in range(max_len-1):
+        for _ in range(max_len):
+            yield sliced_indices
             for index in range(len(sliced_indices)):
-                yield sliced_indices[index]
                 sliced_indices[index] = (*sliced_indices[:-1], sliced_indices[-1] + 1)
-        for index in range(len(sliced_indices) - 1):
-            yield sliced_indices[index]
-        return sliced_indices[-1]
         # Efficient, with replacement:
         # return (self.indices[i] for i in torch.randint(low=0,high=len(self.indices),size=(self.length,)))
     def __len__(self):
