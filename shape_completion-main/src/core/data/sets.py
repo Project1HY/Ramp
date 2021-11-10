@@ -634,11 +634,13 @@ class SequentialBatchSampler(Sampler):
 
         sliced_indices = self.indices[self.length * self.batch_size:]
         max_len = self._max_from_slice(sliced_indices)
-        for _ in range(max_len):
+        for _ in range(max_len-1):
             for index in range(len(sliced_indices)):
                 yield sliced_indices[index]
                 sliced_indices[index] = (*sliced_indices[:-1], sliced_indices[-1] + 1)
-
+        for index in range(len(sliced_indices) - 1):
+            yield sliced_indices[index]
+        return sliced_indices[-1]
         # Efficient, with replacement:
         # return (self.indices[i] for i in torch.randint(low=0,high=len(self.indices),size=(self.length,)))
     def __len__(self):
