@@ -4,7 +4,7 @@ from geom.mesh.io.base import *
 from geom.mesh.op.cpu.remesh import clean_mesh
 import os
 from torch.utils.data.sampler import Sampler
-
+import random
 
 try:
     # This snippet is needed to solve the unpickling error. See shorturl.at/jktw2
@@ -171,7 +171,8 @@ class SMALTest(SMALBase):
 
 class DFaust(ParametricCompletionDataset):
     def __init__(self, data_dir_override, deformation):
-        super().__init__(n_verts=6890, data_dir_override=r"R:\Mano\data\DFaust\DFaust", deformation=deformation, cls='synthetic',
+        super().__init__(n_verts=6890, data_dir_override=r"R:\Mano\data\DFaust\DFaust", deformation=deformation,
+                         cls='synthetic',
                          suspected_corrupt=False)
 
     def _hi2proj_path_default(self, hi):
@@ -182,9 +183,10 @@ class DFaust(ParametricCompletionDataset):
 
     def _hi2proj_path_semantic_cuts(self, hi):
         return self._proj_dir / hi[0] / hi[1] / f'{hi[2]:>05}_{hi[3]}.npz'
+
 
 class DFaust(ParametricCompletionDataset):
-    def __init__(self, deformation,data_dir_override=r"/home/adminpassis123/gipfs/Mano/data/DFaust/DFaust/"):
+    def __init__(self, deformation, data_dir_override=r"/home/adminpassis123/gipfs/Mano/data/DFaust/DFaust/"):
         super().__init__(n_verts=6890, data_dir_override=data_dir_override, deformation=deformation, cls='synthetic',
                          suspected_corrupt=False)
 
@@ -197,19 +199,22 @@ class DFaust(ParametricCompletionDataset):
     def _hi2proj_path_semantic_cuts(self, hi):
         return self._proj_dir / hi[0] / hi[1] / f'{hi[2]:>05}_{hi[3]}.npz'
 
-class DFaustSequential(ParametricCompletionDataset):
-    NULL_SHAPE_SI=0
 
-    def __init__(self, data_dir_override, deformation,n_verts=6890):
+class DFaustSequential(ParametricCompletionDataset):
+    NULL_SHAPE_SI = 0
+
+    def __init__(self, data_dir_override, deformation, n_verts=6890):
         super().__init__(n_verts=6890, data_dir_override=data_dir_override, deformation=deformation, cls='synthetic',
                          suspected_corrupt=False)
-    def _datapoint_via_path_tup(self,path_tup):
+        self._full_dir = Path(r'~/mnt/Mano/data/DFaust/DFAUST_VERT_PICK')
+
+    def _datapoint_via_path_tup(self, path_tup):
         gt_dict = self._full_dict_by_hi(path_tup)
         tp_hi = self._hit.random_path_from_partial_path([gt_dict['gt_hi'][0]])[:-1]  # Shorten hi by 1
         # tp_hi = gt_dict['gt_hi'][:-1]
         tp_dict = self._full_dict_by_hi(tp_hi)
         gt_dict['tp'], gt_dict['tp_hi'], gt_dict['tp_f'] = tp_dict['gt'], tp_dict['gt_hi'], tp_dict['gt_f']
-        gt_dict['gt_mask'] = self._mask_by_hi(path_tup+(0,))
+        gt_dict['gt_mask'] = self._mask_by_hi(path_tup)
 
         return gt_dict
 
@@ -217,13 +222,13 @@ class DFaustSequential(ParametricCompletionDataset):
         return self._proj_dir / f'{hi[0]}{hi[1]}{hi[2]:>05}_{hi[3]}.npz'
 
     def _hi2full_path_default(self, hi):
-        return self._full_dir / hi[0] / hi[1] / f'{hi[2]:>05}.OFF'
+        return self._full_dir / hi[0] / hi[1] / f'{hi[2]:>05}.npy'
 
     def _hi2proj_path_semantic_cuts(self, hi):
         return self._proj_dir / hi[0] / hi[1] / f'{hi[2]:>05}_{hi[3]}.npz'
 
-    def loaders(self, s_nums=None, s_shuffle=True, s_transform=None, split=(.8,.1,.1), s_dynamic=False,
-                global_shuffle=False, batch_size=16, device='cuda', method='f2p', n_channels=6):
+    def loaders(self, s_nums=None, s_shuffle=True, s_transform=None, split=(.8, .1, .1), s_dynamic=False,
+                global_shuffle=False, batch_size=16, device='cuda', method='f2p', n_channels=6, truncation_size=3):
         """
         # s for split
         :param split: A list of fracs summing to 1: e.g.: [0.9,0.1] or [0.8,0.15,0.05]. Don't specify anything for a
@@ -245,15 +250,6 @@ class DFaustSequential(ParametricCompletionDataset):
         :param n_channels: One of cfg.SUPPORTED_IN_CHANNELS - The number of channels required per datapoint
         :return: A list of (loaders,num_samples)
         """
-        # Handle inpput arguments:
-        s_shuffle = to_list(s_shuffle)
-        s_dynamic = to_list(s_dynamic)
-        s_nums = to_list(s_nums)
-        if s_transform is None or not s_transform:
-            s_transform = [None] * len(split)
-        elif not isinstance(s_transform[0], Sequence):
-            s_transform = list_dup(s_transform, len(split))
-            # Transforms must be a list, all others are non-Sequence
         assert sum(split) == 1, "Split fracs must sum to 1"
         # TODO - Clean up this function, add in smarter defaults, simplify
         if (method == 'f2p' or method == 'p2p') and not self._hit_in_memory:
@@ -268,9 +264,9 @@ class DFaustSequential(ParametricCompletionDataset):
         n_parts = len(split)
         loaders = []
         for i in range(n_parts):
-            set_subjects, req_set_size, do_shuffle, transforms, is_dynamic = subjects[i], None,None,None,None
+            set_subjects, req_set_size, do_shuffle, transforms, is_dynamic = subjects[i], None, None, None, None
 
-            partial_hit = self._hit.keep_ids_by_depth(keepers=list(set_subjects),depth=1)
+            partial_hit = self._hit.keep_ids_by_depth(keepers=list(set_subjects), depth=1)
             if req_set_size is None:
                 req_set_size = partial_hit.num_indexed()
             eff_set_size = min(partial_hit.num_indexed(), req_set_size)
@@ -297,7 +293,8 @@ class DFaustSequential(ParametricCompletionDataset):
             n_parts = len((1,))
             ids = split_frac(ids, (1,))
             ldr = self._loader(method=method, transforms=transforms, n_channels=n_channels, ids=None,
-                               batch_size=batch_size, device=device, set_size=eff_set_size,partial_hit=partial_hit)
+                               batch_size=batch_size, device=device, set_size=eff_set_size, partial_hit=partial_hit,
+                               truncation_size=truncation_size)
             ldr.init_recon_table(recon_stats)
             loaders.append(ldr)
 
@@ -305,7 +302,11 @@ class DFaustSequential(ParametricCompletionDataset):
             loaders = loaders[0]
         return loaders
 
-    def _loader(self, method, transforms, n_channels, ids, batch_size, device, set_size,partial_hit):
+    def _reorder_identity_tuple(self, tup):
+        return *tup[:-3],tup[-1], tup[-2], tup[-3]
+
+    def _loader(self, method, transforms, n_channels, ids, batch_size, device, set_size, partial_hit,
+                truncation_size=3):
 
         # Handle Device:
         device = str(device).split(':')[0]  # Compatible for both strings & pytorch devs
@@ -315,27 +316,30 @@ class DFaustSequential(ParametricCompletionDataset):
             n_workers = 0
         else:
             n_workers = determine_worker_num(len(ids), batch_size)
-        length = partial_hit.num_indexed()
+        import itertools
+
         ids = partial_hit.get_path_union_by_depth(2)
-        ids = [ident+(0,) for ident in ids]
+        ids = [[ident+ (i,0,) for i in range(10)] for ident in ids]
+        ids = list(itertools.chain(*ids))
+
+        ids = [self._reorder_identity_tuple(tup) for tup in ids]
+        random.shuffle(ids)
+
         # Compile Sampler:
         if set_size is None:
             set_size = len(ids)
         assert len(ids) > 0, "Found loader with no data samples inside"
-        sampler_length = min(set_size, len(ids))  # Allows for dynamic partitions
-        # if device == 'ddp': #TODO - Add distributed support here. What does num_workers need to be?
-        # data_sampler == DistributedSampler(dataset,num_replicas=self.num_gpus,ranks=self.logger.rank)
+        length = sum([dp[-1] for dp in ids])
 
-        # SequentialSampler
-        data_sampler = SequentialBatchSampler(ids, sampler_length)
-        # data_sampler = SequentialSampler(ids)
-
+        data_sampler = TruncatedSequentialBatchSampler(ids, length=length, batch_size=batch_size,
+                                                       truncation_size=truncation_size)
         # Compiler Transforms:
         transforms = self._transformation_finalizer_by_method(method, transforms, n_channels)
 
         return self.LOADER_CLASS(FullPartSequentialTorchDataset(self, transforms, method),
                                  batch_sampler=data_sampler, num_workers=n_workers, pin_memory=pin_memory,
                                  collate_fn=completion_collate)
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 #                                                       DFaust Scans
@@ -406,12 +410,14 @@ class MixamoBase(ParametricSkinningDataset, ABC):
     def _full_path2data_default(self, fp):
         return read_obj_verts(fp)
 
+
 class MixamoSkinnedGIP(MixamoBase):  # Should be: MixamoPyProj_2k_10ang_1fr
     def __init__(self, data_dir_override, *args, **kwargs):
         if data_dir_override is None:
             from cfg import MIXAMO_PATH_GIP
             data_dir_override = MIXAMO_PATH_GIP
         super().__init__(suspected_corrupt=True, data_dir_override=data_dir_override, *args, **kwargs)
+
 
 class MixamoSkinnedGaon9(MixamoBase):  # Should be: MixamoPyProj_2k_10ang_1fr
     def __init__(self, data_dir_override, *args, **kwargs):
@@ -425,9 +431,9 @@ class MiniMixamoSkinned13(MixamoBase):  # Should be: MiniMixamoPyProj_2k_10ang_1
     def __init__(self, *args, **kwargs):
         super().__init__(suspected_corrupt=False, *args, **kwargs)
 
+
 class MiniMixamoSkinnedSingleSubject(MixamoBase):
     def __init__(self, data_dir_override, *args, **kwargs):
-
         self.subjects = ['000', '010', '020', '030', '040', '050', '060', '070', '080', '090']
         self.desired_subject = ['000']
         self.ignored_subjects = list(set(self.subjects) - set(self.desired_subject))
@@ -439,10 +445,13 @@ class MiniMixamoSkinnedSingleSubject(MixamoBase):
         super().__init__(suspected_corrupt=False, data_dir_override=data_dir_override, *args, **kwargs)
 
     def _construct_hit(self):
-        hit : HierarchicalIndexTree = super()._construct_hit()
+        hit: HierarchicalIndexTree = super()._construct_hit()
         hit = hit.remove_ids_by_depth(depth=1, goners=self.ignored_subjects)
         # we just toke Bartending
-        hit = hit.remove_ids_by_depth(depth=2, goners=['Air Squat', 'Arm Stretching', 'Sprint Turn', 'Standing', 'Stomping', 'Talking At Watercooler', 'Throwing', 'Turn 90 Left', 'Turn 90 Right', 'Victory', 'Walking', 'Waving'])
+        hit = hit.remove_ids_by_depth(depth=2,
+                                      goners=['Air Squat', 'Arm Stretching', 'Sprint Turn', 'Standing', 'Stomping',
+                                              'Talking At Watercooler', 'Throwing', 'Turn 90 Left', 'Turn 90 Right',
+                                              'Victory', 'Walking', 'Waving'])
         # hit = hit.remove_ids_by_depth(depth=3, goners=[str(num).zfill(3) for num in range(2, 450)])
         return hit
 
@@ -455,9 +464,8 @@ class MiniMixamoSkinned(MixamoBase):
         super().__init__(suspected_corrupt=False, data_dir_override=data_dir_override, *args, **kwargs)
 
     def _construct_hit(self):
-        hit : HierarchicalIndexTree = super()._construct_hit()
+        hit: HierarchicalIndexTree = super()._construct_hit()
         return hit
-
 
 
 # class MixamoSkinned(MixamoBase):
@@ -480,9 +488,10 @@ class MixamoSkinned(MixamoBase):
             data_dir_override = MIXAMO_PATH_GAON9
 
         super().__init__(suspected_corrupt=True, data_dir_override=data_dir_override, *args, **kwargs)
-    #TODO - do it smarter
+
+    # TODO - do it smarter
     def _construct_hit(self):
-        hit : HierarchicalIndexTree = super()._construct_hit()
+        hit: HierarchicalIndexTree = super()._construct_hit()
         from cfg import BROKEN_ANIMATION
         broken_dir_path = BROKEN_ANIMATION
         all_animations = set([])
@@ -508,7 +517,7 @@ class MixamoSkinnedSingleSubject(MixamoSkinned):
         super().__init__(data_dir_override, *args, **kwargs)
 
     def _construct_hit(self):
-        hit : HierarchicalIndexTree = super()._construct_hit()
+        hit: HierarchicalIndexTree = super()._construct_hit()
         hit = hit.remove_ids_by_depth(depth=1, goners=self.ignored_subjects)
         return hit
 
@@ -609,40 +618,58 @@ class DatasetMenu:
 
 
 # ----------------------------------------------------------------------------------------------------------------------
-#TODO: Move to correct location!
+# TODO: Move to correct location!
 # ----------------------------------------------------------------------------------------------------------------------
 # noinspection DuplicatedCode
-class SequentialBatchSampler(Sampler):
-    def __init__(self, indices, len_dict=None, batch_size=10, length=None):
+class TruncatedSequentialBatchSampler(Sampler):
+    def __init__(self, indices, batch_size=1, truncation_size=1, length=None):
         self.indices = indices
         if length is None:
             length = len(self.indices)
-        self.length = length
+        self.length = length // batch_size + 1
         self.batch_size = batch_size
-        self.len_dict = len_dict
+        self._truncation_size = truncation_size
+        self.i = 0
 
     def __iter__(self):
         # Inefficient, without replacement:
         # return iter(self.indices[:self.length])
-        for i in range(self.length // self.batch_size):
-            sliced_indices = self.indices[i * self.batch_size:(i+1) * self.batch_size]
-            max_len = self._max_from_slice(sliced_indices)
-            for _ in range(max_len):
+        while len(self.indices) != 0:
+            sliced_indices = self.indices[:self.batch_size]
+            del self.indices[:self.batch_size]
+            for i in range(self._truncation_size):
                 yield sliced_indices
+                self.i = self.i + 1
                 for index in range(len(sliced_indices)):
-                    sliced_indices[index] = (*sliced_indices[index][:-1], sliced_indices[index][-1] + 1)
-        sliced_indices = self.indices[self.length * self.batch_size:]
-        max_len = self._max_from_slice(sliced_indices)
-        for _ in range(max_len):
-            yield sliced_indices
-            for index in range(len(sliced_indices)):
-                sliced_indices[index] = (*sliced_indices[:-1], sliced_indices[-1] + 1)
-        # Efficient, with replacement:
+                    sliced_indices[index] = (
+                        *sliced_indices[index][:-3], sliced_indices[index][-3] + 1, *sliced_indices[index][-2:])
+            filtered_indices = [index for index in sliced_indices if index[-2] < index[-1]]
+            self.indices += filtered_indices
+
+        #
+        # for i in range(len(self.indices) // self.batch_size):
+        #     sliced_indices = self.indices[i * self.batch_size:(i+1) * self.batch_size]
+        #     max_len = self._max_from_slice(sliced_indices)
+        #     for _ in range(max_len):
+        #         yield sliced_indices
+        #         for index in range(len(sliced_indices)):
+        #             sliced_indices[index] = (*sliced_indices[index][:-2], sliced_indices[index][-2] + 1,sliced_indices[index][-1])
+        # sliced_indices = self.indices[self.length * self.batch_size:]
+        # max_len = self._max_from_slice(sliced_indices)
+        # for _ in range(max_len):
+        #     yield sliced_indices
+        #     for index in range(len(sliced_indices)):
+        #         sliced_indices[index] = (*sliced_indices[index][:-2], sliced_indices[index][-2] + 1,sliced_indices[index][-1])
+        # # Efficient, with replacement:
         # return (self.indices[i] for i in torch.randint(low=0,high=len(self.indices),size=(self.length,)))
+
     def __len__(self):
         return self.length
-    def _max_from_slice(self,indices):
-        return 500
+
+    def _max_from_slice(self, indices):
+        length_array = [indice[-1] for indice in indices]
+        return max(length_array)
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 #                                                 Helper Functions
@@ -660,10 +687,10 @@ def check_correspondence():
     from geom.mesh.vis.base import plot_mesh_montage, uniclr
     ds: ParametricCompletionDataset = DatasetMenu.order('DFaustProj')
     ldr = ds.loaders(method='full', batch_size=9, s_shuffle=True, n_channels=3)
-    vi = np.random.choice(range(ds.num_verts()),size=10,replace=False)
+    vi = np.random.choice(range(ds.num_verts()), size=10, replace=False)
     clr = uniclr(N=ds.num_faces(), inds=vi)
     for d in ldr:
-        plot_mesh_montage(vb=d['gt'], fb=ds.faces(), clrb=clr,strategy='mesh',lighting=True,show_edges=True)
+        plot_mesh_montage(vb=d['gt'], fb=ds.faces(), clrb=clr, strategy='mesh', lighting=True, show_edges=True)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -674,8 +701,7 @@ def check_correspondence():
 if __name__ == "__main__":
     # check_correspondence()
     # DatasetMenu.test_all_sets(with_full_validation=True)
-    #ds: CompletionDataset = DatasetMenu.order('FaustEleProj',data_dir_override='R:\Mano\data\MiniMixamoSkinned13')
+    # ds: CompletionDataset = DatasetMenu.order('FaustEleProj',data_dir_override='R:\Mano\data\MiniMixamoSkinned13')
     ds: CompletionDataset = DatasetMenu.order('FaustEleProj').validate_dataset()
 
-    #print("f"
-
+    # print("f"
