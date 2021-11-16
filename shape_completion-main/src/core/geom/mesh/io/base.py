@@ -90,7 +90,7 @@ def read_off_verts(fp):
     v = []
     try:
         # TODO: yiftach change this back
-        with open(r"/Users/yiftachedelstain/Development/Technion/Project/Ramp/shape_completion-main/00000.OFF",
+        with open(fp,
                   "r") as fh:
             first = fh.readline().strip()
             if first != "OFF" and first != "COFF":
