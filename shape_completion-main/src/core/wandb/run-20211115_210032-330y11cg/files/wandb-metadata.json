@@ -1,0 +1,22 @@
+{
+    "os": "macOS-10.16-x86_64-i386-64bit",
+    "python": "3.8.11",
+    "heartbeatAt": "2021-11-15T19:00:34.521611",
+    "startedAt": "2021-11-15T19:00:32.718674",
+    "docker": null,
+    "cpu_count": 16,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "/Users/yiftachedelstain/Development/Technion/Project/Ramp/shape_completion-main/src/core/main.py",
+    "codePath": "shape_completion-main/src/core/main.py",
+    "git": {
+        "remote": "git@github.com:Project1HY/Ramp.git",
+        "commit": "ae5dda57530ed0f63365242d5d15680fde18501d"
+    },
+    "email": "yedelstain@apple.com",
+    "root": "/Users/yiftachedelstain/Development/Technion/Project/Ramp",
+    "host": "Yiftach-Macbook.lan",
+    "username": "yiftachedelstain",
+    "executable": "/Users/yiftachedelstain/miniconda3/envs/projectHY/bin/python"
+}

@@ -209,6 +209,9 @@ class DFaustSequential(ParametricCompletionDataset):
         self._full_dir = Path(r'~/mnt/Mano/data/DFaust/DFAUST_VERT_PICK')
 
     def _datapoint_via_path_tup(self, path_tup):
+        if path_tup[2] >= path_tup[-1]:
+            # TODO: return zeros.
+            pass
         gt_dict = self._full_dict_by_hi(path_tup)
         tp_hi = self._hit.random_path_from_partial_path([gt_dict['gt_hi'][0]])[:-1]  # Shorten hi by 1
         # tp_hi = gt_dict['gt_hi'][:-1]
@@ -303,7 +306,7 @@ class DFaustSequential(ParametricCompletionDataset):
         return loaders
 
     def _reorder_identity_tuple(self, tup):
-        return *tup[:-3],tup[-1], tup[-2], tup[-3]
+        return *tup[:-3], tup[-1], tup[-2], tup[-3]
 
     def _loader(self, method, transforms, n_channels, ids, batch_size, device, set_size, partial_hit,
                 truncation_size=3):
@@ -319,7 +322,7 @@ class DFaustSequential(ParametricCompletionDataset):
         import itertools
 
         ids = partial_hit.get_path_union_by_depth(2)
-        ids = [[ident+ (i,0,) for i in range(10)] for ident in ids]
+        ids = [[ident + (i, 0,) for i in range(10)] for ident in ids]
         ids = list(itertools.chain(*ids))
 
         ids = [self._reorder_identity_tuple(tup) for tup in ids]
@@ -331,8 +334,8 @@ class DFaustSequential(ParametricCompletionDataset):
         assert len(ids) > 0, "Found loader with no data samples inside"
         length = sum([dp[-1] for dp in ids])
 
-        data_sampler = TruncatedSequentialBatchSampler(ids, length=length, batch_size=batch_size,
-                                                       truncation_size=truncation_size)
+        data_sampler = TruncatedSequentialAnimationBatchSampler(ids, length=length, batch_size=batch_size,
+                                                                )
         # Compiler Transforms:
         transforms = self._transformation_finalizer_by_method(method, transforms, n_channels)
 
@@ -621,6 +624,34 @@ class DatasetMenu:
 # TODO: Move to correct location!
 # ----------------------------------------------------------------------------------------------------------------------
 # noinspection DuplicatedCode
+class TruncatedSequentialAnimationBatchSampler(Sampler):
+    def __init__(self, indices, batch_size=1, length=None):
+        self.indices = indices
+        if length is None:
+            length = len(self.indices)
+        self.length = length // batch_size + 1
+        self.batch_size = batch_size
+        self.i = 0
+
+    def __iter__(self):
+        # Inefficient, without replacement:
+        for index in self.indices:
+            while True:
+                current_batch_size = min(self.batch_size, index[-1] - index[2])
+                returned_indices = [index] * current_batch_size
+                for i in range(len(returned_indices)):
+                    returned_indices[i] = (
+                        *returned_indices[i][:-3], returned_indices[i][-3] + i, *returned_indices[i][-2:])
+                yield returned_indices
+                if index[2] + self.batch_size >= index[-1]:
+                    break
+                index = (
+                    *index[:-3], index[-3] + self.batch_size, *index[-2:])
+
+    def __len__(self):
+        return self.length
+
+
 class TruncatedSequentialBatchSampler(Sampler):
     def __init__(self, indices, batch_size=1, truncation_size=1, length=None):
         self.indices = indices
@@ -646,29 +677,8 @@ class TruncatedSequentialBatchSampler(Sampler):
             filtered_indices = [index for index in sliced_indices if index[-2] < index[-1]]
             self.indices += filtered_indices
 
-        #
-        # for i in range(len(self.indices) // self.batch_size):
-        #     sliced_indices = self.indices[i * self.batch_size:(i+1) * self.batch_size]
-        #     max_len = self._max_from_slice(sliced_indices)
-        #     for _ in range(max_len):
-        #         yield sliced_indices
-        #         for index in range(len(sliced_indices)):
-        #             sliced_indices[index] = (*sliced_indices[index][:-2], sliced_indices[index][-2] + 1,sliced_indices[index][-1])
-        # sliced_indices = self.indices[self.length * self.batch_size:]
-        # max_len = self._max_from_slice(sliced_indices)
-        # for _ in range(max_len):
-        #     yield sliced_indices
-        #     for index in range(len(sliced_indices)):
-        #         sliced_indices[index] = (*sliced_indices[index][:-2], sliced_indices[index][-2] + 1,sliced_indices[index][-1])
-        # # Efficient, with replacement:
-        # return (self.indices[i] for i in torch.randint(low=0,high=len(self.indices),size=(self.length,)))
-
     def __len__(self):
         return self.length
-
-    def _max_from_slice(self, indices):
-        length_array = [indice[-1] for indice in indices]
-        return max(length_array)
 
 
 # ----------------------------------------------------------------------------------------------------------------------

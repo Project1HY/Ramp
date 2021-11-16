@@ -1,5 +1,5 @@
 from lightning.pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
-from lightning.pytorch_lightning.loggers import TestTubeLogger
+from lightning.pytorch_lightning.loggers import TestTubeLogger, WandbLogger
 from lightning.pytorch_lightning import Trainer
 from lightning.assets.completion_saver import CompletionSaver
 from lightning.assets.emailer import TensorboardEmailer
@@ -11,6 +11,7 @@ from pathlib import Path
 import os
 import torch
 import logging as log
+
 
 #  This class adds additional functionality to the Lightning Trainer, wrapping it with a similar name
 class LightningTrainer:
@@ -88,14 +89,16 @@ class LightningTrainer:
         # Checkpointing and Logging:
         tb_log = TestTubeLogger(save_dir=self.hp.PRIMARY_RESULTS_DIR, description=f"{self.hp.exp_name} Experiment",
                                 name=self.hp.exp_name, version=self.hp.version)
+        wandb_log = WandbLogger(project="my-test-project", entity="temporal_shape_recon")
+        # wandb_log.config = self.hp
 
         self.exp_dp = Path(os.path.dirname(tb_log.experiment.log_dir)).resolve()  # Extract experiment path
         checkpoint = ModelCheckpoint(filepath=self.exp_dp / 'checkpoints', save_top_k=1, verbose=True,
                                      prefix='weight', monitor='val_loss', mode='min', period=1)
 
         # Support for Auto-Tensorboard:
-        if self.hp.use_auto_tensorboard > 0:
-            self.tb_sup = TensorboardSupervisor(mode=self.hp.use_auto_tensorboard)
+        # if self.hp.use_auto_tensorboard > 0:
+        #     self.tb_sup = TensorboardSupervisor(mode=self.hp.use_auto_tensorboard)
 
         # Support for Completion Save:
         if self.hp.save_completions > 0 and self.data.num_test_loaders() > 0:
@@ -114,7 +117,7 @@ class LightningTrainer:
                                gpus=self.hp.gpus, distributed_backend=self.hp.distributed_backend,
                                # accelerator="cpu",
                                early_stop_callback=self.early_stop, checkpoint_callback=checkpoint,
-                               logger=tb_log,
+                               logger=wandb_log,
                                min_epochs=self.hp.force_train_epoches,
                                max_epochs=self.hp.max_epochs,
                                print_nan_grads=False,

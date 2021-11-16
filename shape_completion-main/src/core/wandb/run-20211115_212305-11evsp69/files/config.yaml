@@ -1,0 +1,322 @@
+wandb_version: 1
+
+BROKEN_ANIMATION:
+  desc: null
+  value: R:\MixamoSkinned\broken_animation
+DANGEROUS_MASK_THRESH:
+  desc: null
+  value: 100
+DEF_LR_SCHED_COOLDOWN:
+  desc: null
+  value: 5
+DEF_MINIMAL_LR:
+  desc: null
+  value: 1.0e-06
+GCREDS_PATH:
+  desc: null
+  value: /home/adminpassis123/gipfs/Mano/data/DFaust/DFaust/collaterals/gmail_credentials.txt
+MINI_MIXAMO_PATH_GAON9:
+  desc: null
+  value: R:\MiniMixamoSkinned13
+MIN_EPOCHS_TO_SEND_EMAIL_RECORD:
+  desc: null
+  value: 1
+MIXAMO_PATH_GAON9:
+  desc: null
+  value: R:\MixamoSkinned
+MIXAMO_PATH_GIP:
+  desc: null
+  value: Z:\ShapeCompletion\synthetic\MixamoSkinned
+NON_BLOCKING:
+  desc: null
+  value: true
+NORMAL_MAGNITUDE_THRESH:
+  desc: null
+  value: 1.0e-06
+ORIGINAL_SOURCE_CODE_DIR:
+  desc: null
+  value: D:\projectHY\Ramp
+PC_NAME_MAPPING:
+  desc: null
+  value:
+    DESKTOP-40EQETC: Mano's PC - Debug
+    GIP-1080-2: OfficeLoser-20Core-8GB
+    GIP-1080-3: 0Right-20Core-8GB
+    GIP-2018-1: LeftDoor-28Core-11GB
+    GIP-2018-2: 1Right-28Core-11GB
+    GIP-2018-3: 2Right-28Core-11GB
+    GIP-2018-4: 1Left-28Core-11GB
+    GIP-2018-5: 0Left-28Core-11GB
+    GIP-I7X-1080TI1: 2Left-28Core-11GB
+    GIP-I7X-2080TI2: 0RightUbuntu-20Core-8GB
+    GIP-i7x-2080ti2: RightDoor-68Core-11GB
+    GIP183: OfficeMor-24Core-12GB
+    smosesli-gpu: Moshe's Computer
+PRIMARY_DATA_DIR:
+  desc: null
+  value: /home/adminpassis123/gipfs/Mano/data/DFaust/DFaust
+PRIMARY_EXAMPLE_DIR:
+  desc: null
+  value: D:\projectHY\Ramp/exp/test/examples
+PRIMARY_RESULTS_DIR:
+  desc: null
+  value: /Users/yiftachedelstain/Development/Technion/Project/Ramp/shape_completion-main/src/core/results
+SAVE_MESH_AS:
+  desc: null
+  value: ply
+SMPL_TEMPLATE_PATH:
+  desc: null
+  value: /home/adminpassis123/gipfs/Mano/data/DFaust/DFaust/templates/template_color.ply
+SOURCE_CODE_DIR:
+  desc: null
+  value: /Users/yiftachedelstain/Development/Technion/Project/Ramp/shape_completion-main/src/core
+SUPPORTED_IN_CHANNELS:
+  desc: null
+  value:
+  - 3
+  - 6
+  - 12
+TEST_CAMERA_PATH:
+  desc: null
+  value: D:\projectHY\Ramp/exp/test/examples/camera.ply
+TEST_MESH_HAND_PATH:
+  desc: null
+  value: D:\projectHY\Ramp/exp/test/examples/hand1_8k.off
+TEST_MESH_HUMAN_PATH:
+  desc: null
+  value: D:\projectHY\Ramp/exp/test/examples/fat_man.off
+TEST_SCAN_PATH:
+  desc: null
+  value: D:\projectHY\Ramp/exp/test/examples/test_scan_006.off
+UNIVERSAL_PRECISION:
+  desc: null
+  value: float32
+UNIVERSAL_RAND_SEED:
+  desc: null
+  value: 2147483647
+VIS_CMAP:
+  desc: null
+  value: summer
+VIS_N_MESH_SETS:
+  desc: null
+  value: 2
+VIS_SHOW_EDGES:
+  desc: null
+  value: false
+VIS_SHOW_GRID:
+  desc: null
+  value: false
+VIS_SHOW_NORMALS:
+  desc: null
+  value: false
+VIS_SMOOTH_SHADING:
+  desc: null
+  value: false
+VIS_STRATEGY:
+  desc: null
+  value: cloud
+_wandb:
+  desc: null
+  value:
+    cli_version: 0.12.6
+    framework: torch
+    is_jupyter_run: false
+    is_kaggle_kernel: false
+    python_version: 3.8.11
+    start_time: 1637004185
+    t:
+      1:
+      - 1
+      - 5
+      4: 3.8.11
+      5: 0.12.6
+      8:
+      - 5
+accumulate_grad_batches:
+  desc: null
+  value: 5
+arch:
+  desc: null
+  value: F2PEncoderDecoderBase
+batch_size:
+  desc: null
+  value: 20
+code_size:
+  desc: null
+  value: 512
+compute_output_normals:
+  desc: null
+  value: true
+counts:
+  desc: null
+  value:
+  - 10000
+  - 1000
+  - 1000
+decoder_convl:
+  desc: null
+  value: 5
+dev:
+  desc: null
+  value: cpu
+dist_v_penalties:
+  desc: null
+  value:
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+distributed_backend:
+  desc: null
+  value: dp
+early_stop_patience:
+  desc: null
+  value: 80
+email_report:
+  desc: null
+  value: false
+exp_name:
+  desc: null
+  value: volume=20_and_others_real_bigger_batch
+force_train_epoches:
+  desc: null
+  value: 1
+generate_trials:
+  desc: null
+  value: test_tube.argparse_hopt.HyperOptArgumentParser.generate_trials
+gpus:
+  desc: null
+  value: null
+hpc_exp_number:
+  desc: null
+  value: null
+in_channels:
+  desc: null
+  value: 6
+lambdas:
+  desc: null
+  value:
+  - 1
+  - 0.1
+  - 0
+  - 0
+  - 0
+  - 0
+  - 20
+loss_class:
+  desc: null
+  value: BasicLoss
+lr:
+  desc: null
+  value: 0.006
+mask_penalties:
+  desc: null
+  value:
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+  - 0
+max_epochs:
+  desc: null
+  value: 9223372036854775807
+optimize_parallel:
+  desc: null
+  value: test_tube.argparse_hopt.HyperOptArgumentParser.optimize_parallel
+optimize_parallel_cpu:
+  desc: null
+  value: test_tube.argparse_hopt.HyperOptArgumentParser.optimize_parallel_cpu
+optimize_parallel_gpu:
+  desc: null
+  value: test_tube.argparse_hopt.HyperOptArgumentParser.optimize_parallel_gpu
+optimize_trials_parallel_gpu:
+  desc: null
+  value: test_tube.argparse_hopt.HyperOptArgumentParser.optimize_trials_parallel_gpu
+out_channels:
+  desc: null
+  value: 3
+plateau_patience:
+  desc: null
+  value: 30
+plotter_class:
+  desc: null
+  value: CompletionPlotter
+resume_cfg:
+  desc: null
+  value:
+  - false
+  - true
+save_completions:
+  desc: null
+  value: 2
+test_ds_0:
+  desc: null
+  value:
+    batch_size: 20
+    dataset_name: DFaustProj
+    global_shuffle: false
+    id_in_split: 2
+    in_memory_index: false
+    is_dynamic: false
+    method: rand_f2p
+    n_channels: 6
+    partition_shuffle: true
+    set_size: 1000
+    split:
+    - 0.8
+    - 0.1
+    - 0.1
+    transforms: '[Center(channels=slice(0, 3, None),keys=(''gt'', ''tp''))]'
+train_ds:
+  desc: null
+  value:
+    batch_size: 20
+    dataset_name: DFaustProj
+    global_shuffle: false
+    id_in_split: 0
+    in_memory_index: false
+    is_dynamic: true
+    method: rand_f2p
+    n_channels: 6
+    partition_shuffle: true
+    set_size: 10000
+    split:
+    - 0.8
+    - 0.1
+    - 0.1
+    transforms: '[Center(channels=slice(0, 3, None),keys=(''gt'', ''tp''))]'
+trials:
+  desc: null
+  value: test_tube.argparse_hopt.HyperOptArgumentParser.opt_trials
+use_auto_tensorboard:
+  desc: null
+  value: 3
+vald_ds_0:
+  desc: null
+  value:
+    batch_size: 20
+    dataset_name: DFaustProj
+    global_shuffle: false
+    id_in_split: 1
+    in_memory_index: false
+    is_dynamic: false
+    method: rand_f2p
+    n_channels: 6
+    partition_shuffle: true
+    set_size: 1000
+    split:
+    - 0.8
+    - 0.1
+    - 0.1
+    transforms: '[Center(channels=slice(0, 3, None),keys=(''gt'', ''tp''))]'
+version:
+  desc: null
+  value: 2
+weight_decay:
+  desc: null
+  value: 0

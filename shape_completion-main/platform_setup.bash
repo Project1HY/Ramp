@@ -34,7 +34,7 @@ conda install -y pytorch torchvision torchaudio cudatoolkit=10.2 -c pytorch
 pip install tensorboard
 pip install pytorch-lightning
 pip install test-tube
-
+pip install wandb
 # Primary 3D Geometry Modules:  
 pip install trimesh
 pip install scikit_learn
