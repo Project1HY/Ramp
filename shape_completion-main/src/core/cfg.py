@@ -17,7 +17,7 @@ DEF_MINIMAL_LR = 1e-6  # The smallest learning step allowed with LR sched. Works
 NON_BLOCKING = True  # Transfer to GPU in a non-blocking method
 # ----------------------------------------------------------------------------------------------------------------------
 #                                                      ERROR
-# ----------------------------------------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------------------------------------
 SUPPORTED_IN_CHANNELS = (3, 6, 12)  # The possible supported input channels - either 3, 6 or 12
 DANGEROUS_MASK_THRESH = 100  # The minimal length allowed for mask vertex indices.
 # ----------------------------------------------------------------------------------------------------------------------
@@ -26,7 +26,7 @@ DANGEROUS_MASK_THRESH = 100  # The minimal length allowed for mask vertex indice
 ORIGINAL_SOURCE_CODE_DIR: pathlib.Path = pathlib.Path(r"D:\projectHY\Ramp")
 SOURCE_CODE_DIR: pathlib.Path = pathlib.Path(__file__).parents[0]
 PRIMARY_RESULTS_DIR: pathlib.Path = SOURCE_CODE_DIR / 'results'
-PRIMARY_DATA_DIR: pathlib.Path = pathlib.Path(r"R:\Mano\data\DFaust\DFaust")
+PRIMARY_DATA_DIR: pathlib.Path = pathlib.Path(r"/home/adminpassis123/gipfs/Mano/data/DFaust/DFaust")
 PRIMARY_EXAMPLE_DIR: pathlib.Path = ORIGINAL_SOURCE_CODE_DIR / 'exp' / 'test' / 'examples'
 TEST_MESH_HUMAN_PATH: pathlib.Path = PRIMARY_EXAMPLE_DIR / 'fat_man.off'
 TEST_MESH_HAND_PATH: pathlib.Path = PRIMARY_EXAMPLE_DIR / 'hand1_8k.off'

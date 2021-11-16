@@ -5,6 +5,8 @@ import pyvista as pv
 import meshio
 from itertools import chain
 import pickle as pk
+
+
 # ---------------------------------------------------------------------------------------------------------------------#
 #                                                Collectors
 # ---------------------------------------------------------------------------------------------------------------------#
@@ -29,6 +31,8 @@ def read_mesh(fp, verts_only=False):
         return read_ply_verts(fp) if verts_only else read_ply(fp)
     elif ext == 'obj':
         return read_obj_verts(fp) if verts_only else read_obj(fp)
+    elif ext == 'npy':
+        return read_npy_verts(fp) if verts_only else read_npy(fp)
     else:
         mesh = meshio.read(fp)
         return mesh.points if verts_only else mesh.points, mesh.cells
@@ -85,7 +89,9 @@ def read_obj(fp):
 def read_off_verts(fp):
     v = []
     try:
-        with open(fp, "r") as fh:
+        # TODO: yiftach change this back
+        with open(fp,
+                  "r") as fh:
             first = fh.readline().strip()
             if first != "OFF" and first != "COFF":
                 raise (Exception(f"Could not find OFF header for file: {fp}"))
@@ -113,6 +119,7 @@ def read_off_verts(fp):
 
         return np.array(v)
     except Exception as e:
+
         raise OSError(f"Could not read or open mesh file {fp}") from e
 
 
@@ -154,10 +161,10 @@ def read_off(fp):
     except Exception as e:
         raise OSError(f"Could not read or open mesh file {fp}") from e
 
-# TODO: Add PKL Reader for meshes
-#def read_pkl(pickle_file):
-#   with open(pickle_file, 'rb') as p:
 
+# TODO: Add PKL Reader for meshes
+# def read_pkl(pickle_file):
+#   with open(pickle_file, 'rb') as p:
 
 
 def read_ply_verts(fp):
@@ -180,6 +187,14 @@ def read_ply(fp):
         return v, f
     except Exception as e:
         raise OSError(f"Could not read or open mesh file {fp}") from e
+
+
+def read_npy_verts(fp):
+    return np.load('/Users/yiftachedelstain/Development/Technion/Project/shape_completion/src/00000.npy')
+
+
+def read_npy(fp):
+    pass
 
 
 # ---------------------------------------------------------------------------------------------------------------------#
@@ -261,7 +276,10 @@ def write_collada(fp, v, f, mesh_name="exported_mesh"):
 
 def read_npz_mask(fp):
     try:
-        return np.load(fp)["mask"]
+        # TODO: yiftach change this back
+        return np.load(
+            "/Users/yiftachedelstain/Development/Technion/Project/Ramp/shape_completion-main/50002chicken_wings00000_0.npz")[
+            "mask"]
     except Exception as e:
         raise OSError(f"Could not read or open npz file {fp}") from e
 
@@ -316,7 +334,8 @@ def numpy2trimesh(v, f):
 
 def _fbx_tester():
     p = r'C:\Users\idoim\Desktop\681.fbx'
-    v,f = read_mesh(p)
+    v, f = read_mesh(p)
+
 
 def _io_tester():
     from cfg import TEST_MESH_HUMAN_PATH

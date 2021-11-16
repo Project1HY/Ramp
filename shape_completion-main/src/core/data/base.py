@@ -12,7 +12,7 @@ from tqdm import tqdm
 from data.transforms import *
 from geom.mesh.io.base import read_mesh, read_npz_mask
 from geom.mesh.op.cpu.remesh import trunc_to_vertex_mask
-from collections import Mapping
+from collections.abc import Mapping
 from geom.mesh.vis.base import plot_mesh
 from util.container import split_frac, to_list, list_dup
 from util.fs import pkl_load
@@ -20,7 +20,6 @@ from util.func import handles_scalars
 from util.strings import warn, banner
 from util.time import time_me
 from util.torch.data import determine_worker_num, ReconstructableLoader, ParametricLoader, SubsetChoiceSampler
-from torch.utils.data import SequentialSampler
 
 # from torch.utils.data.distributed import DistributedSampler
 NP_STR_OBJ_ARRAY_PATTERN = re.compile(r'[SaUO]')
@@ -226,15 +225,15 @@ class CompletionDataset(HitIndexedDataset, ABC):
             from cfg import PRIMARY_DATA_DIR
             self._data_dir = (PRIMARY_DATA_DIR / cls / self.name(short=True)).resolve()
         else:
-            self._data_dir = Path(data_dir_override)
-        # assert self._data_dir.is_dir(), f"Data dir of {self.name()} is invalid: \nCould not find {self._data_dir}"
+            self._data_dir = Path(data_dir_override).resolve()
+        assert self._data_dir.is_dir(), f"Data dir of {self.name()} is invalid: \nCould not find {self._data_dir}"
 
         # Set all other directories:
         self._proj_dir = self._data_dir / deformation.name()
         self._full_dir = self._data_dir / 'full'
         self._index_dir = self._data_dir / 'index'
-        # assert self._proj_dir.is_dir(), f"Projection dir of {self.name()} is invalid: \nCould not find {self._proj_dir}"
-        # assert self._full_dir.is_dir(), f"Full Shape dir of {self.name()} is invalid: \nCould not find {self._full_dir}"
+        assert self._proj_dir.is_dir(), f"Projection dir of {self.name()} is invalid: \nCould not find {self._proj_dir}"
+        assert self._full_dir.is_dir(), f"Full Shape dir of {self.name()} is invalid: \nCould not find {self._full_dir}"
 
         # Deformation Specfic loading support:
         self._hi2proj_path_func = getattr(self, f'_hi2proj_path_{self._deformation.name()}', self._hi2proj_path_default)
@@ -654,7 +653,8 @@ class CompletionDataset(HitIndexedDataset, ABC):
         # Default Implementation
         # _index_dir
         # self._index_dir = "~/mnt/Mano/data/DFaust/DFaust/"
-        hit_fp = list([Path(r"/Users/yiftachedelstain/Development/Technion/Project/Ramp/shape_completion-main/DFaust_azimuthal_projections_hit.pkl")])
+        import pathlib
+        hit_fp = list(self._index_dir.glob(f'*{self._deformation.name()}_hit.pkl'))
         if len(hit_fp) != 1:
             raise AssertionError(f"Could not find hit file in for deformation {self._deformation.name()} "
                                  f"in index directory:\n{self._index_dir}")
@@ -763,7 +763,7 @@ class ParametricCompletionDataset(CompletionDataset, ABC):
     # This adds the assumption that each mesh has the same connectivity, and the same number of vertices
     def __init__(self, n_verts, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._f = pkl_load(r'/Users/yiftachedelstain/Development/Technion/Project/Ramp/shape_completion-main/face_template.pkl')
+        self._f = pkl_load(self._index_dir / 'face_template.pkl')
         # self._f.flags.writeable = False  # TODO - Turned this off due to a PyTorch warning on tensor support
 
         self._n_v = n_verts
@@ -1042,13 +1042,12 @@ def completion_collate(batch, stop: bool = False):
                 stop = False
             d[k] = completion_collate([d[k] for d in batch], stop)
         return d
-
         # return {key: default_collate([d[key] for d in batch],rec_level=1) for key in elem}
     elif isinstance(elem, tuple) and hasattr(elem, '_fields'):  # namedtuple
         return elem_type(*(completion_collate(samples) for samples in zip(*batch)))
-    elif isinstance(elem, container_abcs.Sequence):
-        transposed = zip(*batch)
-        return [completion_collate(samples) for samples in transposed]
+    # elif isinstance(elem, container_abcs.Sequence):
+    #     transposed = zip(*batch)
+    #     return [completion_collate(samples) for samples in transposed]
     raise TypeError(
         f"default_collate: batch must contain tensors, numpy arrays, numbers, dicts or lists; found {elem.dtype}")
 
@@ -1059,11 +1058,16 @@ def completion_collate(batch, stop: bool = False):
 
 def _base_tester():
     from data.sets import DatasetMenu
-    ds = DatasetMenu.order('DFaustProjSequential')
+    ds = DatasetMenu.order('DFaustProjSequential',data_dir_override=r"/home/adminpassis123/gipfs/Mano/data/DFaust/DFaust")
     ldr = ds.loaders(n_channels=6, method='rand_f2p', batch_size=10, device='cpu-single')
-
-    for dp in ldr:
+    # pbar = tqdm(total=len(ldr))
+    i = 0
+    for dp in tqdm(ldr):
+        # pbar.update(1)
+        # i=i+1
         pass
+    # pbar.close()
+    print("cool")
 
 
 # TODO - Oshri, Haitham - Run me with a debugger step by step

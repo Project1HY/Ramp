@@ -195,7 +195,7 @@ class HierarchicalIndexTree:
     def _get_path_union_by_depth(hit, depth):
         paths = []
         if depth == 0:
-            paths = [(v,) for v in list(hit.keys())]
+            paths = [(v,len(hit[v])) for v in list(hit.keys())]
         else:
             for k,v in hit.items():
                 sub_paths = HierarchicalIndexTree._get_path_union_by_depth(v, depth - 1)

@@ -318,7 +318,6 @@ def padded_part_by_mask(vi, v):
     mask_vi_padded = np.append(vi, np.random.choice(vi, needed_padding_len, replace=True))  # Copies
     return v[mask_vi_padded, :]
 
-
 def flip_vertex_mask(nv, vi):
     indicator = vertex_mask_indicator(nv, vi)
     return np.where(indicator == 0)[0]
