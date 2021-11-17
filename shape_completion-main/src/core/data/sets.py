@@ -337,16 +337,12 @@ class DFaustSequential(ParametricCompletionDataset):
         ids = list(itertools.chain(*ids))
 
         ids = [self._reorder_identity_tuple(tup) for tup in ids]
-        random.shuffle(ids)
-
         # Compile Sampler:
         if set_size is None:
             set_size = len(ids)
         assert len(ids) > 0, "Found loader with no data samples inside"
         length = sum([dp[-1] for dp in ids])
-
-        data_sampler = SequentialAnimationBatchSampler(ids, length=length, batch_size=batch_size,
-                                                       )
+        data_sampler = SequentialAnimationBatchSampler(ids, batch_size=batch_size)
         # Compiler Transforms:
         transforms = self._transformation_finalizer_by_method(method, transforms, n_channels)
 
@@ -639,13 +635,15 @@ class SequentialAnimationBatchSampler(Sampler):
     def __init__(self, indices, batch_size=1, length=None):
         self.indices = indices
         if length is None:
-            length = len(self.indices)
+            length = sum([dp[-1] for dp in indices])
+        self.total_length = length
         self.length = length // batch_size + 1
         self.batch_size = batch_size
         self.i = 0
 
     def __iter__(self):
         # Inefficient, without replacement:
+        random.shuffle(self.indices)
         for index in self.indices:
             while True:
                 current_batch_size = min(self.batch_size, index[-1] - index[2])

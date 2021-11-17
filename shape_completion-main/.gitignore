@@ -1,5 +1,6 @@
 /data
 src/core/wandb/*
+src/core/wandb/latest-run
 *Miniconda3-latest-Linux-x86_64.sh
 *_validation_dict.json
 article_skeleton/

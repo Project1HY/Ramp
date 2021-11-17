@@ -41,7 +41,6 @@ class LightningTrainer:
             self._init_training_assets()
             # log.info(f'Training on dataset: {self.data.curr_trainset_name()}')
             self.testing_only = False
-
         self._trainer(debug_mode).fit(self.nn, self.data.train_ldr, self.data.vald_ldrs, self.data.test_ldrs)
         # train_dataloader=None, val_dataloader=None, test_dataloader=None
 
