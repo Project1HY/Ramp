@@ -22,7 +22,7 @@ LARGE_DATASET_THERSHOLD = 1000  # Maybe use in_memory from the hit?
 #def f2p_completion_loaders(hp, train='FaustEleProj',
 #                           vald_test='FaustEleProj',
 #                           test='FaustEleProj'):
-def f2p_completion_loaders(hp, train='DFaustProj',
+def f2p_completion_loaders(hp, train='DFaustProjSequential',
                            vald_test=None,
                            test=None):
     """

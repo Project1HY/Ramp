@@ -190,7 +190,7 @@ def read_ply(fp):
 
 
 def read_npy_verts(fp):
-    return np.load('/Users/yiftachedelstain/Development/Technion/Project/shape_completion/src/00000.npy')
+    return np.load(fp)
 
 
 def read_npy(fp):
@@ -278,7 +278,7 @@ def read_npz_mask(fp):
     try:
         # TODO: yiftach change this back
         return np.load(
-            "/Users/yiftachedelstain/Development/Technion/Project/Ramp/shape_completion-main/50002chicken_wings00000_0.npz")[
+            fp)[
             "mask"]
     except Exception as e:
         raise OSError(f"Could not read or open npz file {fp}") from e
