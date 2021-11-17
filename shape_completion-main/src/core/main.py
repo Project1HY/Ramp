@@ -16,7 +16,7 @@ def parser():
     p = HyperOptArgumentParser(strategy='random_search')
 
     # Check-pointing
-    p.add_argument('--exp_name', type=str, default='volume=20_and_others_real_bigger_batch',  # TODO - Don't forget to change me!
+    p.add_argument('--exp_name', type=str, default='volum-e=20_and_others_real_bigger_batch',  # TODO - Don't forget to change me!
                    help='The experiment name. Leave empty for default')
     p.add_argument('--version', type=none_or_int, default=2,
                    help='Weights will be saved at weight_dir=exp_name/version_{version}. '
@@ -32,7 +32,7 @@ def parser():
 
     # Dataset Config:
     # NOTE: A well known ML rule: double the learning rate if you double the batch size.
-    p.add_argument('--batch_size', type=int, default=20, help='SGD batch size')
+    p.add_argument('--batch_size', type=int, default=10, help='SGD batch size')
     # TODO: This parameter applies for P & Q, however it can be overridden is some architecture
     p.add_argument('--in_channels', choices=[3, 6, 12], default=6,
                    help='Number of input channels')
@@ -72,7 +72,7 @@ def parser():
                    help='The loss class')  # TODO - generalize this
 
     # Computation
-    p.add_argument('--gpus', type=none_or_int, default=None, help='Use -1 to use all available. Use None to run on CPU')
+    p.add_argument('--gpus', type=none_or_int, default=-1, help='Use -1 to use all available. Use None to run on CPU')
     p.add_argument('--distributed_backend', type=str, default='dp', help='supports three options dp, ddp, ddp2')
     # TODO - ddp2,ddp Untested. Multiple GPUS - not tested
 

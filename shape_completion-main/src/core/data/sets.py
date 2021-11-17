@@ -206,18 +206,31 @@ class DFaustSequential(ParametricCompletionDataset):
     def __init__(self, data_dir_override, deformation, n_verts=6890):
         super().__init__(n_verts=6890, data_dir_override=data_dir_override, deformation=deformation, cls='synthetic',
                          suspected_corrupt=False)
-        self._full_dir = Path(r'~/mnt/Mano/data/DFaust/DFAUST_VERT_PICK')
+        self._full_dir = Path(r'/home/adminpassis123/gipfs/Mano/data/DFaust/DFAUST_VERT_PICK')
 
     def _datapoint_via_path_tup(self, path_tup):
         if path_tup[2] >= path_tup[-1]:
             # TODO: return zeros.
-            pass
+            gt_dict = {}
+            tp_hi = self._hit.random_path_from_partial_path([path_tup[0]])[:-1]  # Shorten hi by 1
+            # tp_hi = gt_dict['gt_hi'][:-1]
+            tp_dict = self._full_dict_by_hi(tp_hi)
+            gt_dict['gt_f'] = tp_dict['gt_f']
+            gt_dict['tp_hi'] = tp_dict['gt_hi']
+            gt_dict['tp'] = tp_dict['gt']
+            gt_dict['tp_f'] = tp_dict['gt_f']
+            gt_dict['gt_hi'] = path_tup
+            gt_dict['gt'] = np.zeros((6890, 3), dtype='float32')
+            gt_dict['gt_mask'] = self._mask_by_hi(tp_hi + (path_tup[3],))
+            gt_dict['gt_real_sample'] = False
+            return gt_dict
         gt_dict = self._full_dict_by_hi(path_tup)
         tp_hi = self._hit.random_path_from_partial_path([gt_dict['gt_hi'][0]])[:-1]  # Shorten hi by 1
         # tp_hi = gt_dict['gt_hi'][:-1]
         tp_dict = self._full_dict_by_hi(tp_hi)
         gt_dict['tp'], gt_dict['tp_hi'], gt_dict['tp_f'] = tp_dict['gt'], tp_dict['gt_hi'], tp_dict['gt_f']
         gt_dict['gt_mask'] = self._mask_by_hi(path_tup)
+        gt_dict['gt_real_sample'] = True
 
         return gt_dict
 
@@ -293,8 +306,6 @@ class DFaustSequential(ParametricCompletionDataset):
                 'is_dynamic': is_dynamic
             }
             ids = list(range(eff_set_size))
-            n_parts = len((1,))
-            ids = split_frac(ids, (1,))
             ldr = self._loader(method=method, transforms=transforms, n_channels=n_channels, ids=None,
                                batch_size=batch_size, device=device, set_size=eff_set_size, partial_hit=partial_hit,
                                truncation_size=truncation_size)
@@ -318,7 +329,7 @@ class DFaustSequential(ParametricCompletionDataset):
         if device == 'cpu-single':
             n_workers = 0
         else:
-            n_workers = determine_worker_num(len(ids), batch_size)
+            n_workers = determine_worker_num(10e7, batch_size)
         import itertools
 
         ids = partial_hit.get_path_union_by_depth(2)
@@ -334,8 +345,8 @@ class DFaustSequential(ParametricCompletionDataset):
         assert len(ids) > 0, "Found loader with no data samples inside"
         length = sum([dp[-1] for dp in ids])
 
-        data_sampler = TruncatedSequentialAnimationBatchSampler(ids, length=length, batch_size=batch_size,
-                                                                )
+        data_sampler = SequentialAnimationBatchSampler(ids, length=length, batch_size=batch_size,
+                                                       )
         # Compiler Transforms:
         transforms = self._transformation_finalizer_by_method(method, transforms, n_channels)
 
@@ -624,7 +635,7 @@ class DatasetMenu:
 # TODO: Move to correct location!
 # ----------------------------------------------------------------------------------------------------------------------
 # noinspection DuplicatedCode
-class TruncatedSequentialAnimationBatchSampler(Sampler):
+class SequentialAnimationBatchSampler(Sampler):
     def __init__(self, indices, batch_size=1, length=None):
         self.indices = indices
         if length is None:
@@ -638,7 +649,7 @@ class TruncatedSequentialAnimationBatchSampler(Sampler):
         for index in self.indices:
             while True:
                 current_batch_size = min(self.batch_size, index[-1] - index[2])
-                returned_indices = [index] * current_batch_size
+                returned_indices = [index] * self.batch_size
                 for i in range(len(returned_indices)):
                     returned_indices[i] = (
                         *returned_indices[i][:-3], returned_indices[i][-3] + i, *returned_indices[i][-2:])
@@ -653,7 +664,7 @@ class TruncatedSequentialAnimationBatchSampler(Sampler):
 
 
 class TruncatedSequentialBatchSampler(Sampler):
-    def __init__(self, indices, batch_size=1, truncation_size=1, length=None):
+    def __init__(self, indices, batch_size=1, truncation_size=650, length=None):
         self.indices = indices
         if length is None:
             length = len(self.indices)

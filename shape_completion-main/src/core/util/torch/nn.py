@@ -57,34 +57,34 @@ class PytorchNet(LightningModule):
 
     @staticmethod
     def identify_system():
-        pass
-        # from platform import python_version
-        # from util.external.cpuinfo import cpu
-        # from socket import gethostname
-        # name = gethostname()
-        # from cfg import PC_NAME_MAPPING
-        # name = PC_NAME_MAPPING.get(name,name)
-        # import psutil
-        # print(f'Computer ID: {name}')
-        # print(f'Python {python_version()} , Pytorch {torch.__version__}, CuDNN {torch.backends.cudnn.version()}')
-        # cpu_dict = cpu.info[0]
-        # mem = psutil.virtual_memory().total
-        # num_cores_str = f" :: {psutil.cpu_count() / psutil.cpu_count(logical=False)} Cores"
-        # mem_str = f" :: {convert_bytes(mem)} Memory"
-        #
-        # if 'ProcessorNameString' in cpu_dict:  # Windows
-        #     cpu_name = cpu_dict['ProcessorNameString'] + num_cores_str + mem_str
-        # elif 'model name' in cpu_dict:  # Linux
-        #     cpu_name = cpu_dict['model name'] + num_cores_str + mem_str
-        # else:
-        #     raise NotImplementedError
-        #
-        # print(f'CPU : {cpu_name}')
-        # gpu_count = torch.cuda.device_count()
-        # print(f'Found {gpu_count} GPU Devices:')
-        # for i in range(torch.cuda.device_count()):
-        #     p = torch.cuda.get_device_properties(i)
-        #     print(f'\tGPU {i}: {p.name} [{p.multi_processor_count} SMPs , {convert_bytes(p.total_memory)} Memory]')
+
+        from platform import python_version
+        from util.external.cpuinfo import cpu
+        from socket import gethostname
+        name = gethostname()
+        from cfg import PC_NAME_MAPPING
+        name = PC_NAME_MAPPING.get(name,name)
+        import psutil
+        print(f'Computer ID: {name}')
+        print(f'Python {python_version()} , Pytorch {torch.__version__}, CuDNN {torch.backends.cudnn.version()}')
+        cpu_dict = cpu.info[0]
+        mem = psutil.virtual_memory().total
+        num_cores_str = f" :: {psutil.cpu_count() / psutil.cpu_count(logical=False)} Cores"
+        mem_str = f" :: {convert_bytes(mem)} Memory"
+
+        if 'ProcessorNameString' in cpu_dict:  # Windows
+            cpu_name = cpu_dict['ProcessorNameString'] + num_cores_str + mem_str
+        elif 'model name' in cpu_dict:  # Linux
+            cpu_name = cpu_dict['model name'] + num_cores_str + mem_str
+        else:
+            raise NotImplementedError
+
+        print(f'CPU : {cpu_name}')
+        gpu_count = torch.cuda.device_count()
+        print(f'Found {gpu_count} GPU Devices:')
+        for i in range(torch.cuda.device_count()):
+            p = torch.cuda.get_device_properties(i)
+            print(f'\tGPU {i}: {p.name} [{p.multi_processor_count} SMPs , {convert_bytes(p.total_memory)} Memory]')
 
     def ongpu(self):
         # Due to the old_lightning model on_gpu variable

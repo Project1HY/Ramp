@@ -1034,7 +1034,7 @@ def completion_collate(batch, stop: bool = False):
         # A bit hacky - but works
         d = {}
         for k in elem:
-            for suffix in ['_hi', '_mask', '_mask1', '_mask2', '_f']:  # TODO
+            for suffix in ['_hi', '_mask', '_mask1', '_mask2', '_f',"_real_sample"]:  # TODO
                 if k.endswith(suffix):
                     stop = True
                     break
@@ -1059,7 +1059,7 @@ def completion_collate(batch, stop: bool = False):
 def _base_tester():
     from data.sets import DatasetMenu
     ds = DatasetMenu.order('DFaustProjSequential',data_dir_override=r"/home/adminpassis123/gipfs/Mano/data/DFaust/DFaust")
-    ldr = ds.loaders(n_channels=6, method='rand_f2p', batch_size=10, device='cpu-single')
+    ldr = ds.loaders(n_channels=6, method='rand_f2p', batch_size=10, device='cuda')
     # pbar = tqdm(total=len(ldr))
     i = 0
     for dp in tqdm(ldr):
