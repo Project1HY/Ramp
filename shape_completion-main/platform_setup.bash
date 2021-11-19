@@ -19,9 +19,9 @@
 # git config --global user.email "ido.imanuel@gmail.com"
 # git remote set-url origin https://github.com/iimanu/Deep-Shape.git
 
-eval "$(conda shell.bash hook)"
-conda update -y -n base -c defaults conda
-conda create -y -n ProjectHY python=3.8.11 
+# eval "$(conda shell.bash hook)"
+# conda update -y -n base -c defaults conda
+# conda create -y -n ProjectHY python=3.8.11 
 conda activate ProjectHY
 #---------------------------------------------------------------------------------------------#
 #                                     	Primary Dependencies
