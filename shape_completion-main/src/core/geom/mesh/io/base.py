@@ -85,7 +85,7 @@ def read_obj(fp):
 def read_off_verts(fp):
     v = []
     try:
-        with open(fp, "r") as fh:
+        with open(r"C:\Users\hadas\project_files\00000.OFF", "r") as fh:
             first = fh.readline().strip()
             if first != "OFF" and first != "COFF":
                 raise (Exception(f"Could not find OFF header for file: {fp}"))
@@ -261,7 +261,7 @@ def write_collada(fp, v, f, mesh_name="exported_mesh"):
 
 def read_npz_mask(fp):
     try:
-        return np.load(fp)["mask"]
+        return np.load(r"C:\Users\hadas\project_files\50002chicken_wings00000_0.npz")["mask"]
     except Exception as e:
         raise OSError(f"Could not read or open npz file {fp}") from e
 

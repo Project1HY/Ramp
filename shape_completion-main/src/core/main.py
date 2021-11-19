@@ -32,7 +32,7 @@ def parser():
 
     # Dataset Config:
     # NOTE: A well known ML rule: double the learning rate if you double the batch size.
-    p.add_argument('--batch_size', type=int, default=20, help='SGD batch size')
+    p.add_argument('--batch_size', type=int, default=4, help='SGD batch size')
     # TODO: This parameter applies for P & Q, however it can be overridden is some architecture
     p.add_argument('--in_channels', choices=[3, 6, 12], default=6,
                    help='Number of input channels')
@@ -72,7 +72,7 @@ def parser():
                    help='The loss class')  # TODO - generalize this
 
     # Computation
-    p.add_argument('--gpus', type=none_or_int, default=-1, help='Use -1 to use all available. Use None to run on CPU')
+    p.add_argument('--gpus', type=none_or_int, default=None, help='Use -1 to use all available. Use None to run on CPU')
     p.add_argument('--distributed_backend', type=str, default='dp', help='supports three options dp, ddp, ddp2')
     # TODO - ddp2,ddp Untested. Multiple GPUS - not tested
 
@@ -97,14 +97,19 @@ def parser():
 def train_main():
     banner('Network Init')
     nn = F2PEncoderDecoderBase(parser())
+    nn.hp.counts = (16,16,16)
     nn.identify_system()
 
     # Bring in data:
     ldrs = f2p_completion_loaders(nn.hp)
+    #skim_ldrs = ldrs [:5]
+    len_ldrs = len(ldrs)
+    print(len_ldrs)
     # [ [train_loader], [vald_loaders] , [test_loaders] ]
     #
 
     # Commence Training
+    #trainer = LightningTrainer(nn, skim_ldrs)
     trainer = LightningTrainer(nn, ldrs)
     trainer.train(debug_mode=False)
 
@@ -118,7 +123,9 @@ def test_main():
     # print(nn.hp)
     #ldrs = f2p_completion_loaders(nn.hp)
     nn.hp.counts = (1000000,1000000,1000000)
-    ldrs = new_loaders(nn.hp,subject_keep="50022",pose_keep="punching")
+    #ldrs = new_loaders(nn.hp,subject_keep="50022",pose_keep="punching")
+    ldrs = new_loaders(nn.hp,subject_keep="50020",pose_keep="one_leg_loose", frame_keep=[2, 8, 16])
+    print(len(ldrs))
     # banner('Testing')
     trainer = LightningTrainer(nn, ldrs)
     trainer.test()
@@ -135,3 +142,4 @@ def test_main():
 # ----------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
     train_main()
+    #test_main()

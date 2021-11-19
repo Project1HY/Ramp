@@ -654,7 +654,8 @@ class CompletionDataset(HitIndexedDataset, ABC):
         # Default Implementation
         # _index_dir
         # self._index_dir = "~/mnt/Mano/data/DFaust/DFaust/"
-        hit_fp = list([Path(r"/Users/yiftachedelstain/Development/Technion/Project/Ramp/shape_completion-main/DFaust_azimuthal_projections_hit.pkl")])
+        hit_fp = list([Path(r"C:\Users\hadas\project_files\DFaust_azimuthal_projections_hit.pkl")])
+        
         if len(hit_fp) != 1:
             raise AssertionError(f"Could not find hit file in for deformation {self._deformation.name()} "
                                  f"in index directory:\n{self._index_dir}")
@@ -763,7 +764,8 @@ class ParametricCompletionDataset(CompletionDataset, ABC):
     # This adds the assumption that each mesh has the same connectivity, and the same number of vertices
     def __init__(self, n_verts, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._f = pkl_load(r'/Users/yiftachedelstain/Development/Technion/Project/Ramp/shape_completion-main/face_template.pkl')
+        #self._f = pkl_load(r'/Users/yiftachedelstain/Development/Technion/Project/Ramp/shape_completion-main/face_template.pkl')
+        self._f = pkl_load(r"C:\Users\hadas\project_files\face_template.pkl")
         # self._f.flags.writeable = False  # TODO - Turned this off due to a PyTorch warning on tensor support
 
         self._n_v = n_verts

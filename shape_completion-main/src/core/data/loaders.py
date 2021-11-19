@@ -223,7 +223,7 @@ def _join_loader_sets(*args):
 # ----------------------------------------------------------------------------------------------------------------------
 #our new loader
 
-def new_loaders(hp, ds_name='DFaustProj', transforms: Union[List, Tuple] = tuple(), method='rand_f2p',subject_keep = None, pose_keep = None):
+def new_loaders(hp, ds_name='DFaustProj', transforms: Union[List, Tuple] = tuple(), method='rand_f2p',subject_keep = None, pose_keep = None, frame_keep = None):
     transforms = list(transforms)
     # transforms.append(L2BallNormalize())  # Always normalize to the L2 Ball
     transforms.append(Center())
@@ -238,6 +238,8 @@ def new_loaders(hp, ds_name='DFaustProj', transforms: Union[List, Tuple] = tuple
         ds._hit = ds._hit.keep_ids_by_depth([subject_keep], 1)
     if pose_keep is not None:
         ds._hit = ds._hit.keep_ids_by_depth([pose_keep], 2)
+    if frame_keep is not None:
+        ds._hit = ds._hit.keep_ids_by_depth(frame_keep, 3)
     # print(ds._hit)
     if ds.num_full_shapes() > LARGE_DATASET_THERSHOLD:
         train_dynamic_partition = True  # TODO - Move inside loaders - doesn't belong here.

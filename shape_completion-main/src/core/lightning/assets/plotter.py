@@ -5,6 +5,13 @@ from multiprocessing import Process, Manager
 from copy import deepcopy
 from abc import ABC
 import numpy as np
+#from plotter.vis.vista import *
+#from multi_plot import *
+#from animation import *
+#from multi_plot import *
+#from src.core.plotter import *
+from . import vista
+from lightning.assets.vista import *
 
 # ---------------------------------------------------------------------------------------------------------------------#
 #                                               Parallel Plot suite
@@ -182,17 +189,22 @@ class CompletionPlotter(ParallelPlotterBase):
 
                 # TODO - Add support for normals & P2P
                 # TODO - Check why in mesh method + tensor colors, colors are interpolated onto the faces.
-                p.subplot(subplt_row_id, 0)  # GT Reconstructed with colored mask
-                add_mesh(p, v=gtrb, f=self.f, n=gtr_vnb,
-                         clr=vertex_clr, label=f'{set_name} Reconstruction {i}', **self.kwargs)
-                p.subplot(subplt_row_id, 1)  # GT with colored mask
-                add_mesh(p, v=gt, f=self.f, n=gt_vnb,
-                         clr=vertex_clr, label=f'{set_name} GT {i}', **self.kwargs)
-                p.subplot(subplt_row_id, 2)  # TP with colored mask
-                add_mesh(p, v=tp, f=self.f, clr=vertex_clr, label=f'{set_name} TP {i}', **self.kwargs)
-                p.subplot(subplt_row_id, 3)  # GT Reconstructed + Part
-                add_mesh(p, v=gtrb, f=self.f, clr=vertex_clr, **self.kwargs)
+                # #p.subplot(subplt_row_id, 0)  # GT Reconstructed with colored mask
+                # add_mesh(p, v=gtrb, f=self.f, n=gtr_vnb,
+                #          clr=vertex_clr, label=f'{set_name} Reconstruction {i}', **self.kwargs)
+                # #p.subplot(subplt_row_id, 1)  # GT with colored mask
+                # add_mesh(p, v=gt, f=self.f, n=gt_vnb,
+                #          clr=vertex_clr, label=f'{set_name} GT {i}', **self.kwargs)
+                # p.subplot(subplt_row_id, 2)  # TP with colored mask
+                # add_mesh(p, v=tp, f=self.f, clr=vertex_clr, label=f'{set_name} TP {i}', **self.kwargs)
+                # p.subplot(subplt_row_id, 3)  # GT Reconstructed + Part
+                # add_mesh(p, v=gtrb, f=self.f, clr=vertex_clr, **self.kwargs)
                 # TODO - Remove hard coded 'r'. Do we want to enable part as mesh?
+
+                #_mesh_montage_test()
+                animate(gtrb, self.f)
+                
+
 
                 if 'gt_mask' in d: # TODO - Quick hack for F2F Support
                     add_mesh(p, v=gt[vertex_clr, :], f=None, clr='r', label=f'{set_name} Part + Recon {i}', **self.kwargs)
