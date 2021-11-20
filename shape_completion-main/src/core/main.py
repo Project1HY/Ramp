@@ -80,8 +80,8 @@ def parser():
     p.add_argument('--use_auto_tensorboard', type=bool, default=3,
                    help='Mode: 0 - Does nothing. 1 - Opens up only server. 2 - Opens up only chrome. 3- Opens up both '
                         'chrome and server')
-    p.add_argument('--plotter_class', type=none_or_str, choices=[None, 'CompletionPlotter', 'DenoisingPlotter'],
-                   default='CompletionPlotter',
+    p.add_argument('--plotter_class', type=none_or_str, choices=[None, 'CompletionPlotter', 'DenoisingPlotter','AnimationPlotter'],
+                   default='AnimationPlotter',
                    help='The plotter class or None for no plot')  # TODO - generalize this
 
     # Completion Report
@@ -98,7 +98,7 @@ def train_main():
     banner('Network Init')
     nn = F2PEncoderDecoderBase(parser())
     nn.hp.counts = (16,16,16)
-    nn.identify_system()
+    # nn.identify_system()
 
     # Bring in data:
     ldrs = f2p_completion_loaders(nn.hp)

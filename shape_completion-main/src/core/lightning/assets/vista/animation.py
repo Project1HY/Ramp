@@ -6,10 +6,10 @@ from lightning.assets.vista.multi_plot import plot_mesh_montage, add_mesh, plott
 
 from lightning.assets.vista.plot_util.container import stringify
 from lightning.assets.vista.plot_util.execution import busy_wait
-import pygeodesic.geodesic as geodesic
+# import pygeodesic.geodesic as geodesic
 from plyfile import PlyData, PlyElement
 import meshio
-import meshplex
+# import meshplex
 from plyfile import PlyData, PlyElement
 from tqdm import tqdm
 import os

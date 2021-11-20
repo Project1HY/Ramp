@@ -5,13 +5,14 @@ from multiprocessing import Process, Manager
 from copy import deepcopy
 from abc import ABC
 import numpy as np
-#from plotter.vis.vista import *
-#from multi_plot import *
-#from animation import *
-#from multi_plot import *
-#from src.core.plotter import *
+# from plotter.vis.vista import *
+# from multi_plot import *
+# from animation import *
+# from multi_plot import *
+# from src.core.plotter import *
 from . import vista
 from lightning.assets.vista import *
+
 
 # ---------------------------------------------------------------------------------------------------------------------#
 #                                               Parallel Plot suite
@@ -53,12 +54,16 @@ class ParallelPlotterBase(Process, ABC):
             self.try_update_data()
             self.plot_data()
 
+    def aggregate_data(self):
+        pass
+
     # Meant to be called by the consumer
     def try_update_data(self, final=False):
         current_epoch = self.sd['epoch']
         if current_epoch != self.last_plotted_epoch:
             self.last_plotted_epoch = current_epoch
             self.val_d = deepcopy(self.sd['data'])
+            self.aggregate_data()
         if final:
             self.plt_title = f'Final visualization before closing for Epoch {self.last_plotted_epoch}'
         else:
@@ -147,11 +152,25 @@ class DenoisingPlotter(ParallelPlotterBase):
         p.show()
 
 
-class CompletionPlotter(ParallelPlotterBase):
+class AnimationPlotter(ParallelPlotterBase):
+    def __init__(self, faces, n_verts):
+        super().__init__(faces, n_verts)
+        self.poses = {}
+
+    def aggregate_data(self):
+        for hi_list, completions in self.val_d:
+            for hi, index in zip(hi_list, range(len(hi_list))):
+                if hi[:2] not in self.poses:
+                    self.poses[hi[:2]] = []
+                self.poses[hi[:2]] += [np.expand_dims(completions[index], axis=0)]
+        for key in self.poses.keys():
+            self.poses[key] = np.concatenate(self.poses[key], axis=0)
+        print("nice")
+
     def prepare_plotter_dict(self, b, network_output):
         # TODO - Generalize this
         gtrb = network_output['completion_xyz']
-        #max_b_idx = self.VIS_N_MESH_SETS
+        # max_b_idx = self.VIS_N_MESH_SETS
         max_b_idx = gtrb.shape[0]
         dict = {'gt': b['gt'].detach().cpu().numpy()[:max_b_idx, :, :3],
                 'tp': b['tp'].detach().cpu().numpy()[:max_b_idx, :, :3],
@@ -161,7 +180,6 @@ class CompletionPlotter(ParallelPlotterBase):
 
         if 'gt_mask' in b:  # F2F Support - TODO
             dict['gt_mask'] = b['gt_mask'][:max_b_idx]
-
 
         if self.VIS_SHOW_NORMALS:
             dict['gtr_vnb'] = network_output['completion_vnb'].detach().cpu().numpy()[:max_b_idx, :, :]
@@ -174,8 +192,47 @@ class CompletionPlotter(ParallelPlotterBase):
         gtr_vnb = None
         gt_vnb = None
         p = pv.Plotter(shape=(2 * self.VIS_N_MESH_SETS, 4), title=self.plt_title)
-        #animate(d[], self.f)
-        #animate(self.val_d['gtrb'])
+        poses = list(self.poses.values())
+        titles = list([str(hi) for hi in self.poses.keys()])
+        multianimate(poses,titles=titles)
+        print("hey")
+        # animate(d[], self.f)
+        # animate(self.val_d['gtrb'])
+        # animate(self.val_d)
+        #
+
+
+class CompletionPlotter(ParallelPlotterBase):
+    def prepare_plotter_dict(self, b, network_output):
+        # TODO - Generalize this
+        gtrb = network_output['completion_xyz']
+        # max_b_idx = self.VIS_N_MESH_SETS
+        max_b_idx = gtrb.shape[0]
+        dict = {'gt': b['gt'].detach().cpu().numpy()[:max_b_idx, :, :3],
+                'tp': b['tp'].detach().cpu().numpy()[:max_b_idx, :, :3],
+                'gtrb': gtrb.detach().cpu().numpy()[:max_b_idx],
+                'gt_hi': b['gt_hi'][:max_b_idx],
+                'tp_hi': b['tp_hi'][:max_b_idx]}
+
+        if 'gt_mask' in b:  # F2F Support - TODO
+            dict['gt_mask'] = b['gt_mask'][:max_b_idx]
+
+        if self.VIS_SHOW_NORMALS:
+            dict['gtr_vnb'] = network_output['completion_vnb'].detach().cpu().numpy()[:max_b_idx, :, :]
+            dict['gt_vnb'] = b['gt'].detach().cpu().numpy()[:max_b_idx, :, 3:6]
+            # dict['gtrb_vnb_is_valid'] = network_output['completion_vnb'].detach().cpu().numpy()[:max_b_idx, :,:]
+        return dict
+
+    def collect_animation_scene(self):
+        print(self.val_d)
+
+    def plot_data(self):
+        # TODO - Generalize this
+        gtr_vnb = None
+        gt_vnb = None
+        p = pv.Plotter(shape=(2 * self.VIS_N_MESH_SETS, 4), title=self.plt_title)
+        # animate(d[], self.f)
+        # animate(self.val_d['gtrb'])
         animate(self.val_d)
         # for di, (d, set_name) in enumerate(zip([self.train_d, self.val_d], ['Train', 'Vald'])):
         #     for i in range(self.VIS_N_MESH_SETS):
@@ -272,7 +329,8 @@ class SkinningPlotter(ParallelPlotterBase):
                 # TODO - Add support for normals & P2P
                 # TODO - Check why in mesh method + tensor colors, colors are interpolated onto the faces.
                 p.subplot(subplt_row_id, 0)  # GT Reconstructed with colored mask
-                add_mesh(p, v=gtrb, f=self.f, n=gtr_vnb, clr=vertex_clr, label=f'{set_name} Reconstruction {i}', **self.kwargs)
+                add_mesh(p, v=gtrb, f=self.f, n=gtr_vnb, clr=vertex_clr, label=f'{set_name} Reconstruction {i}',
+                         **self.kwargs)
                 gtr_joints_location = self.get_joints_locations(gtr_world_joints)
                 add_skeleton(p=p, v=gtr_joints_location, edges=self.edges, transformations=gtr_world_joints, scale=0.1)
 
@@ -288,12 +346,12 @@ class SkinningPlotter(ParallelPlotterBase):
                 add_mesh(p, v=gtrb, f=self.f, clr=vertex_clr, **self.kwargs)
                 # TODO - Remove hard coded 'r'. Do we want to enable part as mesh?
 
-                if 'gt_mask' in d: # TODO - Quick hack for F2F Support
-                    add_mesh(p, v=gt[vertex_clr, :], f=None, clr='r', label=f'{set_name} Part + Recon {i}', **self.kwargs)
+                if 'gt_mask' in d:  # TODO - Quick hack for F2F Support
+                    add_mesh(p, v=gt[vertex_clr, :], f=None, clr='r', label=f'{set_name} Part + Recon {i}',
+                             **self.kwargs)
 
         # p.link_views()
         p.show()
-
 
     def get_joints_locations(self, joints_global_trans):
         return np.array([trans[0:3, 3] for trans in joints_global_trans])

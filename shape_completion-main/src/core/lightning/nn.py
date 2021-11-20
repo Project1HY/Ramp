@@ -83,6 +83,7 @@ class CompletionLightningModel(PytorchNet):
             'loss': train_loss,  # Must use 'loss' instead of 'train_loss' due to old_lightning framework
             'log': loss_dict
         }
+
     def on_validation_start(self):
         self.temp_data = []
 
@@ -90,18 +91,14 @@ class CompletionLightningModel(PytorchNet):
         pred = self.complete(b)
         if batch_idx == 0:
             self.temp_data = []
-        #if batch_idx == 0 and set_id == 0 and self.assets.plt is not None and self.assets.plt.cache_is_filled():
+        # if batch_idx == 0 and set_id == 0 and self.assets.plt is not None and self.assets.plt.cache_is_filled():
         if self.assets.plt is not None and self.assets.plt.cache_is_filled():
             # On first batch, of first dataset, only if plotter exists and only if training step has been activated
             # before (last case does not happen if we run in dev mode).
-            #new_data = (self.assets.plt.uncache(), self.assets.plt.prepare_plotter_dict(b, pred))
+            # new_data = (self.assets.plt.uncache(), self.assets.plt.prepare_plotter_dict(b, pred))
             new_data = self.assets.plt.prepare_plotter_dict(b, pred)
-            if len(self.temp_data)==0:
-                self.temp_data=new_data['gtrb']
-            else:
-                self.temp_data = np.concatenate((self.temp_data, new_data['gtrb']),axis=0)
-
-            #self.assets.plt.push(new_data=new_data, new_epoch=self.current_epoch)
+            self.temp_data += [(new_data['gt_hi'], new_data['gtrb'])]
+            # self.assets.plt.push(new_data=new_data, new_epoch=self.current_epoch)
 
         return self.loss.compute(b, pred)
 
