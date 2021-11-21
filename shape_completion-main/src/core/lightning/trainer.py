@@ -1,5 +1,5 @@
 from lightning.pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
-from lightning.pytorch_lightning.loggers import TestTubeLogger,WandbLogger
+from lightning.pytorch_lightning.loggers import TestTubeLogger, WandbLogger
 from lightning.pytorch_lightning import Trainer
 from lightning.assets.completion_saver import CompletionSaver
 from lightning.assets.emailer import TensorboardEmailer
@@ -11,6 +11,7 @@ from pathlib import Path
 import os
 import torch
 import logging as log
+
 
 #  This class adds additional functionality to the Lightning Trainer, wrapping it with a similar name
 class LightningTrainer:
@@ -74,7 +75,8 @@ class LightningTrainer:
         if self.hp.plotter_class is not None:
             plt_class = getattr(lightning.assets.plotter, self.hp.plotter_class)
             self.plt = plt_class(faces=self.data.faces(),
-                                 n_verts=self.data.num_verts())  # TODO - Cannot currently train on Scans due to this:
+                                 n_verts=self.data.num_verts(),
+                                 **vars(self.hp))  # TODO - Cannot currently train on Scans due to this:
 
     def _init_trainer(self, fast_dev_run):
 
@@ -84,11 +86,12 @@ class LightningTrainer:
             print(plt_class)
             print('hi')
             self.plt = plt_class(faces=self.data.faces(),
-                                 n_verts=self.data.num_verts())  # TODO - Cannot currently train on Scans due to this:
+                                 n_verts=self.data.num_verts(),
+                                 **vars(self.hp))  # TODO - Cannot currently train on Scans due to this:
         # Checkpointing and Logging:
         tb_log = TestTubeLogger(save_dir=self.hp.PRIMARY_RESULTS_DIR, description=f"{self.hp.exp_name} Experiment",
                                 name=self.hp.exp_name, version=self.hp.version)
-        wandb_log = WandbLogger(project="my-test-project", entity="temporal_shape_recon")                        
+        wandb_log = WandbLogger(project="my-test-project", entity="temporal_shape_recon")
 
         self.exp_dp = Path(os.path.dirname(tb_log.experiment.log_dir)).resolve()  # Extract experiment path
         checkpoint = ModelCheckpoint(filepath=self.exp_dp / 'checkpoints', save_top_k=1, verbose=True,

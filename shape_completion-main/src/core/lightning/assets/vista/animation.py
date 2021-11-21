@@ -55,7 +55,7 @@ def animate(vs, f=None, gif_name=None, titles=None, first_frame_index=0, pause=0
     if setup_func is not None:
         setup_func(p)
     # Plot first frame. Normals are not supported
-    print('Orient the view, then press "q" to start animation')
+    # print('Orient the view, then press "q" to start animation')
     if titles is not None:
         titles = stringify(titles)
         p.add_text(titles[first_frame_index], position='upper_edge', name='my_title')

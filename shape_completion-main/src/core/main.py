@@ -16,7 +16,8 @@ def parser():
     p = HyperOptArgumentParser(strategy='random_search')
 
     # Check-pointing
-    p.add_argument('--exp_name', type=str, default='volume=20_and_others_real_bigger_batch',  # TODO - Don't forget to change me!
+    p.add_argument('--exp_name', type=str, default='volume=20_and_others_real_bigger_batch',
+                   # TODO - Don't forget to change me!
                    help='The experiment name. Leave empty for default')
     p.add_argument('--version', type=none_or_int, default=2,
                    help='Weights will be saved at weight_dir=exp_name/version_{version}. '
@@ -28,7 +29,6 @@ def parser():
     p.add_argument('--save_completions', type=int, choices=[0, 1, 2, 3], default=2,
                    help='Use 0 for no save. Use 1 for vertex only save in obj file. Use 2 for a full mesh save (v&f). '
                         'Use 3 for gt,tp,gt_part,tp_part save as well.')
-
 
     # Dataset Config:
     # NOTE: A well known ML rule: double the learning rate if you double the batch size.
@@ -43,7 +43,7 @@ def parser():
     p.add_argument('--max_epochs', type=int, default=None,  # Must be over 1
                    help='Maximum epochs to train for. Use None for close to infinite epochs')
     p.add_argument('--lr', type=float, default=0.006, help='The learning step to use')
-    p.add_argument('--counts', nargs=3, type=none_or_int, default=(10000, 1000, 1000), # TODO - Change me as needed
+    p.add_argument('--counts', nargs=3, type=none_or_int, default=(10000, 1000, 1000),  # TODO - Change me as needed
                    help='The default train,validation and test counts. Recommended [8000-20000, 500-1000, 500-1000]. '
                         'Use None to take all examples in the partition - '
                         'for big datasets, this could blow up the epoch')
@@ -80,9 +80,13 @@ def parser():
     p.add_argument('--use_auto_tensorboard', type=bool, default=3,
                    help='Mode: 0 - Does nothing. 1 - Opens up only server. 2 - Opens up only chrome. 3- Opens up both '
                         'chrome and server')
-    p.add_argument('--plotter_class', type=none_or_str, choices=[None, 'CompletionPlotter', 'DenoisingPlotter','AnimationPlotter'],
+    p.add_argument('--plotter_class', type=none_or_str,
+                   choices=[None, 'CompletionPlotter', 'DenoisingPlotter', 'AnimationPlotter'],
                    default='AnimationPlotter',
                    help='The plotter class or None for no plot')  # TODO - generalize this
+    p.add_argument('--animation_count', type=int, choices=[1, 2, 4, 8, 16],
+                   default=4,
+                   help='The amount of animations you should draw on validation step')
 
     # Completion Report
     p.add_argument('--email_report', type=bool, default=False,
@@ -97,19 +101,19 @@ def parser():
 def train_main():
     banner('Network Init')
     nn = F2PEncoderDecoderBase(parser())
-    nn.hp.counts = (16,16,16)
+    nn.hp.counts = (16, 16, 16)
     # nn.identify_system()
 
     # Bring in data:
     ldrs = f2p_completion_loaders(nn.hp)
-    #skim_ldrs = ldrs [:5]
+    # skim_ldrs = ldrs [:5]
     len_ldrs = len(ldrs)
     print(len_ldrs)
     # [ [train_loader], [vald_loaders] , [test_loaders] ]
     #
 
     # Commence Training
-    #trainer = LightningTrainer(nn, skim_ldrs)
+    # trainer = LightningTrainer(nn, skim_ldrs)
     trainer = LightningTrainer(nn, ldrs)
     trainer.train(debug_mode=False)
 
@@ -121,15 +125,17 @@ def test_main():
     banner('Network Init')
     nn = F2PEncoderDecoderBase(parser())
     # print(nn.hp)
-    #ldrs = f2p_completion_loaders(nn.hp)
-    nn.hp.counts = (1000000,1000000,1000000)
-    #ldrs = new_loaders(nn.hp,subject_keep="50022",pose_keep="punching")
-    ldrs = new_loaders(nn.hp,subject_keep="50020",pose_keep="one_leg_loose", frame_keep=[2, 8, 16])
+    # ldrs = f2p_completion_loaders(nn.hp)
+    nn.hp.counts = (1000000, 1000000, 1000000)
+    # ldrs = new_loaders(nn.hp,subject_keep="50022",pose_keep="punching")
+    ldrs = new_loaders(nn.hp, subject_keep="50020", pose_keep="one_leg_loose", frame_keep=[2, 8, 16])
     print(len(ldrs))
     # banner('Testing')
     trainer = LightningTrainer(nn, ldrs)
     trainer.test()
     trainer.finalize()
+
+
 #
 # def run_completion():
 #     nn = F2PEncoderDecoderBase(parser())
@@ -142,4 +148,4 @@ def test_main():
 # ----------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
     train_main()
-    #test_main()
+    # test_main()

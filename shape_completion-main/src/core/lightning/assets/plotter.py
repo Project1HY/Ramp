@@ -153,9 +153,10 @@ class DenoisingPlotter(ParallelPlotterBase):
 
 
 class AnimationPlotter(ParallelPlotterBase):
-    def __init__(self, faces, n_verts):
+    def __init__(self, faces, n_verts,animation_count=4,**kwargs):
         super().__init__(faces, n_verts)
         self.poses = {}
+        self.animation_count = animation_count
 
     def aggregate_data(self):
         for hi_list, completions in self.val_d:
@@ -192,8 +193,8 @@ class AnimationPlotter(ParallelPlotterBase):
         gtr_vnb = None
         gt_vnb = None
         p = pv.Plotter(shape=(2 * self.VIS_N_MESH_SETS, 4), title=self.plt_title)
-        poses = list(self.poses.values())
-        titles = list([str(hi) for hi in self.poses.keys()])
+        poses = list(self.poses.values())[:self.animation_count]
+        titles = list([str(hi) for hi in self.poses.keys()])[:self.animation_count]
         multianimate(poses,titles=titles)
         print("hey")
         # animate(d[], self.f)
