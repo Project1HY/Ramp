@@ -39,6 +39,18 @@ def torch_vf_adjacency(faces, n_faces, n_verts):
 # ---------------------------------------------------------------------------------------------------------------------#
 #                                               Torch Batch Computes
 # ---------------------------------------------------------------------------------------------------------------------#
+def vertex_velocity(v_comp_t, v_comp_t_n,v_ground_t,v_ground_t_n):
+    """
+    Define a vertex velocity metric
+    :param v_comp_t: [b, nv, 3] tensor that holds the vertices locations of the completion at a certain time
+    :param v_comp_t_n: [b, nv, 3] tensor that holds the vertices locations of the completion at a consecutive time
+    :param v_ground_t: [b, nv, 3] tensor that holds the vertices locations of the ground truth at a certain time
+    :param v_ground_t_n: [b, nv, 3] tensor that holds the vertices locations of the ground truth at a consecutive time
+    """
+    velocity_comp = v_comp_t_n-v_comp_t
+    velocity_ground = v_ground_t_n-v_ground_t
+    diff = torch.norm(velocity_ground-velocity_comp)
+    return diff
 
 def batch_surface_area(vb, fb):
     """
@@ -64,8 +76,7 @@ def batch_surface_volume(vb, fb):
     """
     idx = torch.arange(vb.shape[0])
     tris = vb[:, fb, :][idx, 0, :, :]
-    volume = (tris[:, :, 0, :] * torch.cross(tris[:, :, 1, :], tris[:, :, 2, :], dim=-1)) \
-                 .sum(dim=1).sum(dim=1).unsqueeze(dim=1) / 6.0
+    volume = (tris[:, :, 0, :] * torch.cross(tris[:, :, 1, :], tris[:, :, 2, :], dim=-1)).sum(dim=-1) / 6.0
     return volume
 
 

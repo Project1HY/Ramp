@@ -2,7 +2,7 @@ from lightning.nn import CompletionLightningModel
 from test_tube import HyperOptArgumentParser
 import torch
 from architecture.encoders import PointNetShapeEncoder, DgcnnShapeEncoder
-from architecture.decoders import BasicShapeDecoder
+from architecture.decoders import BasicShapeDecoder, LSTMDecoder
 from architecture.base import Template, Regressor
 
 
@@ -26,7 +26,7 @@ class F2PEncoderDecoderBase(CompletionLightningModel):
     @staticmethod
     def add_model_specific_args(parent_parser):
         p = HyperOptArgumentParser(parents=parent_parser, add_help=False, conflict_handler='resolve')
-        p.add_argument('--code_size', default=512, type=int)
+        p.add_argument('--code_size', default=128, type=int)
         p.add_argument('--out_channels', default=3, type=int)
         p.add_argument('--decoder_convl', default=5, type=int)
         if not parent_parser:  # Name clash with parent
@@ -52,6 +52,28 @@ class F2PEncoderDecoderBase(CompletionLightningModel):
         y = self.decoder(y)
         return {'completion_xyz': y}
 
+class F2PEncoderDecoderTemporal(F2PEncoderDecoderBase):
+    def _build_model(self):
+        self.encoder_full = PointNetShapeEncoder(in_channels=self.hp.in_channels, code_size=self.hp.code_size)
+        self.encoder_part = self.encoder_full
+        self.decoder = LSTMDecoder(code_size=self.hp.in_channels + 2 * self.hp.code_size,
+                                         out_channels=self.hp.out_channels, hidden_size = self.hp.decoder_hidden_size,
+                                   dropout = self.hp.decoder_dropout,bidirectional= self.hp.decoder_bidirectional,
+                                   layer_count = self.hp.decoder_layer_count,n_verts = 6890)
+
+    @staticmethod
+    def add_model_specific_args(parent_parser):
+        p = HyperOptArgumentParser(parents=parent_parser, add_help=False, conflict_handler='resolve')
+        p.add_argument('--code_size', default=128, type=int)
+        p.add_argument('--out_channels', default=3, type=int)
+        p.add_argument('--decoder_hidden_size', default=1024, type=int)
+        p.add_argument('--decoder_bidirectional', default=True, type=bool)
+        p.add_argument('--decoder_dropout', default=0.5, type=int)
+        p.add_argument('--decoder_layer_count', default=1, type=int)
+
+        if not parent_parser:  # Name clash with parent
+            p.add_argument('--in_channels', default=3, type=int)
+        return p
 
 # ----------------------------------------------------------------------------------------------------------------------
 #                                                      Extensions

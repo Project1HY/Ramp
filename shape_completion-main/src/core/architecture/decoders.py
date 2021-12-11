@@ -3,6 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from architecture.base import BaseDecoder
 from math import pi as PI
+
+
 # import torchgeometry as tgm
 
 
@@ -41,6 +43,30 @@ class BasicShapeDecoder(BaseDecoder):
         out = out.transpose(2, 1)
         return out
 
+
+class LSTMDecoder(BaseDecoder):
+    def __init__(self, code_size, out_channels, hidden_size, dropout, bidirectional, layer_count, n_verts):
+        super().__init__(code_size=code_size, out_channels=out_channels)
+        proj = 3 * n_verts
+        self.n_verts = n_verts
+        self.lstm = nn.LSTM(input_size=self.code_size*n_verts, hidden_size=hidden_size, num_layers=layer_count,
+                            bidirectional=bidirectional, dropout=dropout)
+        D = 2 if bidirectional else 1
+        self.reshaping_layer = nn.Linear(hidden_size*D,proj,bias=False)
+
+    # noinspection PyUnresolvedReferences
+    def forward(self, x):
+        """
+        :param x:  Point code for each point: [b x nv x pnt_code_size] pnt_code_size == in_channels + 2*shape_code
+        :return: predicted coordinates for each point, after the deformation [B x nv x 3]
+        """
+        x = x.reshape(x.shape[0], 1, x.shape[1] * x.shape[2])
+        out, _ = self.lstm(x)
+        out = self.reshaping_layer(out.squeeze(1))
+        out = out.reshape(out.shape[0], self.n_verts, 3)
+
+        return out
+        # [b x  in_channels,  nv] ->  [b x 1 x in_channels * nv] -> lstm.... ->
 
 # ----------------------------------------------------------------------------------------------------------------------
 #                                                       Skinning Decoders

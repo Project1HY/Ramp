@@ -186,7 +186,7 @@ class DFaust(ParametricCompletionDataset):
 
 
 class DFaust(ParametricCompletionDataset):
-    def __init__(self, deformation, data_dir_override=r"/home/adminpassis123/gipfs/Mano/data/DFaust/DFaust/"):
+    def __init__(self, deformation, data_dir_override=r"R:/Mano/data/DFaust/DFaust/"):
         super().__init__(n_verts=6890, data_dir_override=data_dir_override, deformation=deformation, cls='synthetic',
                          suspected_corrupt=False)
 
@@ -206,7 +206,7 @@ class DFaustSequential(ParametricCompletionDataset):
     def __init__(self, data_dir_override, deformation, n_verts=6890):
         super().__init__(n_verts=6890, data_dir_override=data_dir_override, deformation=deformation, cls='synthetic',
                          suspected_corrupt=False)
-        self._full_dir = Path(r'/home/adminpassis123/gipfs/Mano/data/DFaust/DFAUST_VERT_PICK')
+        self._full_dir = Path(r'R:/Mano/data/DFaust/DFAUST_VERT_PICK')
 
     def _datapoint_via_path_tup(self, path_tup):
         if path_tup[2] >= path_tup[-1]:
@@ -594,7 +594,7 @@ class DatasetMenu:
     def order(cls, dataset_name, data_dir_override=None):
         if dataset_name in cls._IMPLEMENTED:
             tup = cls._IMPLEMENTED[dataset_name]
-            return tup[0](data_dir_override=r"/home/adminpassis123/gipfs/Mano/data/DFaust/DFaust/", deformation=tup[1])
+            return tup[0](data_dir_override=r"R:/Mano/data/DFaust/DFaust/", deformation=tup[1])
         else:
             raise ValueError(f'Could not find dataset {dataset_name} - check spelling')
 

@@ -1058,7 +1058,7 @@ def completion_collate(batch, stop: bool = False):
 
 def _base_tester():
     from data.sets import DatasetMenu
-    ds = DatasetMenu.order('DFaustProjSequential',data_dir_override=r"/home/adminpassis123/gipfs/Mano/data/DFaust/DFaust")
+    ds = DatasetMenu.order('DFaustProjSequential',data_dir_override=r"R:/Mano/data/DFaust/DFaust")
     ldr = ds.loaders(n_channels=6, method='rand_f2p', batch_size=10, device='cuda')
     # pbar = tqdm(total=len(ldr))
     i = 0

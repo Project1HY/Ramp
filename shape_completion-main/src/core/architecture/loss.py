@@ -198,7 +198,8 @@ class ShapeDiffLoss:
                     f_volume_1 = batch_surface_volume(shape_1[:, :, 0:3], self.torch_f.unsqueeze(0))
 
                     f_volume_2 = batch_surface_volume(shape_2, self.torch_f.unsqueeze(0))
-                    loss_volumes = self._l2_loss(f_volume_1, f_volume_2, lamb=lamb, vertex_mask=w)
+                    loss_volumes = lamb * torch.linalg.norm(f_volume_1-f_volume_2)
+                    # loss_volumes = self._l2_loss(f_volume_1, f_volume_2, lamb=lamb, vertex_mask=w)
                     loss_dict['Volumes'] = loss_volumes
                     loss += loss_volumes
                 # TODO: implement chamfer distance loss
