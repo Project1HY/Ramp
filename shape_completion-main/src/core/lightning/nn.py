@@ -7,7 +7,7 @@ from util.torch.nn import PytorchNet
 from util.func import all_variables_by_module_name
 from copy import deepcopy
 import sys
-
+import wandb
 
 # ----------------------------------------------------------------------------------------------------------------------
 #
@@ -84,10 +84,13 @@ class CompletionLightningModel(PytorchNet):
 
     def validation_step(self, b, batch_idx, set_id=0):
         pred = self.complete(b)
-
+        batch_validation_mesh = pred['completion_xyz']
         if batch_idx == 0 and set_id == 0 and self.assets.plt is not None and self.assets.plt.cache_is_filled():
             # On first batch, of first dataset, only if plotter exists and only if training step has been activated
             # before (last case does not happen if we run in dev mode).
+            batch_validation_mesh = pred['completion_xyz'].cpu().detach().numpy()[-1]
+            self.log({"point_cloud": wandb.Object3D(batch_validation_mesh)})
+
             new_data = (self.assets.plt.uncache(), self.assets.plt.prepare_plotter_dict(b, pred))
             self.assets.plt.push(new_data=new_data, new_epoch=self.current_epoch)
 
