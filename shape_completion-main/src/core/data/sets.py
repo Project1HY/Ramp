@@ -5,6 +5,7 @@ from geom.mesh.op.cpu.remesh import clean_mesh
 import os
 from torch.utils.data.sampler import Sampler
 import random
+from util.torch.data import SubsetChoiceSampler
 
 try:
     # This snippet is needed to solve the unpickling error. See shorturl.at/jktw2
@@ -342,7 +343,10 @@ class DFaustSequential(ParametricCompletionDataset):
             set_size = len(ids)
         assert len(ids) > 0, "Found loader with no data samples inside"
         length = sum([dp[-1] for dp in ids])
-        data_sampler = SequentialAnimationBatchSampler(ids, batch_size=batch_size)
+        sampler_length = min(set_size, len(ids))  # Allows for dynamic partitions
+
+        data_subsampler = SubsetChoiceSampler(ids, set_size)
+        data_sampler = SequentialAnimationBatchSampler(data_subsampler,ids, batch_size=batch_size)
         # Compiler Transforms:
         transforms = self._transformation_finalizer_by_method(method, transforms, n_channels)
 
@@ -632,19 +636,19 @@ class DatasetMenu:
 # ----------------------------------------------------------------------------------------------------------------------
 # noinspection DuplicatedCode
 class SequentialAnimationBatchSampler(Sampler):
-    def __init__(self, indices, batch_size=1, length=None):
+    def __init__(self,subset_sampler, indices, batch_size=1, length=None):
         self.indices = indices
         if length is None:
-            length = sum([dp[-1] for dp in indices])
+            length = len(subset_sampler)
         self.total_length = length
         self.length = length // batch_size + 1
         self.batch_size = batch_size
         self.i = 0
-
+        self.subset_sampler = subset_sampler
     def __iter__(self):
         # Inefficient, without replacement:
         random.shuffle(self.indices)
-        for index in self.indices:
+        for index in self.subset_sampler:
             while True:
                 current_batch_size = min(self.batch_size, index[-1] - index[2])
                 returned_indices = [index] * self.batch_size

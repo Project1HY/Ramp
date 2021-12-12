@@ -45,14 +45,22 @@ class BasicShapeDecoder(BaseDecoder):
 
 
 class LSTMDecoder(BaseDecoder):
-    def __init__(self, code_size, out_channels, hidden_size, dropout, bidirectional, layer_count, n_verts):
+    def __init__(self, code_size, out_channels, layer_count, bidirectional, dropout, n_verts, hidden_size):
         super().__init__(code_size=code_size, out_channels=out_channels)
-        proj = 3 * n_verts
         self.n_verts = n_verts
-        self.lstm = nn.LSTM(input_size=self.code_size*n_verts, hidden_size=hidden_size, num_layers=layer_count,
-                            bidirectional=bidirectional, dropout=dropout)
+        self.convolutions = nn.Sequential(*[
+            nn.Conv1d(self.code_size, self.code_size // 16, 1),
+            nn.BatchNorm1d(self.code_size // 16),
+            nn.ReLU(),
+            nn.Conv1d(self.code_size // 16, self.code_size // 256, 1),
+            nn.BatchNorm1d(self.code_size // 256),
+            nn.ReLU()
+        ])
+
+        self.lstm = nn.LSTM(input_size=n_verts * (self.code_size // 256), hidden_size=hidden_size, dropout=dropout,
+                            bidirectional=bidirectional, num_layers=layer_count)
         D = 2 if bidirectional else 1
-        self.reshaping_layer = nn.Linear(hidden_size*D,proj,bias=False)
+        self.reshape_matrix = nn.Linear(hidden_size * D, n_verts * 3)
 
     # noinspection PyUnresolvedReferences
     def forward(self, x):
@@ -60,13 +68,12 @@ class LSTMDecoder(BaseDecoder):
         :param x:  Point code for each point: [b x nv x pnt_code_size] pnt_code_size == in_channels + 2*shape_code
         :return: predicted coordinates for each point, after the deformation [B x nv x 3]
         """
+        x = x.transpose(2, 1).contiguous()  # [b x nv x in_channels]
+        x = self.convolutions(x)
         x = x.reshape(x.shape[0], 1, x.shape[1] * x.shape[2])
         out, _ = self.lstm(x)
-        out = self.reshaping_layer(out.squeeze(1))
-        out = out.reshape(out.shape[0], self.n_verts, 3)
-
-        return out
-        # [b x  in_channels,  nv] ->  [b x 1 x in_channels * nv] -> lstm.... ->
+        out = out.squeeze(1)
+        return self.reshape_matrix(out).reshape(x.shape[0], self.n_verts, 3)
 
 # ----------------------------------------------------------------------------------------------------------------------
 #                                                       Skinning Decoders

@@ -56,6 +56,8 @@ class F2PEncoderDecoderTemporal(F2PEncoderDecoderBase):
     def _build_model(self):
         self.encoder_full = PointNetShapeEncoder(in_channels=self.hp.in_channels, code_size=self.hp.code_size)
         self.encoder_part = self.encoder_full
+        # self.decoder = BasicShapeDecoder(code_size=self.hp.in_channels + 2 * self.hp.code_size,
+        #                                  out_channels=self.hp.out_channels, num_convl=self.hp.decoder_convl)
         self.decoder = LSTMDecoder(code_size=self.hp.in_channels + 2 * self.hp.code_size,
                                          out_channels=self.hp.out_channels, hidden_size = self.hp.decoder_hidden_size,
                                    dropout = self.hp.decoder_dropout,bidirectional= self.hp.decoder_bidirectional,
@@ -70,6 +72,7 @@ class F2PEncoderDecoderTemporal(F2PEncoderDecoderBase):
         p.add_argument('--decoder_bidirectional', default=True, type=bool)
         p.add_argument('--decoder_dropout', default=0.5, type=int)
         p.add_argument('--decoder_layer_count', default=1, type=int)
+        p.add_argument('--decoder_convl', default=5, type=int)
 
         if not parent_parser:  # Name clash with parent
             p.add_argument('--in_channels', default=3, type=int)

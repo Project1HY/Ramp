@@ -35,6 +35,7 @@ pip install tensorboard
 pip install pytorch-lightning
 pip install test-tube
 pip install wandb
+wandb login 19e347e092a58ca11a380ad43bd1fd5103f4d14a
 # Primary 3D Geometry Modules:  
 pip install trimesh
 pip install scikit_learn

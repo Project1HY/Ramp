@@ -18,7 +18,7 @@ def parser():
     # Check-pointing
     p.add_argument('--exp_name', type=str, default='LSTM_test_2',  # TODO - Don't forget to change me!
                    help='The experiment name. Leave empty for default')
-    p.add_argument('--version', type=none_or_int, default=2,
+    p.add_argument('--version', type=none_or_int, default=3,
                    help='Weights will be saved at weight_dir=exp_name/version_{version}. '
                         'Use None to automatically choose an unused version')
     p.add_argument('--resume_cfg', nargs=2, type=bool, default=(False, True),
@@ -32,7 +32,7 @@ def parser():
 
     # Dataset Config:
     # NOTE: A well known ML rule: double the learning rate if you double the batch size.
-    p.add_argument('--batch_size', type=int, default=2, help='SGD batch size')
+    p.add_argument('--batch_size', type=int, default=10, help='SGD batch size')
     # TODO: This parameter applies for P & Q, however it can be overridden is some architecture
     p.add_argument('--in_channels', choices=[3, 6, 12], default=6,
                    help='Number of input channels')
