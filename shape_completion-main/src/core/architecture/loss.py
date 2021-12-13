@@ -205,7 +205,7 @@ class ShapeDiffLoss:
                     loss_dict['Volumes'] = loss_volumes
                     loss += loss_volumes
                 elif i == 7:
-                    loss_velocity = lamb *vertex_velocity(shape_1[:, :, 0:3], shape_2)
+                    loss_velocity = lamb * vertex_velocity(shape_1[:, :, 0:3], shape_2)
                     loss_dict['Velocity'] = loss_velocity
                     loss += loss_velocity
                 # TODO: implement chamfer distance loss
