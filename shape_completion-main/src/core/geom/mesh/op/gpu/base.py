@@ -39,7 +39,7 @@ def torch_vf_adjacency(faces, n_faces, n_verts):
 # ---------------------------------------------------------------------------------------------------------------------#
 #                                               Torch Batch Computes
 # ---------------------------------------------------------------------------------------------------------------------#
-def vertex_velocity(v_comp_t, v_comp_t_n,v_ground_t,v_ground_t_n):
+def vertex_velocity(v_comp_t, v_ground_t):
     """
     Define a vertex velocity metric
     :param v_comp_t: [b, nv, 3] tensor that holds the vertices locations of the completion at a certain time
@@ -47,10 +47,14 @@ def vertex_velocity(v_comp_t, v_comp_t_n,v_ground_t,v_ground_t_n):
     :param v_ground_t: [b, nv, 3] tensor that holds the vertices locations of the ground truth at a certain time
     :param v_ground_t_n: [b, nv, 3] tensor that holds the vertices locations of the ground truth at a consecutive time
     """
-    velocity_comp = v_comp_t_n-v_comp_t
-    velocity_ground = v_ground_t_n-v_ground_t
-    diff = torch.norm(velocity_ground-velocity_comp)
+    shifted_v_comp = torch.cat((torch.zeros(1, *v_comp_t.shape[1:]), v_comp_t))[:-1, :, :]
+    shifted_v_ground = torch.cat((torch.zeros(1, *v_ground_t.shape[1:]), v_comp_t))[:-1, :, :]
+
+    velocity_comp = v_comp_t - shifted_v_comp
+    velocity_ground = v_ground_t - shifted_v_ground
+    diff = torch.norm(velocity_ground - velocity_comp)
     return diff
+
 
 def batch_surface_area(vb, fb):
     """
@@ -60,7 +64,7 @@ def batch_surface_area(vb, fb):
     :return: A tensor of shape [b, 1] with the surface area of each mesh
     """
     idx = torch.arange(vb.shape[0])
-    tris = vb[:, fb, :][idx,idx,:,:]
+    tris = vb[:, fb, :][idx, idx, :, :]
     a = tris[:, :, 1, :] - tris[:, :, 0, :]
     b = tris[:, :, 2, :] - tris[:, :, 0, :]
     areas = torch.sum(torch.norm(torch.cross(a, b, dim=2), dim=2) / 2.0, dim=1)

@@ -1,5 +1,6 @@
 import torch
-from geom.mesh.op.gpu.base import batch_vnrmls, batch_fnrmls_fareas, batch_moments, batch_surface_volume
+from geom.mesh.op.gpu.base import batch_vnrmls, batch_fnrmls_fareas, batch_moments, batch_surface_volume, \
+    vertex_velocity
 from geom.mesh.op.gpu.dist import batch_l2_pdist
 from util.strings import warn
 
@@ -26,7 +27,8 @@ class BasicLoss:
             face_override = True
         else:
             face_override = False
-        loss_dict_comp = self.shape_diff.compute(shape_1=completion_gt, shape_2=completion_rec, w=1,face_override=face_override)
+        loss_dict_comp = self.shape_diff.compute(shape_1=completion_gt, shape_2=completion_rec, w=1,
+                                                 face_override=face_override)
         # TODO calculate mask: w, w.r.t to mask penalty and distnat vertices (only for completion)
         loss_dict_comp = {f'{k}_comp': v for k, v in loss_dict_comp.items()}
 
@@ -99,7 +101,7 @@ class ShapeDiffLoss:
         self.def_prec = getattr(torch, hp.UNIVERSAL_PRECISION)
 
         # Handle Faces:
-        if f is not None and (self.lambdas[1] > 0 or self.lambdas[4] > 0 or self.lambdas[5] > 0  or self.lambdas[6]>0):
+        if f is not None and (self.lambdas[1] > 0 or self.lambdas[4] > 0 or self.lambdas[5] > 0 or self.lambdas[6] > 0):
             self.torch_f = torch.from_numpy(f).long().to(device=self.dev, non_blocking=self.non_blocking)
 
         # Sanity Check - Input Channels:
@@ -135,7 +137,7 @@ class ShapeDiffLoss:
         if [p for p in self.dist_v_penalties if p > 1]:  # if using_distant_vertex
             self.dist_v_ones = torch.ones((1, 1, 1), device=self.dev, dtype=self.def_prec)
 
-    def compute(self, shape_1, shape_2, w,face_override=False):
+    def compute(self, shape_1, shape_2, w, face_override=False):
         """
         :param shape_1: first batch of shapes [b x nv x d] - for which all fields are known
         :param shape_2: second batch shapes [b x nv x 3] - for which only xyz fields are known
@@ -198,10 +200,14 @@ class ShapeDiffLoss:
                     f_volume_1 = batch_surface_volume(shape_1[:, :, 0:3], self.torch_f.unsqueeze(0))
 
                     f_volume_2 = batch_surface_volume(shape_2, self.torch_f.unsqueeze(0))
-                    loss_volumes = lamb * torch.linalg.norm(f_volume_1-f_volume_2)
+                    loss_volumes = lamb * torch.linalg.norm(f_volume_1 - f_volume_2)
                     # loss_volumes = self._l2_loss(f_volume_1, f_volume_2, lamb=lamb, vertex_mask=w)
                     loss_dict['Volumes'] = loss_volumes
                     loss += loss_volumes
+                elif i == 7:
+                    loss_velocity = lamb *vertex_velocity(shape_1[:, :, 0:3], shape_2)
+                    loss_dict['Velocity'] = loss_velocity
+                    loss += loss_velocity
                 # TODO: implement chamfer distance loss
                 else:
                     raise AssertionError
@@ -220,6 +226,7 @@ class ShapeDiffLoss:
         for i in range(b):
             w[i, mask_b[i], :] = 1
         return w.to(device=self.dev, non_blocking=self.non_blocking)  # Transfer after looping
+
     def _mask_penalty_weight(self, mask_b, nv, p):
         """ TODO - This function was never checked
         :param mask_b: A list of mask indices as numpy arrays
