@@ -16,7 +16,7 @@ def parser():
     p = HyperOptArgumentParser(strategy='random_search')
 
     # Check-pointing
-    p.add_argument('--exp_name', type=str, default='LSTM_test_2',  # TODO - Don't forget to change me!
+    p.add_argument('--exp_name', type=str, default='LSTM_num_layers=2',  # TODO - Don't forget to change me!
                    help='The experiment name. Leave empty for default')
     p.add_argument('--version', type=none_or_int, default=3,
                    help='Weights will be saved at weight_dir=exp_name/version_{version}. '

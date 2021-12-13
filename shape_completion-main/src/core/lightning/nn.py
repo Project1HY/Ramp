@@ -89,7 +89,7 @@ class CompletionLightningModel(PytorchNet):
             # On first batch, of first dataset, only if plotter exists and only if training step has been activated
             # before (last case does not happen if we run in dev mode).
             batch_validation_mesh = pred['completion_xyz'].cpu().detach().numpy()[-1]
-            self.log({"point_cloud": wandb.Object3D(batch_validation_mesh)})
+            wandb.log({"point_cloud": wandb.Object3D(batch_validation_mesh)})
 
             new_data = (self.assets.plt.uncache(), self.assets.plt.prepare_plotter_dict(b, pred))
             self.assets.plt.push(new_data=new_data, new_epoch=self.current_epoch)

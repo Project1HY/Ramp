@@ -68,10 +68,10 @@ class F2PEncoderDecoderTemporal(F2PEncoderDecoderBase):
         p = HyperOptArgumentParser(parents=parent_parser, add_help=False, conflict_handler='resolve')
         p.add_argument('--code_size', default=128, type=int)
         p.add_argument('--out_channels', default=3, type=int)
-        p.add_argument('--decoder_hidden_size', default=1024, type=int)
+        p.add_argument('--decoder_hidden_size', default=2048, type=int)
         p.add_argument('--decoder_bidirectional', default=True, type=bool)
         p.add_argument('--decoder_dropout', default=0.5, type=int)
-        p.add_argument('--decoder_layer_count', default=1, type=int)
+        p.add_argument('--decoder_layer_count', default=2, type=int)
         p.add_argument('--decoder_convl', default=5, type=int)
 
         if not parent_parser:  # Name clash with parent
