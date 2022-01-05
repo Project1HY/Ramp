@@ -72,7 +72,8 @@ def parser():
                         'increased weight on distant vertices. Use val <= 1 to disable')
     p.add_argument('--loss_class', type=str, choices=['BasicLoss', 'SkepticLoss'], default='BasicLoss',
                    help='The loss class')  # TODO - generalize this
-
+    p.add_argument('--encoder_type', type=int, choices=[0,1,2], default='2',
+                  help='The encoder type')  # TODO - generalize this
     # Computation
     p.add_argument('--gpus', type=none_or_int, default=-1, help='Use -1 to use all available. Use None to run on CPU')
     p.add_argument('--distributed_backend', type=str, default='dp', help='supports three options dp, ddp, ddp2')
@@ -99,7 +100,14 @@ def parser():
 def train_main():
     banner('Network Init')
     # nn = F2PEncoderDecoderBase(parser()
-    nn = F2PEncoderDecoderEncodingPair(parser())
+    args = parser()[0].parse_args()
+    if args.encoder_type==2:
+        nn = F2PEncoderDecoderEncodingPair(parser())
+    elif args.encoder_type==1:
+        nn = F2PEncoderDecoderEncodingPre(parser())
+    else:
+        nn = F2PEncoderDecoderEncodingPost(parser())
+
     nn.identify_system()
 
     # Bring in data:
