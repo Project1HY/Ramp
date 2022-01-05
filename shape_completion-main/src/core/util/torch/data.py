@@ -122,24 +122,4 @@ class SubsetChoiceSampler(Sampler):
     def __len__(self):
         return self.length
 
-class SubsetChoiceSampler(Sampler):
-    def __init__(self, indices, length=None):
-        self.indices = indices
-        if length is None:
-            length = len(self.indices)
-        self.length = length
-
-    def __iter__(self):
-        # Inefficient, without replacement:
-        # return iter(self.indices[:self.length])
-        randperm = torch.randperm(len(self.indices))
-
-        subset = (self.indices[i] for i in torch.randperm(len(self.indices))[:self.length])
-        return subset
-        # Efficient, with replacement:
-        # return (self.indices[i] for i in torch.randint(low=0,high=len(self.indices),size=(self.length,)))
-
-    def __len__(self):
-        return self.length
-
 
