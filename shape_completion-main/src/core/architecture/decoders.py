@@ -45,16 +45,24 @@ class BasicShapeDecoder(BaseDecoder):
 
 
 class LSTMDecoder(BaseDecoder):
-    def __init__(self, code_size, out_channels, layer_count, bidirectional, dropout, n_verts, hidden_size):
+    def __init__(self, code_size, out_channels, layer_count, bidirectional, dropout, n_verts, hidden_size, seq_len=3):
         super().__init__(code_size=code_size, out_channels=out_channels)
         self.n_verts = n_verts
+        self.seq_len = seq_len
+        self.thl = nn.Tanh()
         self.convolutions = nn.Sequential(*[
-            nn.Conv1d(self.code_size, self.code_size // 16, 1),
+            nn.Conv1d(self.code_size, self.code_size // 4, 1),
+            nn.BatchNorm1d(self.code_size // 4),
+            nn.ReLU(),
+            nn.Conv1d(self.code_size // 4, self.code_size // 16, 1),
             nn.BatchNorm1d(self.code_size // 16),
             nn.ReLU(),
-            nn.Conv1d(self.code_size // 16, self.code_size // 256, 1),
+            nn.Conv1d(self.code_size // 16, self.code_size // 32, 1),
+            nn.BatchNorm1d(self.code_size // 32),
+            nn.ReLU(),
+            nn.Conv1d(self.code_size // 32, self.code_size // 256, 1),
             nn.BatchNorm1d(self.code_size // 256),
-            nn.ReLU()
+            nn.ReLU(),
         ])
 
         self.lstm = nn.LSTM(input_size=n_verts * (self.code_size // 256), hidden_size=hidden_size, dropout=dropout,
@@ -70,12 +78,15 @@ class LSTMDecoder(BaseDecoder):
         """
         x = x.transpose(2, 1).contiguous()  # [b x nv x in_channels]
         x = self.convolutions(x)
+        # seq_len = self.seq_len if x.shape[0]%self.seq_len ==0 else
         x = x.reshape(x.shape[0], 1, x.shape[1] * x.shape[2])
         out, _ = self.lstm(x)
         out = out.squeeze(1)
-        return self.reshape_matrix(out).reshape(x.shape[0], self.n_verts, 3)
+        out = self.reshape_matrix(out).reshape(x.shape[0], self.n_verts, 3)
+        # out = 2 * self.thl(out)
+        return out
 
-# ----------------------------------------------------------------------------------------------------------------------
+    # ----------------------------------------------------------------------------------------------------------------------
 #                                                       Skinning Decoders
 # ----------------------------------------------------------------------------------------------------------------------
 # class SkinningDecoder(nn.Module):

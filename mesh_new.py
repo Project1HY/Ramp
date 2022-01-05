@@ -116,3 +116,5 @@ class Mesh(object):
         plotter.add_mesh(self.mesh_poly,style="points",point_size=10,render_points_as_spheres=True, scalars=scalar_func)
         plotter.add_points(mean_vertices, render_points_as_spheres=True, point_size = 20, color = 'red')
         plotter.show()    
+m = Mesh("data/cat_s3.off")
+m.render_surface()

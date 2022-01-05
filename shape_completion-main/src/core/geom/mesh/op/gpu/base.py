@@ -47,8 +47,8 @@ def vertex_velocity(v_comp_t, v_ground_t):
     :param v_ground_t: [b, nv, 3] tensor that holds the vertices locations of the ground truth at a certain time
     :param v_ground_t_n: [b, nv, 3] tensor that holds the vertices locations of the ground truth at a consecutive time
     """
-    shifted_v_comp = torch.cat((torch.zeros(1, *v_comp_t.shape[1:]), v_comp_t))[:-1, :, :]
-    shifted_v_ground = torch.cat((torch.zeros(1, *v_ground_t.shape[1:]), v_comp_t))[:-1, :, :]
+    shifted_v_comp = torch.cat((torch.zeros(1, *v_comp_t.shape[1:],device=v_comp_t.device), v_comp_t))[:-1, :, :]
+    shifted_v_ground = torch.cat((torch.zeros(1, *v_ground_t.shape[1:],device=v_ground_t.device), v_comp_t))[:-1, :, :]
 
     velocity_comp = (v_comp_t - shifted_v_comp)[1:, :, :]
     velocity_ground = (v_ground_t - shifted_v_ground)[1:, :, :]

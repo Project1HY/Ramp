@@ -180,7 +180,7 @@ class DFaust(ParametricCompletionDataset):
         return self._proj_dir / f'{hi[0]}{hi[1]}{hi[2]:>05}_{hi[3]}.npz'
 
     def _hi2full_path_default(self, hi):
-        return self._full_dir / hi[0] / hi[1] / f'{hi[2]:>05}.OFF'
+        return self._full_dir / hi[0] / hi[1] / f'{hi[2]:>05}.npy'
 
     def _hi2proj_path_semantic_cuts(self, hi):
         return self._proj_dir / hi[0] / hi[1] / f'{hi[2]:>05}_{hi[3]}.npz'
@@ -190,12 +190,13 @@ class DFaust(ParametricCompletionDataset):
     def __init__(self, deformation, data_dir_override=r"R:/Mano/data/DFaust/DFaust/"):
         super().__init__(n_verts=6890, data_dir_override=data_dir_override, deformation=deformation, cls='synthetic',
                          suspected_corrupt=False)
+        self._full_dir = Path(r'D:\yift_hadas_data\DFAUST_VERT_PICK')
 
     def _hi2proj_path_default(self, hi):
         return self._proj_dir / f'{hi[0]}{hi[1]}{hi[2]:>05}_{hi[3]}.npz'
 
     def _hi2full_path_default(self, hi):
-        return self._full_dir / hi[0] / hi[1] / f'{hi[2]:>05}.OFF'
+        return self._full_dir / hi[0] / hi[1] / f'{hi[2]:>05}.npy'
 
     def _hi2proj_path_semantic_cuts(self, hi):
         return self._proj_dir / hi[0] / hi[1] / f'{hi[2]:>05}_{hi[3]}.npz'
@@ -226,8 +227,7 @@ class DFaustSequential(ParametricCompletionDataset):
             gt_dict['gt_real_sample'] = False
             return gt_dict
         gt_dict = self._full_dict_by_hi(path_tup)
-        tp_hi = self._hit.random_path_from_partial_path([gt_dict['gt_hi'][0]])[:-1]  # Shorten hi by 1
-        # tp_hi = gt_dict['gt_hi'][:-1]
+        tp_hi = (gt_dict['gt_hi'][0], gt_dict['gt_hi'][1], 0)        # tp_hi = gt_dict['gt_hi'][:-1]
         tp_dict = self._full_dict_by_hi(tp_hi)
         gt_dict['tp'], gt_dict['tp_hi'], gt_dict['tp_f'] = tp_dict['gt'], tp_dict['gt_hi'], tp_dict['gt_f']
         gt_dict['gt_mask'] = self._mask_by_hi(path_tup)
@@ -276,12 +276,13 @@ class DFaustSequential(ParametricCompletionDataset):
             raise ValueError("Seeing the fully-rand methods have no connection to the partition, we cannot support "
                              "a split dataset here")
         # Logic:
+        s_nums = to_list(s_nums)
         subjects = list(self._hit.get_id_union_by_depth(depth=1))
         subjects = split_frac(subjects, split)
         n_parts = len(split)
         loaders = []
         for i in range(n_parts):
-            set_subjects, req_set_size, do_shuffle, transforms, is_dynamic = subjects[i], None, None, None, None
+            set_subjects, req_set_size, do_shuffle, transforms, is_dynamic = subjects[i], s_nums[i], None, None, None
 
             partial_hit = self._hit.keep_ids_by_depth(keepers=list(set_subjects), depth=1)
             if req_set_size is None:
@@ -346,7 +347,7 @@ class DFaustSequential(ParametricCompletionDataset):
         sampler_length = min(set_size, len(ids))  # Allows for dynamic partitions
 
         data_subsampler = SubsetChoiceSampler(ids, set_size)
-        data_sampler = SequentialAnimationBatchSampler(data_subsampler,ids, batch_size=batch_size)
+        data_sampler = SequentialAnimationBatchSampler(data_subsampler,ids, batch_size=batch_size,set_size=set_size)
         # Compiler Transforms:
         transforms = self._transformation_finalizer_by_method(method, transforms, n_channels)
 
@@ -636,7 +637,7 @@ class DatasetMenu:
 # ----------------------------------------------------------------------------------------------------------------------
 # noinspection DuplicatedCode
 class SequentialAnimationBatchSampler(Sampler):
-    def __init__(self,subset_sampler, indices, batch_size=1, length=None):
+    def __init__(self,subset_sampler, indices, batch_size=1, length=None,set_size=None):
         self.indices = indices
         if length is None:
             length = len(subset_sampler)
@@ -645,11 +646,15 @@ class SequentialAnimationBatchSampler(Sampler):
         self.batch_size = batch_size
         self.i = 0
         self.subset_sampler = subset_sampler
+        self.set_size=set_size
     def __iter__(self):
         # Inefficient, without replacement:
+        loc = 0
         random.shuffle(self.indices)
         for index in self.subset_sampler:
             while True:
+                if self.set_size is not None and loc > self.set_size:
+                    break
                 current_batch_size = min(self.batch_size, index[-1] - index[2])
                 returned_indices = [index] * self.batch_size
                 for i in range(len(returned_indices)):
@@ -660,6 +665,9 @@ class SequentialAnimationBatchSampler(Sampler):
                     break
                 index = (
                     *index[:-3], index[-3] + self.batch_size, *index[-2:])
+                loc = loc + len(returned_indices)
+            if self.set_size is not None and loc > self.set_size:
+                break
 
     def __len__(self):
         return self.length

@@ -16,11 +16,11 @@ def parser():
     p = HyperOptArgumentParser(strategy='random_search')
 
     # Check-pointing
-    p.add_argument('--exp_name', type=str, default='LSTM_num_layers=2',  # TODO - Don't forget to change me!
+    p.add_argument('--exp_name', type=str, default='SiameseEncodersActual_++',  # TODO - Don't forget to change me!
                    help='The experiment name. Leave empty for default')
-    p.add_argument('--version', type=none_or_int, default=3,
+    p.add_argument('--version', type=none_or_int, default=0,
                    help='Weights will be saved at weight_dir=exp_name/version_{version}. '
-                        'Use None to automatically choose an unused version')
+                        'Use NonFe to automatically choose an unused version')
     p.add_argument('--resume_cfg', nargs=2, type=bool, default=(False, True),
                    help='Only works if version != None and and weight_dir exists. '
                         '1st Bool: Whether to attempt restore of early stopping callback. '
@@ -32,7 +32,7 @@ def parser():
 
     # Dataset Config:
     # NOTE: A well known ML rule: double the learning rate if you double the batch size.
-    p.add_argument('--batch_size', type=int, default=10, help='SGD batch size')
+    p.add_argument('--batch_size', type=int, default=20, help='SGD batch size')
     # TODO: This parameter applies for P & Q, however it can be overridden is some architecture
     p.add_argument('--in_channels', choices=[3, 6, 12], default=6,
                    help='Number of input channels')
@@ -51,8 +51,8 @@ def parser():
 
 
     # Optimizer
-    p.add_argument("--weight_decay", type=float, default=0, help="Adam's weight decay - usually use 1e-4")
-    p.add_argument("--plateau_patience", type=none_or_int, default=30,
+    p.add_argument("--weight_decay", type=float, default=1e-4, help="Adam's weight decay - usually use 1e-4")
+    p.add_argument("--plateau_patience", type=none_or_int, default=20,
                    help="Number of epoches to wait on learning plateau before reducing step size. Use None to shut off")
     p.add_argument("--early_stop_patience", type=int, default=80,  # TODO - Remember to setup resume_cfg correctly
                    help="Number of epoches to wait on learning plateau before stopping train")
@@ -61,8 +61,8 @@ def parser():
     # Without early stop callback, we'll train for cfg.MAX_EPOCHS
 
     # L2 Losses: Use 0 to ignore, >0 to lightning
-    p.add_argument('--lambdas', nargs=7, type=float, default=(1, 0.1, 0, 0, 0, 0, 1,1),
-                   help='[XYZ,Normal,Moments,EuclidDistMat,EuclidNormalDistMap,FaceAreas,Volume]'
+    p.add_argument('--lambdas', nargs=7, type=float, default=(1, 0.1, 0, 0, 0, 0, 0 , 0),
+                   help='[XYZ,Normal,Moments,EuclidDistMat,EuclidNormalDistMap,FaceAreas,Volume, Velocity]'
                         'loss multiplication modifiers')
     p.add_argument('--mask_penalties', nargs=7, type=float, default=(0, 0, 0, 0, 0, 0, 0),
                    help='[XYZ,Normal,Moments,EuclidDistMat,EuclidNormalDistMap,FaceAreas,Volume]'
@@ -99,7 +99,7 @@ def parser():
 def train_main():
     banner('Network Init')
     # nn = F2PEncoderDecoderBase(parser()
-    nn = F2PEncoderDecoderTemporal(parser())
+    nn = F2PEncoderDecoderEncodingPair(parser())
     nn.identify_system()
 
     # Bring in data:

@@ -78,11 +78,8 @@ class LightningTrainer:
 
     def _init_trainer(self, fast_dev_run):
 
-        print('were screwed')
         if self.hp.plotter_class is not None:
             plt_class = getattr(lightning.assets.plotter, self.hp.plotter_class)
-            print(plt_class)
-            print('hi')
             self.plt = plt_class(faces=self.data.faces(),
                                  n_verts=self.data.num_verts())  # TODO - Cannot currently train on Scans due to this:
         # Checkpointing and Logging:
@@ -114,7 +111,7 @@ class LightningTrainer:
 
         self.trainer = Trainer(fast_dev_run=fast_dev_run, num_sanity_val_steps=0, weights_summary=None,
                                gpus=self.hp.gpus, distributed_backend=self.hp.distributed_backend,
-                               # check_val_every_n_epoch=0.05,
+                               # val_percent_check = 0.2,
                                # accelerator="cpu",
                                early_stop_callback=self.early_stop, checkpoint_callback=checkpoint,
                                logger=wandb_log,
