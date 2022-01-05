@@ -61,7 +61,7 @@ class F2PEncoderDecoderEncodingPre(CompletionLightningModel):
         self.encoder_part = PointNetShapeEncoder(in_channels=self.hp.in_channels, code_size=self.hp.code_size)
         self.encoder_pre = PointNetShapeEncoder(in_channels=self.hp.in_channels, code_size=self.hp.code_size)
 
-        self.decoder = BasicShapeDecoder(code_size=self.hp.in_channels + 4 * self.hp.code_size,
+        self.decoder = BasicShapeDecoder(code_size=self.hp.in_channels + 3 * self.hp.code_size,
                                          out_channels=self.hp.out_channels, num_convl=self.hp.decoder_convl)
 
     # noinspection PyUnresolvedReferences
@@ -69,7 +69,6 @@ class F2PEncoderDecoderEncodingPre(CompletionLightningModel):
         self.decoder.init_weights()
         self.encoder_full.init_weights()
         self.encoder_pre.init_weights()
-        self.encoder_post.init_weights()
 
         if self.encoder_part != self.encoder_full:
             self.encoder_part.init_weights()
@@ -112,14 +111,13 @@ class F2PEncoderDecoderEncodingPost(CompletionLightningModel):
         self.encoder_part = PointNetShapeEncoder(in_channels=self.hp.in_channels, code_size=self.hp.code_size)
         self.encoder_post = PointNetShapeEncoder(in_channels=self.hp.in_channels, code_size=self.hp.code_size)
 
-        self.decoder = BasicShapeDecoder(code_size=self.hp.in_channels + 4 * self.hp.code_size,
+        self.decoder = BasicShapeDecoder(code_size=self.hp.in_channels + 3 * self.hp.code_size,
                                          out_channels=self.hp.out_channels, num_convl=self.hp.decoder_convl)
 
     # noinspection PyUnresolvedReferences
     def _init_model(self):
         self.decoder.init_weights()
         self.encoder_full.init_weights()
-        self.encoder_pre.init_weights()
         self.encoder_post.init_weights()
 
         if self.encoder_part != self.encoder_full:
@@ -147,11 +145,14 @@ class F2PEncoderDecoderEncodingPost(CompletionLightningModel):
         part_shifted_left = torch.cat((part[1:, :, :], part[-1, :, :].unsqueeze(0)), dim=0)
         part_code = self.encoder_part(part)  # [b x code_size]
         full_code = self.encoder_full(full)  # [b x code_size]
+        post_code = self.encoder_post(part_shifted_left) # [b x nv x code_size]
+
         part_shifted_left = torch.cat((part[1:, :, :], part[-1, :, :].unsqueeze(0)), dim=0)
 
         part_code = part_code.unsqueeze(1).expand(bs, nv, self.hp.code_size)  # [b x nv x code_size]
         full_code = full_code.unsqueeze(1).expand(bs, nv, self.hp.code_size)  # [b x nv x code_size]
-        post_code = self.encoder_post(part_shifted_left) # [b x nv x code_size]
+        post_code = post_code.unsqueeze(1).expand(bs, nv, self.hp.code_size)  # [b x nv x code_size]
+
         y = torch.cat((full, part_code, full_code, post_code),
                       2).contiguous()  # [b x nv x (in_channels + 4*code_size)]
         y = self.decoder(y)

@@ -101,6 +101,7 @@ def train_main():
     banner('Network Init')
     # nn = F2PEncoderDecoderBase(parser()
     args = parser()[0].parse_args()
+    print(f"enc type is {args.encoder_type}")
     if args.encoder_type==2:
         nn = F2PEncoderDecoderEncodingPair(parser())
     elif args.encoder_type==1:
