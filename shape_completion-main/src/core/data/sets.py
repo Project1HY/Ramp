@@ -208,7 +208,8 @@ class DFaustSequential(ParametricCompletionDataset):
     def __init__(self, data_dir_override, deformation,full_dir_override, n_verts=6890):
         super().__init__(n_verts=6890, data_dir_override=data_dir_override, deformation=deformation, cls='synthetic',
                          suspected_corrupt=False)
-        self._full_dir = Path(full_dir_override)
+        #print("yiftach now is :",self._full_dir)
+        self._full_dir = self._vert_pick
 
     def _datapoint_via_path_tup(self, path_tup):
         if path_tup[2] >= path_tup[-1]:

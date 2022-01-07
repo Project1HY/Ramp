@@ -223,8 +223,9 @@ class CompletionDataset(HitIndexedDataset, ABC):
         # Handle Data Directory
         if data_dir_override is None:
             from cfg import PRIMARY_DATA_DIR, VERT_DATA_DIR
-            self._data_dir = (PRIMARY_DATA_DIR / cls / self.name(short=True)).resolve()
-            self._full_dir = (VERT_DATA_DIR/ cls / self.name(short=True)).resolve()
+            self._data_dir = (PRIMARY_DATA_DIR).resolve()
+            self._vert_pick = (VERT_DATA_DIR).resolve()
+            print("yiftach:",self._data_dir)
         else:
             self._data_dir = Path(data_dir_override).resolve()
         assert self._data_dir.is_dir(), f"Data dir of {self.name()} is invalid: \nCould not find {self._data_dir}"

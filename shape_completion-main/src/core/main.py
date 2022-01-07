@@ -61,7 +61,7 @@ def parser():
     # Without early stop callback, we'll train for cfg.MAX_EPOCHS
 
     # L2 Losses: Use 0 to ignore, >0 to lightning
-    p.add_argument('--lambdas', nargs=7, type=float, default=(1, 0.1, 0, 0, 0, 0, 0 , 0.01),
+    p.add_argument('--lambdas', nargs=7, type=float, default=(1, 0.1, 0, 0, 0, 0, 0 , 0.001),
                    help='[XYZ,Normal,Moments,EuclidDistMat,EuclidNormalDistMap,FaceAreas,Volume, Velocity]'
                         'loss multiplication modifiers')
     p.add_argument('--mask_penalties', nargs=7, type=float, default=(0, 0, 0, 0, 0, 0, 0),
@@ -72,10 +72,10 @@ def parser():
                         'increased weight on distant vertices. Use val <= 1 to disable')
     p.add_argument('--loss_class', type=str, choices=['BasicLoss', 'SkepticLoss'], default='BasicLoss',
                    help='The loss class')  # TODO - generalize this
-    p.add_argument('--encoder_type', type=int, choices=[0,1,2], default='2',
+    p.add_argument('--encoder_type', type=int, choices=[0,1,2,3], default='2',
                   help='The encoder type')  # TODO - generalize this
     # Computation
-    p.add_argument('--gpus', type=none_or_int, default=None, help='Use -1 to use all available. Use None to run on CPU')
+    p.add_argument('--gpus', type=none_or_int, default=1, help='Use -1 to use all available. Use None to run on CPU')
     p.add_argument('--distributed_backend', type=str, default='dp', help='supports three options dp, ddp, ddp2')
     # TODO - ddp2,ddp Untested. Multiple GPUS - not tested
 
@@ -106,8 +106,11 @@ def train_main():
         nn = F2PEncoderDecoderEncodingPair(parser())
     elif args.encoder_type==1:
         nn = F2PEncoderDecoderEncodingPre(parser())
-    else:
+    elif args.encoder_type==0:
         nn = F2PEncoderDecoderEncodingPost(parser())
+    else:
+        nn = F2PEncoderDecoderTemporal(parser())
+
 
     # nn.identify_system()
 
