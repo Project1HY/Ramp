@@ -74,6 +74,9 @@ def parser():
                    help='The loss class')  # TODO - generalize this
     p.add_argument('--encoder_type', type=int, choices=[0,1,2], default='2',
                   help='The encoder type')  # TODO - generalize this
+    p.add_argument('--use_frozen_encoder', type=bool, default=True,
+                   help='Use frozen encoder')  # TODO - generalize this
+
     # Computation
     p.add_argument('--gpus', type=none_or_int, default=None, help='Use -1 to use all available. Use None to run on CPU')
     p.add_argument('--distributed_backend', type=str, default='dp', help='supports three options dp, ddp, ddp2')
@@ -106,8 +109,10 @@ def train_main():
         nn = F2PEncoderDecoderEncodingPair(parser())
     elif args.encoder_type==1:
         nn = F2PEncoderDecoderEncodingPre(parser())
-    else:
+    elif args.encoder_type==0:
         nn = F2PEncoderDecoderEncodingPost(parser())
+    else:
+        nn = F2PEncoderDecoderTemporal(parser())
 
     # nn.identify_system()
 
