@@ -205,10 +205,10 @@ class DFaust(ParametricCompletionDataset):
 class DFaustSequential(ParametricCompletionDataset):
     NULL_SHAPE_SI = 0
 
-    def __init__(self, data_dir_override, deformation, n_verts=6890):
+    def __init__(self, data_dir_override, deformation,full_dir_override, n_verts=6890):
         super().__init__(n_verts=6890, data_dir_override=data_dir_override, deformation=deformation, cls='synthetic',
                          suspected_corrupt=False)
-        self._full_dir = Path(r'./DFAUST_VERT_PICK')
+        self._full_dir = Path(full_dir_override)
 
     def _datapoint_via_path_tup(self, path_tup):
         if path_tup[2] >= path_tup[-1]:
@@ -596,10 +596,10 @@ class DatasetMenu:
         return tuple(cls._IMPLEMENTED.keys())
 
     @classmethod
-    def order(cls, dataset_name, data_dir_override=None):
+    def order(cls, dataset_name, data_dir_override=None,full_dir_override=None):
         if dataset_name in cls._IMPLEMENTED:
             tup = cls._IMPLEMENTED[dataset_name]
-            return tup[0](data_dir_override=r"./DFaust/", deformation=tup[1])
+            return tup[0](data_dir_override=data_dir_override, deformation=tup[1],full_dir_override = full_dir_override)
         else:
             raise ValueError(f'Could not find dataset {dataset_name} - check spelling')
 

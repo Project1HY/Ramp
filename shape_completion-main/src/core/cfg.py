@@ -27,6 +27,8 @@ ORIGINAL_SOURCE_CODE_DIR: pathlib.Path = pathlib.Path(r"D:\projectHY\Ramp")
 SOURCE_CODE_DIR: pathlib.Path = pathlib.Path(__file__).parents[0]
 PRIMARY_RESULTS_DIR: pathlib.Path = SOURCE_CODE_DIR / 'results'
 PRIMARY_DATA_DIR: pathlib.Path = pathlib.Path(r"./DFaust")
+VERT_DATA_DIR: pathlib.Path = pathlib.Path(r"./DFAUST_VERT_PICK")
+
 PRIMARY_EXAMPLE_DIR: pathlib.Path = ORIGINAL_SOURCE_CODE_DIR / 'exp' / 'test' / 'examples'
 TEST_MESH_HUMAN_PATH: pathlib.Path = PRIMARY_EXAMPLE_DIR / 'fat_man.off'
 TEST_MESH_HAND_PATH: pathlib.Path = PRIMARY_EXAMPLE_DIR / 'hand1_8k.off'
