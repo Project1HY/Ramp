@@ -58,8 +58,8 @@ class F2PEncoderDecoderBase(CompletionLightningModel):
 class F2PEncoderDecoderEncodingPre(CompletionLightningModel):
     def _build_model(self):
         self.encoder_full = PointNetShapeEncoder(in_channels=self.hp.in_channels, code_size=self.hp.code_size)
-        self.encoder_part = PointNetShapeEncoder(in_channels=self.hp.in_channels, code_size=self.hp.code_size)
-        self.encoder_pre = PointNetShapeEncoder(in_channels=self.hp.in_channels, code_size=self.hp.code_size)
+        self.encoder_part = self.encoder_full
+        self.encoder_pre = self.encoder_full
 
         self.decoder = BasicShapeDecoder(code_size=self.hp.in_channels + 4 * self.hp.code_size,
                                          out_channels=self.hp.out_channels, num_convl=self.hp.decoder_convl)
@@ -68,12 +68,11 @@ class F2PEncoderDecoderEncodingPre(CompletionLightningModel):
     def _init_model(self):
         self.decoder.init_weights()
         self.encoder_full.init_weights()
-        self.encoder_pre.init_weights()
-        self.encoder_post.init_weights()
 
         if self.encoder_part != self.encoder_full:
             self.encoder_part.init_weights()
-
+        if self.encoder_pre != self.encoder_full:
+            self.encoder_pre.init_weights()
     @staticmethod
     def add_model_specific_args(parent_parser):
         p = HyperOptArgumentParser(parents=parent_parser, add_help=False, conflict_handler='resolve')
@@ -101,6 +100,7 @@ class F2PEncoderDecoderEncodingPre(CompletionLightningModel):
         part_code = part_code.unsqueeze(1).expand(bs, nv, self.hp.code_size)  # [b x nv x code_size]
         full_code = full_code.unsqueeze(1).expand(bs, nv, self.hp.code_size)  # [b x nv x code_size]
         pre_code = pre_code.unsqueeze(1).expand(bs, nv, self.hp.code_size)  # [b x nv x code_size]
+
         y = torch.cat((full, part_code, full_code, pre_code),
                       2).contiguous()  # [b x nv x (in_channels + 4*code_size)]
         y = self.decoder(y)
@@ -109,8 +109,8 @@ class F2PEncoderDecoderEncodingPre(CompletionLightningModel):
 class F2PEncoderDecoderEncodingPost(CompletionLightningModel):
     def _build_model(self):
         self.encoder_full = PointNetShapeEncoder(in_channels=self.hp.in_channels, code_size=self.hp.code_size)
-        self.encoder_part = PointNetShapeEncoder(in_channels=self.hp.in_channels, code_size=self.hp.code_size)
-        self.encoder_post = PointNetShapeEncoder(in_channels=self.hp.in_channels, code_size=self.hp.code_size)
+        self.encoder_part = self.encoder_full
+        self.encoder_post = self.encoder_full
 
         self.decoder = BasicShapeDecoder(code_size=self.hp.in_channels + 4 * self.hp.code_size,
                                          out_channels=self.hp.out_channels, num_convl=self.hp.decoder_convl)
@@ -119,11 +119,10 @@ class F2PEncoderDecoderEncodingPost(CompletionLightningModel):
     def _init_model(self):
         self.decoder.init_weights()
         self.encoder_full.init_weights()
-        self.encoder_pre.init_weights()
-        self.encoder_post.init_weights()
-
         if self.encoder_part != self.encoder_full:
             self.encoder_part.init_weights()
+        if self.encoder_post != self.encoder_full:
+            self.encoder_post.init_weights()
 
     @staticmethod
     def add_model_specific_args(parent_parser):
@@ -147,11 +146,14 @@ class F2PEncoderDecoderEncodingPost(CompletionLightningModel):
         part_shifted_left = torch.cat((part[1:, :, :], part[-1, :, :].unsqueeze(0)), dim=0)
         part_code = self.encoder_part(part)  # [b x code_size]
         full_code = self.encoder_full(full)  # [b x code_size]
+        post_code = self.encoder_post(part_shifted_left) # [b x nv x code_size]
+
         part_shifted_left = torch.cat((part[1:, :, :], part[-1, :, :].unsqueeze(0)), dim=0)
 
         part_code = part_code.unsqueeze(1).expand(bs, nv, self.hp.code_size)  # [b x nv x code_size]
         full_code = full_code.unsqueeze(1).expand(bs, nv, self.hp.code_size)  # [b x nv x code_size]
-        post_code = self.encoder_post(part_shifted_left) # [b x nv x code_size]
+        post_code = post_code.unsqueeze(1).expand(bs, nv, self.hp.code_size)  # [b x nv x code_size]
+
         y = torch.cat((full, part_code, full_code, post_code),
                       2).contiguous()  # [b x nv x (in_channels + 4*code_size)]
         y = self.decoder(y)
@@ -160,9 +162,9 @@ class F2PEncoderDecoderEncodingPost(CompletionLightningModel):
 class F2PEncoderDecoderEncodingPair(CompletionLightningModel):
     def _build_model(self):
         self.encoder_full = PointNetShapeEncoder(in_channels=self.hp.in_channels, code_size=self.hp.code_size)
-        self.encoder_part = PointNetShapeEncoder(in_channels=self.hp.in_channels, code_size=self.hp.code_size)
-        self.encoder_pre = PointNetShapeEncoder(in_channels=self.hp.in_channels, code_size=self.hp.code_size)
-        self.encoder_post = PointNetShapeEncoder(in_channels=self.hp.in_channels, code_size=self.hp.code_size)
+        self.encoder_part = self.encoder_full
+        self.encoder_pre = self.encoder_full
+        self.encoder_post = self.encoder_full
 
         self.decoder = BasicShapeDecoder(code_size=self.hp.in_channels + 4 * self.hp.code_size,
                                          out_channels=self.hp.out_channels, num_convl=self.hp.decoder_convl)
@@ -171,12 +173,13 @@ class F2PEncoderDecoderEncodingPair(CompletionLightningModel):
     def _init_model(self):
         self.decoder.init_weights()
         self.encoder_full.init_weights()
-        self.encoder_pre.init_weights()
-        self.encoder_post.init_weights()
 
         if self.encoder_part != self.encoder_full:
             self.encoder_part.init_weights()
-
+        if self.encoder_pre != self.encoder_full:
+            self.encoder_pre.init_weights()
+        if self.encoder_post != self.encoder_full:
+            self.encoder_post.init_weights()
     @staticmethod
     def add_model_specific_args(parent_parser):
         p = HyperOptArgumentParser(parents=parent_parser, add_help=False, conflict_handler='resolve')
