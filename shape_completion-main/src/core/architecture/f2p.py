@@ -61,7 +61,7 @@ class F2PEncoderDecoderEncodingPre(CompletionLightningModel):
         self.encoder_part = self.encoder_full
         self.encoder_pre = self.encoder_full
 
-        self.decoder = BasicShapeDecoder(code_size=self.hp.in_channels + 4 * self.hp.code_size,
+        self.decoder = BasicShapeDecoder(code_size=self.hp.in_channels + 3 * self.hp.code_size,
                                          out_channels=self.hp.out_channels, num_convl=self.hp.decoder_convl)
 
     # noinspection PyUnresolvedReferences
@@ -112,13 +112,14 @@ class F2PEncoderDecoderEncodingPost(CompletionLightningModel):
         self.encoder_part = self.encoder_full
         self.encoder_post = self.encoder_full
 
-        self.decoder = BasicShapeDecoder(code_size=self.hp.in_channels + 4 * self.hp.code_size,
+        self.decoder = BasicShapeDecoder(code_size=self.hp.in_channels + 3 * self.hp.code_size,
                                          out_channels=self.hp.out_channels, num_convl=self.hp.decoder_convl)
 
     # noinspection PyUnresolvedReferences
     def _init_model(self):
         self.decoder.init_weights()
         self.encoder_full.init_weights()
+
         if self.encoder_part != self.encoder_full:
             self.encoder_part.init_weights()
         if self.encoder_post != self.encoder_full:
