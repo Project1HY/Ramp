@@ -106,7 +106,9 @@ def train_main():
     # nn = F2PEncoderDecoderBase(parser()
     args = parser()[0].parse_args()
     print(f"enc type is {args.encoder_type}")
-    if args.encoder_type==2:
+    if args.encoder_type == 10:
+        nn = F2PEncoderDecoderBase(parser())
+    elif args.encoder_type==2:
         nn = F2PEncoderDecoderEncodingPair(parser())
     elif args.encoder_type==1:
         nn = F2PEncoderDecoderEncodingPre(parser())

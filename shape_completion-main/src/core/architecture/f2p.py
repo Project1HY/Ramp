@@ -12,10 +12,7 @@ from architecture.base import Template, Regressor
 class F2PEncoderDecoderBase(CompletionLightningModel):
     def _build_model(self):
         self.encoder_full = PointNetShapeEncoder(in_channels=self.hp.in_channels, code_size=self.hp.code_size)
-        self.encoder_part = PointNetShapeEncoder(in_channels=self.hp.in_channels, code_size=self.hp.code_size)
-        # self.encoder_pre = PointNetShapeEncoder(in_channels=self.hp.in_channels, code_size=self.hp.code_size)
-        # self.encoder_post = PointNetShapeEncoder(in_channels=self.hp.in_channels, code_size=self.hp.code_size)
-
+        self.encoder_part = self.encoder_full
         self.decoder = BasicShapeDecoder(code_size=self.hp.in_channels + 2 * self.hp.code_size,
                                          out_channels=self.hp.out_channels, num_convl=self.hp.decoder_convl)
 
