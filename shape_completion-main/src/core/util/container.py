@@ -67,6 +67,7 @@ def grp_start_len(a):
     idx = np.flatnonzero(m)
     return idx[:-1], np.diff(idx)
 
+
 def split_frac(l, fracs):
     # Accumulate the percentages
     splits = np.cumsum(fracs).astype(np.float)
@@ -89,7 +90,7 @@ def split_frac(l, fracs):
     # splits += 0.5 instead of round() before casting to int
     splits += 0.5
     splits = splits.astype(np.int)
-
+    l = np.random.permutation(l)
     return np.split(l, splits)
 
 
@@ -268,9 +269,10 @@ def deep_dict_convert(d, type=RandomDict):
 
     return rdict
 
+
 def deep_dict_change_leaves(d, new_val):
-    for k,v in d.items():
+    for k, v in d.items():
         if isinstance(v, dict):
             deep_dict_change_leaves(v, new_val=new_val)
-        else: # Reached bottom
+        else:  # Reached bottom
             d[k] = new_val

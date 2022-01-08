@@ -274,21 +274,34 @@ class F2PEncoderDecoderTemporal(F2PEncoderDecoderBase):
     def _build_model(self):
         self.encoder_full = PointNetShapeEncoder(in_channels=self.hp.in_channels, code_size=self.hp.code_size)
         self.encoder_part = self.encoder_full
-        if self.hp.use_frozen_encoder:
-            full_dict = torch.load(r"/home/yiftach.ede/Ramp/shape_completion-main/encoder_weights_full.weights")
-            part_dict = torch.load(r"/home/yiftach.ede/Ramp/shape_completion-main/encoder_weights_part.weights")
-            self.encoder_full.load_state_dict(full_dict)
-            self.encoder_part.load_state_dict(part_dict)
-            for param in self.encoder_full.parameters():
-                param.requires_grad = False
-            for param in self.encoder_part.parameters():
-                param.requires_grad = False
-        # self.decoder = BasicShapeDecoder(code_size=self.hp.in_channels + 2 * self.hp.code_size,
-        #                                  out_channels=self.hp.out_channels, num_convl=self.hp.decoder_convl)
-        self.decoder = LSTMDecoder(code_size=self.hp.in_channels + 2 * self.hp.code_size,
+        self.encoder_pre = self.encoder_full
+
+        self.decoder = LSTMDecoder(code_size=self.hp.in_channels + 3 * self.hp.code_size,
                                    out_channels=self.hp.out_channels, hidden_size=self.hp.decoder_hidden_size,
                                    dropout=self.hp.decoder_dropout, bidirectional=self.hp.decoder_bidirectional,
                                    layer_count=self.hp.decoder_layer_count, n_verts=6890)
+
+    def forward(self, input_dict):
+        # TODO - Generalize this
+        part = input_dict['gt_part'] if 'gt_part' in input_dict else input_dict['gt_noise']
+        full = input_dict['tp']
+
+        # part, full [bs x nv x in_channels]
+        bs = full.size(0)
+        nv = full.size(1)
+        part_shifted_right = torch.cat((part[0, :, :].unsqueeze(0), part[:-1, :, :]), dim=0)
+        part_shifted_left = torch.cat((part[1:, :, :], part[-1, :, :].unsqueeze(0)), dim=0)
+        part_code = self.encoder_part(part)  # [b x code_size]
+        full_code = self.encoder_full(full)  # [b x code_size]
+        pre_code = self.encoder_pre(part_shifted_right)
+
+        part_code = part_code.unsqueeze(1).expand(bs, nv, self.hp.code_size)  # [b x nv x code_size]
+        full_code = full_code.unsqueeze(1).expand(bs, nv, self.hp.code_size)  # [b x nv x code_size]
+        pre_code = pre_code.unsqueeze(1).expand(bs, nv, self.hp.code_size)  # [b x nv x code_size]
+        y = torch.cat((full, part_code, full_code, pre_code),
+                      2).contiguous()  # [b x nv x (in_channels + 4*code_size)]
+        y = self.decoder(y)
+        return {'completion_xyz': y}
 
     @staticmethod
     def add_model_specific_args(parent_parser):
