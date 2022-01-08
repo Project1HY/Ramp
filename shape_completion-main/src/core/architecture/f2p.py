@@ -274,14 +274,15 @@ class F2PEncoderDecoderTemporal(F2PEncoderDecoderBase):
     def _build_model(self):
         self.encoder_full = PointNetShapeEncoder(in_channels=self.hp.in_channels, code_size=self.hp.code_size)
         self.encoder_part = self.encoder_full
-        full_dict = torch.load(r"D:\hadas_yiftach\Ramp\shape_completion-main\encoder_weights_full.weights")
-        part_dict = torch.load(r"D:\hadas_yiftach\Ramp\shape_completion-main\encoder_weights_part.weights")
-        self.encoder_full.load_state_dict(full_dict)
-        self.encoder_part.load_state_dict(part_dict)
-        for param in self.encoder_full.parameters():
-            param.requires_grad = False
-        for param in self.encoder_part.parameters():
-            param.requires_grad = False
+        if self.hp.use_frozen_encoder:
+            full_dict = torch.load(r"/home/yiftach.ede/Ramp/shape_completion-main/encoder_weights_full.weights")
+            part_dict = torch.load(r"/home/yiftach.ede/Ramp/shape_completion-main/encoder_weights_part.weights")
+            self.encoder_full.load_state_dict(full_dict)
+            self.encoder_part.load_state_dict(part_dict)
+            for param in self.encoder_full.parameters():
+                param.requires_grad = False
+            for param in self.encoder_part.parameters():
+                param.requires_grad = False
         # self.decoder = BasicShapeDecoder(code_size=self.hp.in_channels + 2 * self.hp.code_size,
         #                                  out_channels=self.hp.out_channels, num_convl=self.hp.decoder_convl)
         self.decoder = LSTMDecoder(code_size=self.hp.in_channels + 2 * self.hp.code_size,

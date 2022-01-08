@@ -74,6 +74,9 @@ def parser():
                    help='The loss class')  # TODO - generalize this
     p.add_argument('--encoder_type', type=int, choices=[0,1,2,3], default='2',
                   help='The encoder type')  # TODO - generalize this
+    p.add_argument('--use_frozen_encoder', type=bool, default=True,
+                   help='Use frozen encoder')  # TODO - generalize this
+
     # Computation
     p.add_argument('--gpus', type=none_or_int, default=1, help='Use -1 to use all available. Use None to run on CPU')
     p.add_argument('--distributed_backend', type=str, default='dp', help='supports three options dp, ddp, ddp2')
@@ -111,8 +114,7 @@ def train_main():
     else:
         nn = F2PEncoderDecoderTemporal(parser())
 
-
-    # nn.identify_system()
+    nn.identify_system()
 
     # Bring in data:
     ldrs = f2p_completion_loaders(nn.hp)
@@ -133,7 +135,7 @@ def test_main():
     # print(nn.hp)
     #ldrs = f2p_completion_loaders(nn.hp)
     nn.hp.counts = (1000000,1000000,1000000)
-    ldrs = new_loaders(nn.hp,subject_keep="50022",pose_keep="punching")
+    ldrs = f2p_completion_loaders(nn.hp)
     # banner('Testing')
     trainer = LightningTrainer(nn, ldrs)
     trainer.test()
