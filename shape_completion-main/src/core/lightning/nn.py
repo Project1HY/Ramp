@@ -1,5 +1,5 @@
 import torch
-from torch.optim.lr_scheduler import ReduceLROnPlateau  # , CosineAnnealingLR
+from torch.optim.lr_scheduler import ReduceLROnPlateau ,CosineAnnealingLR # , CosineAnnealingLR
 import architecture.loss
 # from util.mesh.ops import batch_vnrmls
 from collections import defaultdict
@@ -60,9 +60,11 @@ class CompletionLightningModel(PytorchNet):
         self.opt = torch.optim.Adam(self.parameters(), lr=self.hp.lr, weight_decay=self.hp.weight_decay)
 
         if self.hp.plateau_patience is not None:
-            # sched = CosineAnnealingLR(optimizer, T_max=10)
-            sched = ReduceLROnPlateau(self.opt, mode='min', patience=self.hp.plateau_patience, verbose=True,
-                                      cooldown=self.hp.DEF_LR_SCHED_COOLDOWN, eps=self.hp.DEF_MINIMAL_LR, factor=0.5)
+            if self.hp.use_cosine_annealing:
+                sched = CosineAnnealingLR(self.opt, T_max=self.hp.cosine_annealing_t_max)
+            else:
+                sched = ReduceLROnPlateau(self.opt, mode='min', patience=self.hp.plateau_patience, verbose=True,
+                                          cooldown=self.hp.DEF_LR_SCHED_COOLDOWN, eps=self.hp.DEF_MINIMAL_LR, factor=0.5)
             # Options: factor=0.1, threshold=0.0001, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-08
             return [self.opt], [sched]
         else:

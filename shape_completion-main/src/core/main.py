@@ -28,8 +28,9 @@ def parser():
     p.add_argument('--save_completions', type=int, choices=[0, 1, 2, 3], default=2,
                    help='Use 0 for no save. Use 1 for vertex only save in obj file. Use 2 for a full mesh save (v&f). '
                         'Use 3 for gt,tp,gt_part,tp_part save as well.')
-
-
+    p.add_argument('--use_cosine_annealing', type=bool, default=True,help="Use True to enable cosine annealing, False "
+                                                                          "to disable")
+    p.add_argument('--cosine_annealing_t_max', type=int, default=10,help="T max taken for cosine annealing, if enabled")
     # Dataset Config:
     # NOTE: A well known ML rule: double the learning rate if you double the batch size.
     p.add_argument('--batch_size', type=int, default=20, help='SGD batch size')
