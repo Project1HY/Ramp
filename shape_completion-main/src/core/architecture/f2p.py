@@ -275,8 +275,8 @@ class F2PEncoderDecoderTemporal(F2PEncoderDecoderBase):
         self.encoder_full = PointNetShapeEncoder(in_channels=self.hp.in_channels, code_size=self.hp.code_size)
         self.encoder_part = self.encoder_full
         if self.hp.use_frozen_encoder:
-            full_dict = torch.load(r"D:\hadas_yiftach\Ramp\shape_completion-main\encoder_weights_full.weights")
-            part_dict = torch.load(r"D:\hadas_yiftach\Ramp\shape_completion-main\encoder_weights_part.weights")
+            full_dict = torch.load(r"/home/yiftach.ede/Ramp/shape_completion-main/encoder_weights_full.weights")
+            part_dict = torch.load(r"/home/yiftach.ede/Ramp/shape_completion-main/encoder_weights_part.weights")
             self.encoder_full.load_state_dict(full_dict)
             self.encoder_part.load_state_dict(part_dict)
             for param in self.encoder_full.parameters():
