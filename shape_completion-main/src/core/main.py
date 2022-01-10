@@ -28,7 +28,7 @@ def parser():
     p.add_argument('--save_completions', type=int, choices=[0, 1, 2, 3], default=2,
                    help='Use 0 for no save. Use 1 for vertex only save in obj file. Use 2 for a full mesh save (v&f). '
                         'Use 3 for gt,tp,gt_part,tp_part save as well.')
-    p.add_argument('--use_cosine_annealing', type=bool, default=True,help="Use True to enable cosine annealing, False "
+    p.add_argument('--use_cosine_annealing', type=bool, default=False, help="Use True to enable cosine annealing, False "
                                                                           "to disable")
     p.add_argument('--cosine_annealing_t_max', type=int, default=10,help="T max taken for cosine annealing, if enabled")
     # Dataset Config:
@@ -62,7 +62,7 @@ def parser():
     # Without early stop callback, we'll train for cfg.MAX_EPOCHS
 
     # L2 Losses: Use 0 to ignore, >0 to lightning
-    p.add_argument('--lambdas', nargs=7, type=float, default=(1, 0.1, 0, 0, 0, 0, 0 , 0.001),
+    p.add_argument('--lambdas', nargs=7, type=float, default=(1, 0.1, 0, 0, 0, 0, 0 , 0),
                    help='[XYZ,Normal,Moments,EuclidDistMat,EuclidNormalDistMap,FaceAreas,Volume, Velocity]'
                         'loss multiplication modifiers')
     p.add_argument('--mask_penalties', nargs=7, type=float, default=(0, 0, 0, 0, 0, 0, 0),
@@ -73,7 +73,7 @@ def parser():
                         'increased weight on distant vertices. Use val <= 1 to disable')
     p.add_argument('--loss_class', type=str, choices=['BasicLoss', 'SkepticLoss'], default='BasicLoss',
                    help='The loss class')  # TODO - generalize this
-    p.add_argument('--encoder_type', type=int, choices=[0,1,2,3], default='2',
+    p.add_argument('--encoder_type', type=int, choices=[0,1,2,3,10], default='2',
                   help='The encoder type')  # TODO - generalize this
     p.add_argument('--use_frozen_encoder', type=bool, default=True,
                    help='Use frozen encoder')  # TODO - generalize this

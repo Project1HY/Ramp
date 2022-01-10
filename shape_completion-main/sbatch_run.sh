@@ -28,4 +28,4 @@ conda activate $CONDA_ENV
 # mount -o ro //132.68.39.206/gipfs ~/gipfs
 # jupyter lab --no-browser --ip=$(hostname -I) --port-retries=100
 wandb login 19e347e092a58ca11a380ad43bd1fd5103f4d14a
-xvfb-run -a -s "-screen 0 1440x900x24" python src/core/main.py --exp_name post_encoder_3 --encoder_type 0
+xvfb-run -a -s "-screen 0 1440x900x24" python src/core/main.py --exp_name baseline_actual_regular_lr --encoder_type 10 
