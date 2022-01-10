@@ -722,11 +722,11 @@ class FullPartSequentialTorchDataset(Dataset):
 
     # Note that changes to Dataset will be seen in any loader derived from it before
     # This should be taken into account when decimating the Dataset index
-    def __init__(self, ds_inst, transforms, method):
+    def __init__(self, ds_inst, transforms, method,hit_index):
         self._ds_inst = ds_inst
         self._transforms = transforms
         self._method = method
-        self.get_func = getattr(self._ds_inst, f'_datapoint_via_path_tup')
+        self.get_func = getattr(self._ds_inst, f'_get_datapoint_func')(hit_index)
         self.self_len = self._ds_inst.num_datapoints_by_method(self._method)
         self.use_unsafe_meth = not self._ds_inst._suspected_corrupt
 
