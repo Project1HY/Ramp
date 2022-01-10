@@ -205,36 +205,42 @@ class DFaust(ParametricCompletionDataset):
 class DFaustSequential(ParametricCompletionDataset):
     NULL_SHAPE_SI = 0
 
-    def __init__(self, data_dir_override, deformation,full_dir_override, n_verts=6890):
+    def __init__(self, data_dir_override, deformation, full_dir_override, n_verts=6890):
         super().__init__(n_verts=6890, data_dir_override=data_dir_override, deformation=deformation, cls='synthetic',
                          suspected_corrupt=False)
-        #print("yiftach now is :",self._full_dir)
+        self._hits = []
+        # print("yiftach now is :",self._full_dir)
         self._full_dir = self._vert_pick
 
-    def _datapoint_via_path_tup(self, path_tup):
-        if path_tup[2] >= path_tup[-1]:
-            # TODO: return zeros.
-            gt_dict = {}
-            tp_hi = self._hit.random_path_from_partial_path([path_tup[0]])[:-1]  # Shorten hi by 1
-            # tp_hi = gt_dict['gt_hi'][:-1]
-            tp_dict = self._full_dict_by_hi(tp_hi)
-            gt_dict['gt_f'] = tp_dict['gt_f']
-            gt_dict['tp_hi'] = tp_dict['gt_hi']
-            gt_dict['tp'] = tp_dict['gt']
-            gt_dict['tp_f'] = tp_dict['gt_f']
-            gt_dict['gt_hi'] = path_tup
-            gt_dict['gt'] = np.zeros((6890, 3), dtype='float32')
-            gt_dict['gt_mask'] = self._mask_by_hi(tp_hi + (path_tup[3],))
-            gt_dict['gt_real_sample'] = False
-            return gt_dict
-        gt_dict = self._full_dict_by_hi(path_tup)
-        tp_hi = (gt_dict['gt_hi'][0], gt_dict['gt_hi'][1], 0)        # tp_hi = gt_dict['gt_hi'][:-1]
-        tp_dict = self._full_dict_by_hi(tp_hi)
-        gt_dict['tp'], gt_dict['tp_hi'], gt_dict['tp_f'] = tp_dict['gt'], tp_dict['gt_hi'], tp_dict['gt_f']
-        gt_dict['gt_mask'] = self._mask_by_hi(path_tup)
-        gt_dict['gt_real_sample'] = True
+    def _get_datapoint_func(self, hit_index):
+        _hit: HierarchicalIndexTree = self._hits[hit_index]
 
-        return gt_dict
+        def _datapoint_via_path_tup(self, path_tup):
+            if path_tup[2] >= path_tup[-1]:
+                # TODO: return zeros.
+                gt_dict = {}
+                tp_hi = _hit.random_path_from_partial_path([path_tup[0]])[:-1]  # Shorten hi by 1
+                # tp_hi = gt_dict['gt_hi'][:-1]
+                tp_dict = self._full_dict_by_hi(tp_hi)
+                gt_dict['gt_f'] = tp_dict['gt_f']
+                gt_dict['tp_hi'] = tp_dict['gt_hi']
+                gt_dict['tp'] = tp_dict['gt']
+                gt_dict['tp_f'] = tp_dict['gt_f']
+                gt_dict['gt_hi'] = path_tup
+                gt_dict['gt'] = np.zeros((6890, 3), dtype='float32')
+                gt_dict['gt_mask'] = self._mask_by_hi(tp_hi + (path_tup[3],))
+                gt_dict['gt_real_sample'] = False
+                return gt_dict
+            gt_dict = self._full_dict_by_hi(path_tup)
+            tp_hi = _hit.random_path_from_partial_path([gt_dict['gt_hi'][0]])[:-1]  # Shorten hi by 1
+            tp_dict = self._full_dict_by_hi(tp_hi)
+            gt_dict['tp'], gt_dict['tp_hi'], gt_dict['tp_f'] = tp_dict['gt'], tp_dict['gt_hi'], tp_dict['gt_f']
+            gt_dict['gt_mask'] = self._mask_by_hi(path_tup)
+            gt_dict['gt_real_sample'] = True
+
+            return gt_dict
+
+        return _datapoint_via_path_tup
 
     def _hi2proj_path_default(self, hi):
         return self._proj_dir / f'{hi[0]}{hi[1]}{hi[2]:>05}_{hi[3]}.npz'
@@ -286,6 +292,7 @@ class DFaustSequential(ParametricCompletionDataset):
             set_subjects, req_set_size, do_shuffle, transforms, is_dynamic = subjects[i], s_nums[i], None, None, None
 
             partial_hit = self._hit.keep_ids_by_depth(keepers=list(set_subjects), depth=1)
+            self._hits = self._hits + [partial_hit]
             if req_set_size is None:
                 req_set_size = partial_hit.num_indexed()
             eff_set_size = min(partial_hit.num_indexed(), req_set_size)
@@ -311,7 +318,7 @@ class DFaustSequential(ParametricCompletionDataset):
             ids = list(range(eff_set_size))
             ldr = self._loader(method=method, transforms=transforms, n_channels=n_channels, ids=None,
                                batch_size=batch_size, device=device, set_size=eff_set_size, partial_hit=partial_hit,
-                               truncation_size=truncation_size)
+                               truncation_size=truncation_size, hit_index=i)
             ldr.init_recon_table(recon_stats)
             loaders.append(ldr)
 
@@ -323,7 +330,7 @@ class DFaustSequential(ParametricCompletionDataset):
         return *tup[:-3], tup[-1], tup[-2], tup[-3]
 
     def _loader(self, method, transforms, n_channels, ids, batch_size, device, set_size, partial_hit,
-                truncation_size=3):
+                truncation_size=3, hit_index=0):
 
         # Handle Device:
         device = str(device).split(':')[0]  # Compatible for both strings & pytorch devs
@@ -348,11 +355,11 @@ class DFaustSequential(ParametricCompletionDataset):
         sampler_length = min(set_size, len(ids))  # Allows for dynamic partitions
 
         data_subsampler = SubsetChoiceSampler(ids, set_size)
-        data_sampler = SequentialAnimationBatchSampler(data_subsampler,ids, batch_size=batch_size,set_size=set_size)
+        data_sampler = SequentialAnimationBatchSampler(data_subsampler, ids, batch_size=batch_size, set_size=set_size)
         # Compiler Transforms:
         transforms = self._transformation_finalizer_by_method(method, transforms, n_channels)
 
-        return self.LOADER_CLASS(FullPartSequentialTorchDataset(self, transforms, method),
+        return self.LOADER_CLASS(FullPartSequentialTorchDataset(self, transforms, method,hit_index),
                                  batch_sampler=data_sampler, num_workers=n_workers, pin_memory=pin_memory,
                                  collate_fn=completion_collate)
 
@@ -597,10 +604,10 @@ class DatasetMenu:
         return tuple(cls._IMPLEMENTED.keys())
 
     @classmethod
-    def order(cls, dataset_name, data_dir_override=None,full_dir_override=None):
+    def order(cls, dataset_name, data_dir_override=None, full_dir_override=None):
         if dataset_name in cls._IMPLEMENTED:
             tup = cls._IMPLEMENTED[dataset_name]
-            return tup[0](data_dir_override=data_dir_override, deformation=tup[1],full_dir_override = full_dir_override)
+            return tup[0](data_dir_override=data_dir_override, deformation=tup[1], full_dir_override=full_dir_override)
         else:
             raise ValueError(f'Could not find dataset {dataset_name} - check spelling')
 
@@ -638,7 +645,7 @@ class DatasetMenu:
 # ----------------------------------------------------------------------------------------------------------------------
 # noinspection DuplicatedCode
 class SequentialAnimationBatchSampler(Sampler):
-    def __init__(self,subset_sampler, indices, batch_size=1, length=None,set_size=None):
+    def __init__(self, subset_sampler, indices, batch_size=1, length=None, set_size=None):
         self.indices = indices
         if length is None:
             length = len(subset_sampler)
@@ -647,7 +654,8 @@ class SequentialAnimationBatchSampler(Sampler):
         self.batch_size = batch_size
         self.i = 0
         self.subset_sampler = subset_sampler
-        self.set_size=set_size
+        self.set_size = set_size
+
     def __iter__(self):
         # Inefficient, without replacement:
         loc = 0
