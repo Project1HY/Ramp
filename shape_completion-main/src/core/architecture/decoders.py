@@ -63,12 +63,16 @@ class LSTMDecoder(BaseDecoder):
             nn.Conv1d(self.code_size // 32, self.code_size // 256, 1),
             nn.BatchNorm1d(self.code_size // 256),
             nn.ReLU(),
+            nn.Conv1d(self.code_size // 256, self.code_size // 512, 1),
+            nn.BatchNorm1d(self.code_size // 512),
+            nn.ReLU(),
+
         ])
 
-        self.lstm = nn.LSTM(input_size=n_verts * (self.code_size // 256), hidden_size=hidden_size, dropout=dropout,
+        self.lstm = nn.LSTM(input_size=n_verts * (self.code_size // 512), hidden_size=hidden_size, dropout=dropout,
                             bidirectional=bidirectional, num_layers=layer_count)
         D = 2 if bidirectional else 1
-        self.reshape_matrix = nn.Linear(hidden_size * D, n_verts * 3)
+        self.reshape_matrix = nn.Sequential(nn.Linear(hidden_size * D, 1024), nn.ReLU(), nn.Linear(1024, 3 * n_verts))
 
     # noinspection PyUnresolvedReferences
     def forward(self, x):
