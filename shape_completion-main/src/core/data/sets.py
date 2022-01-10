@@ -228,7 +228,7 @@ class DFaustSequential(ParametricCompletionDataset):
             gt_dict['gt_real_sample'] = False
             return gt_dict
         gt_dict = self._full_dict_by_hi(path_tup)
-        tp_hi = (gt_dict['gt_hi'][0], gt_dict['gt_hi'][1], 0)        # tp_hi = gt_dict['gt_hi'][:-1]
+        tp_hi = self._hit.random_path_from_partial_path([gt_dict['gt_hi'][0]])[:-1]  # Shorten hi by 1
         tp_dict = self._full_dict_by_hi(tp_hi)
         gt_dict['tp'], gt_dict['tp_hi'], gt_dict['tp_f'] = tp_dict['gt'], tp_dict['gt_hi'], tp_dict['gt_f']
         gt_dict['gt_mask'] = self._mask_by_hi(path_tup)
