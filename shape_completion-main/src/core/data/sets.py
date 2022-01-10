@@ -215,7 +215,7 @@ class DFaustSequential(ParametricCompletionDataset):
     def _get_datapoint_func(self, hit_index):
         _hit: HierarchicalIndexTree = self._hits[hit_index]
 
-        def _datapoint_via_path_tup(self, path_tup):
+        def _datapoint_via_path_tup(path_tup):
             if path_tup[2] >= path_tup[-1]:
                 # TODO: return zeros.
                 gt_dict = {}
