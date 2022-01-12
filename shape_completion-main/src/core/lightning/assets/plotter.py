@@ -147,9 +147,9 @@ class CompletionPlotter(ParallelPlotterBase):
         max_b_idx = self.VIS_N_MESH_SETS
         dict = {'gt': b['gt'].detach().cpu().numpy()[:max_b_idx, :, :3],
                 'tp': b['tp'].detach().cpu().numpy()[:max_b_idx, :, :3],
-                'gtrb': gtrb.detach().cpu().numpy()[:max_b_idx],
-                'gt_hi': b['gt_hi'][:max_b_idx],
-                'tp_hi': b['tp_hi'][:max_b_idx]}
+                'gtrb': gtrb.detach().cpu().numpy()[:max_b_idx]}
+               # 'gt_hi': b['gt_hi'][:max_b_idx],
+               # 'tp_hi': b['tp_hi'][:max_b_idx]}
 
         if 'gt_mask' in b:  # F2F Support - TODO
             dict['gt_mask'] = b['gt_mask'][:max_b_idx]

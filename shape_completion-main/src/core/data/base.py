@@ -716,6 +716,37 @@ class FullPartTorchDataset(Dataset):
                         if si == self.self_len:  # Double back
                             si = 0
 
+class FullPartWindowedSequentialTorchDataset(Dataset):
+    SAME_SHAPE_RETRY_BOUND = 3
+    RETRY_BOUND = SAME_SHAPE_RETRY_BOUND * 7  # Try to retry atleast 7 shapes before dying
+
+    # Note that changes to Dataset will be seen in any loader derived from it before
+    # This should be taken into account when decimating the Dataset index
+    def __init__(self, ds_inst, transforms, method, hit_index,window_size,stride):
+        self._ds_inst = ds_inst
+        self._transforms = transforms
+        self._method = method
+        self.hit_index = hit_index
+        self.window_size = window_size
+        self.stride = stride
+        # self.get_func = getattr(self._ds_inst, f'_get_datapoint_func')(hit_index)
+        self.self_len = self._ds_inst.num_datapoints_by_method(self._method)
+        self.use_unsafe_meth = not self._ds_inst._suspected_corrupt
+
+    def __len__(self):
+        return self.self_len
+
+    def __getitem__(self, pose_tup):
+        items = []
+        for i in range(-self.window_size,1):
+            pose_index = pose_tup[2]+i*self.stride
+            if pose_index<0:
+                pose_index = 0
+            pose_tup_prev = (pose_tup[0],pose_tup[1],pose_index,pose_tup[3],pose_tup[4])
+            items += [self._transforms(self._ds_inst._get_datapoint_func(self.hit_index)(pose_tup_prev))]
+        return items
+
+
 class FullPartSequentialTorchDataset(Dataset):
     SAME_SHAPE_RETRY_BOUND = 3
     RETRY_BOUND = SAME_SHAPE_RETRY_BOUND * 7  # Try to retry atleast 7 shapes before dying
@@ -1002,6 +1033,31 @@ def completion_collate(batch, stop: bool = False):
     if stop:
         return batch
     elem = batch[0]
+    if isinstance(elem, list):
+        batch_tensor = []
+        data_arr = []
+        for elem in batch:
+            d = []
+            for entry in elem:
+                d += [completion_collate([entry], stop)]
+            batch_tensor += [d]
+            data = {}
+            for suffix in ['gt', 'tp', 'gt_part']:  # TODO
+                for entry in d:
+                    if suffix not in data:
+                        data[suffix] = entry[suffix]
+                    else:
+                        data[suffix] = torch.cat((data[suffix], entry[suffix]))
+            data_arr += [data]
+        out_dict = {}
+        for suffix in ['gt', 'tp', 'gt_part']:  # TODO
+            for entry in data_arr:
+                if suffix not in out_dict:
+                    out_dict[suffix] = entry[suffix].unsqueeze(0)
+                else:
+                    out_dict[suffix] = torch.cat((out_dict[suffix], entry[suffix].unsqueeze(0)))
+
+        return out_dict
     elem_type = type(elem)
     if isinstance(elem, torch.Tensor):
         out = None
