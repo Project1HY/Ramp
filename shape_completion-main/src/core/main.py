@@ -73,7 +73,7 @@ def parser():
                         'increased weight on distant vertices. Use val <= 1 to disable')
     p.add_argument('--loss_class', type=str, choices=['BasicLoss', 'SkepticLoss'], default='BasicLoss',
                    help='The loss class')  # TODO - generalize this
-    p.add_argument('--encoder_type', type=int, choices=[0,1,2,3], default='2',
+    p.add_argument('--encoder_type', type=int, choices=[0,1,2,3,10], default=10,
                   help='The encoder type')  # TODO - generalize this
     p.add_argument('--use_frozen_encoder', type=bool, default=True,
                    help='Use frozen encoder')  # TODO - generalize this
@@ -107,7 +107,7 @@ def train_main():
     args = parser()[0].parse_args()
     print(f"enc type is {args.encoder_type}")
     if args.encoder_type == 10:
-        nn = F2PEncoderDecoderBase(parser())
+        nn = F2PEncoderDecoderWindowed(parser())
     elif args.encoder_type==2:
         nn = F2PEncoderDecoderEncodingPair(parser())
     elif args.encoder_type==1:

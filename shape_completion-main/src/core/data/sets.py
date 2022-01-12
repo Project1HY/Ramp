@@ -364,6 +364,171 @@ class DFaustSequential(ParametricCompletionDataset):
                                  collate_fn=completion_collate)
 
 
+class DFaustWindowedSequential(ParametricCompletionDataset):
+    NULL_SHAPE_SI = 0
+
+    def __init__(self, data_dir_override, deformation, n_verts=6890):
+        super().__init__(n_verts=6890, data_dir_override=data_dir_override, deformation=deformation, cls='synthetic',
+                         suspected_corrupt=False)
+        self._hits = []
+        # print("yiftach now is :",self._full_dir)
+        # self._full_dir = self._vert_pick
+
+    def _get_datapoint_func(self, hit_index):
+        _hit: HierarchicalIndexTree = self._hits[hit_index]
+
+        def _datapoint_via_path_tup(path_tup):
+            if path_tup[2] >= path_tup[-1]:
+                # TODO: return zeros.
+                gt_dict = {}
+                tp_hi = _hit.random_path_from_partial_path([path_tup[0]])[:-1]  # Shorten hi by 1
+                # tp_hi = gt_dict['gt_hi'][:-1]
+                tp_dict = self._full_dict_by_hi(tp_hi)
+                gt_dict['gt_f'] = tp_dict['gt_f']
+                gt_dict['tp_hi'] = tp_dict['gt_hi']
+                gt_dict['tp'] = tp_dict['gt']
+                gt_dict['tp_f'] = tp_dict['gt_f']
+                gt_dict['gt_hi'] = path_tup
+                gt_dict['gt'] = np.zeros((6890, 3), dtype='float32')
+                gt_dict['gt_mask'] = self._mask_by_hi(tp_hi + (path_tup[3],))
+                gt_dict['gt_real_sample'] = False
+                return gt_dict
+            gt_dict = self._full_dict_by_hi(path_tup)
+            tp_hi = _hit.random_path_from_partial_path([gt_dict['gt_hi'][0]])[:-1]  # Shorten hi by 1
+            tp_dict = self._full_dict_by_hi(tp_hi)
+            gt_dict['tp'], gt_dict['tp_hi'], gt_dict['tp_f'] = tp_dict['gt'], tp_dict['gt_hi'], tp_dict['gt_f']
+            gt_dict['gt_mask'] = self._mask_by_hi(path_tup)
+            gt_dict['gt_real_sample'] = True
+
+            return gt_dict
+
+        return _datapoint_via_path_tup
+
+    def _hi2proj_path_default(self, hi):
+        return self._proj_dir / f'{hi[0]}{hi[1]}{hi[2]:>05}_{hi[3]}.npz'
+
+    def _hi2full_path_default(self, hi):
+        return self._full_dir / hi[0] / hi[1] / f'{hi[2]:>05}.npy'
+
+    def _hi2proj_path_semantic_cuts(self, hi):
+        return self._proj_dir / hi[0] / hi[1] / f'{hi[2]:>05}_{hi[3]}.npz'
+
+    def loaders(self, s_nums=None, s_shuffle=True, s_transform=None, split=(.8, .1, .1), s_dynamic=False,
+                global_shuffle=False, batch_size=16, stride=3, window_size=3, device='cuda', method='f2p', n_channels=6,
+                truncation_size=3):
+        """
+        # s for split
+        :param split: A list of fracs summing to 1: e.g.: [0.9,0.1] or [0.8,0.15,0.05]. Don't specify anything for a
+        single loader
+        :param s_nums: A list of integers: e.g. [1000,50] or [1000,5000,None] - The number of objects to take from each
+        range split. If None, it will take the maximal number possible.
+        WARNING: Remember that the data loader will ONLY load from these examples unless s_dynamic[i] == True
+        :param s_dynamic: A list of booleans: If s_dynamic[i]==True, the ith split will take s_nums[i] examples at
+        random from the partition [which usually includes many more examples]. On the next load, will take another
+        random s_nums[i] from the partition. If False - will take always the very same examples. Usually, we'd want
+        s_dynamic to be True only for the training set.
+        :param s_shuffle: A list of booleans: If s_shuffle[i]==True, the ith split will be shuffled before truncations
+        to s_nums[i] objects
+        :param s_transform: A list - s_transforms[i] is the transforms for the ith split
+        :param global_shuffle: If True, shuffles the entire set before split
+        :param batch_size: Integer > 0
+        :param device: 'cuda' or 'cpu' or 'cpu-single' or pytorch device
+        :param method: One of ('full', 'part', 'f2p', 'rand_f2p','frand_f2p', 'p2p', 'rand_p2p','frand_p2p')
+        :param n_channels: One of cfg.SUPPORTED_IN_CHANNELS - The number of channels required per datapoint
+        :return: A list of (loaders,num_samples)
+        """
+        assert sum(split) == 1, "Split fracs must sum to 1"
+        # TODO - Clean up this function, add in smarter defaults, simplify
+        if (method == 'f2p' or method == 'p2p') and not self._hit_in_memory:
+            method = 'rand_' + method
+            warn(f'Tuple dataset index is too big for this dataset. Reverting to {method} instead')
+        if (method == 'frand_f2p' or method == 'frand_p2p') and len(split) != 1:
+            raise ValueError("Seeing the fully-rand methods have no connection to the partition, we cannot support "
+                             "a split dataset here")
+        # Logic:
+        s_nums = to_list(s_nums)
+        subjects = list(self._hit.get_id_union_by_depth(depth=1))
+        subjects = split_frac(subjects, split)
+        n_parts = len(split)
+        loaders = []
+        for i in range(n_parts):
+            set_subjects, req_set_size, do_shuffle, transforms, is_dynamic = subjects[i], s_nums[i], None, None, None
+
+            partial_hit = self._hit.keep_ids_by_depth(keepers=list(set_subjects), depth=1)
+            self._hits = self._hits + [partial_hit]
+            if req_set_size is None:
+                req_set_size = partial_hit.num_indexed()
+            eff_set_size = min(partial_hit.num_indexed(), req_set_size)
+            if eff_set_size != req_set_size:
+                warn(f'At Loader {i + 1}/{n_parts}: Requested {req_set_size} objects while set has only {eff_set_size}.'
+                     f' Reverting to latter')
+            # if not is_dynamic:  # Truncate only if not dynamic
+            #     set_ids = set_ids[:eff_set_size]  # Truncate
+            recon_stats = {
+                'dataset_name': self.name(),
+                'batch_size': batch_size,
+                'split': split,
+                'id_in_split': i,
+                'set_size': eff_set_size,
+                'transforms': str(transforms),
+                'global_shuffle': global_shuffle,
+                'partition_shuffle': do_shuffle,
+                'method': method,
+                'n_channels': n_channels,
+                'in_memory_index': self._hit_in_memory,
+                'is_dynamic': is_dynamic
+            }
+            ids = list(range(eff_set_size))
+            ldr = self._loader(method=method, transforms=transforms, n_channels=n_channels, ids=None,
+                               batch_size=batch_size, device=device, set_size=eff_set_size, partial_hit=partial_hit,
+                               truncation_size=truncation_size, hit_index=i, stride=3, window_size=3)
+            ldr.init_recon_table(recon_stats)
+            loaders.append(ldr)
+
+        if n_parts == 1:
+            loaders = loaders[0]
+        return loaders
+
+    def _reorder_identity_tuple(self, tup):
+        return *tup[:-2], tup[-1], tup[-2] # first elements are subject,pose,
+                                           # and index, tup[-1]=azimuth, tup[-2]=sequence length
+
+    def _loader(self, method, transforms, n_channels, ids, batch_size, device, set_size, partial_hit,
+                truncation_size=3, hit_index=0, stride=3, window_size=3):
+
+        # Handle Device:
+        device = str(device).split(':')[0]  # Compatible for both strings & pytorch devs
+        assert device in ['cuda', 'cpu', 'cpu-single']
+        pin_memory = (device == 'cuda')
+        if device == 'cpu-single':
+            n_workers = 0
+        else:
+            n_workers = determine_worker_num(10e7, batch_size)
+        import itertools
+
+        ids = partial_hit.get_path_union_by_depth(3)
+        ids = [[ident + (i, ) for i in range(10)] for ident in ids]
+        ids = list(itertools.chain(*ids))
+
+        ids = [self._reorder_identity_tuple(tup) for tup in ids]
+        # Compile Sampler:
+        if set_size is None:
+            set_size = len(ids)
+        assert len(ids) > 0, "Found loader with no data samples inside"
+        length = sum([dp[-1] for dp in ids])
+        sampler_length = min(set_size, len(ids))  # Allows for dynamic partitions
+
+        data_subsampler = SubsetChoiceSampler(ids, set_size)
+        data_sampler = SequentialAnimationBatchSampler(data_subsampler, ids, batch_size=batch_size, set_size=set_size)
+        # Compiler Transforms:
+        transforms = self._transformation_finalizer_by_method(method, transforms, n_channels)
+
+        return self.LOADER_CLASS(
+            FullPartWindowedSequentialTorchDataset(self, transforms, method, hit_index, window_size, stride),
+            batch_sampler=data_sampler, num_workers=n_workers, pin_memory=pin_memory,
+            collate_fn=completion_collate)
+
+
 # ----------------------------------------------------------------------------------------------------------------------
 #                                                       DFaust Scans
 # ----------------------------------------------------------------------------------------------------------------------
@@ -565,6 +730,7 @@ class DatasetMenu:
 
         'DFaustProj': (DFaust, AzimuthalProjection()),
         'DFaustProjSequential': (DFaustSequential, AzimuthalProjection()),
+        'DFaustProjRandomSequential': (DFaustWindowedSequential, AzimuthalProjection()),
         'DFaustSemCuts': (DFaust, SemanticCut(n_expected_proj=4)),
 
         # 'DFaustAccessories' : (DFaustAccessories, AzimuthalProjection()),
@@ -607,7 +773,7 @@ class DatasetMenu:
     def order(cls, dataset_name, data_dir_override=None, full_dir_override=None):
         if dataset_name in cls._IMPLEMENTED:
             tup = cls._IMPLEMENTED[dataset_name]
-            return tup[0](data_dir_override=data_dir_override, deformation=tup[1], full_dir_override=full_dir_override)
+            return tup[0](data_dir_override=data_dir_override, deformation=tup[1])
         else:
             raise ValueError(f'Could not find dataset {dataset_name} - check spelling')
 
