@@ -519,8 +519,7 @@ class DFaustWindowedSequential(ParametricCompletionDataset):
         length = sum([dp[-1] for dp in ids])
         sampler_length = min(set_size, len(ids))  # Allows for dynamic partitions
 
-        data_subsampler = SubsetChoiceSampler(ids, set_size)
-        data_sampler = SequentialAnimationBatchSampler(data_subsampler, ids, batch_size=batch_size, set_size=set_size)
+        data_sampler = SubsetChoiceSampler(ids, set_size)
         # Compiler Transforms:
         transforms = self._transformation_finalizer_by_method(method, transforms, n_channels)
 
