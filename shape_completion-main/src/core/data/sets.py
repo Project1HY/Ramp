@@ -414,7 +414,7 @@ class DFaustWindowedSequential(ParametricCompletionDataset):
         return self._proj_dir / hi[0] / hi[1] / f'{hi[2]:>05}_{hi[3]}.npz'
 
     def loaders(self, s_nums=None, s_shuffle=True, s_transform=None, split=(.8, .1, .1), s_dynamic=False,
-                global_shuffle=False, batch_size=16, stride=3, window_size=3, device='cuda', method='f2p', n_channels=6,
+                global_shuffle=False, batch_size=16, stride=6, window_size=2, device='cuda', method='f2p', n_channels=6,
                 truncation_size=3):
         """
         # s for split
@@ -481,7 +481,7 @@ class DFaustWindowedSequential(ParametricCompletionDataset):
             ids = list(range(eff_set_size))
             ldr = self._loader(method=method, transforms=transforms, n_channels=n_channels, ids=None,
                                batch_size=batch_size, device=device, set_size=eff_set_size, partial_hit=partial_hit,
-                               truncation_size=truncation_size, hit_index=i, stride=3, window_size=3)
+                               truncation_size=truncation_size, hit_index=i, stride=stride, window_size=window_size)
             ldr.init_recon_table(recon_stats)
             loaders.append(ldr)
 
