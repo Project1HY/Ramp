@@ -44,6 +44,8 @@ def parser():
     p.add_argument('--max_epochs', type=int, default=None,  # Must be over 1
                    help='Maximum epochs to train for. Use None for close to infinite epochs')
     p.add_argument('--lr', type=float, default=0.006, help='The learning step to use')
+    p.add_argument('--stride', type=int, default=6, help='The learning step to use')
+    p.add_argument('--window_size', type=int, default=2, help='The learning step to use')
     p.add_argument('--counts', nargs=3, type=none_or_int, default=(10000, 1000, 1000), # TODO - Change me as needed
                    help='The default train,validation and test counts. Recommended [8000-20000, 500-1000, 500-1000]. '
                         'Use None to take all examples in the partition - '
@@ -79,7 +81,7 @@ def parser():
                    help='Use frozen encoder')  # TODO - generalize this
 
     # Computation
-    p.add_argument('--gpus', type=none_or_int, default=None, help='Use -1 to use all available. Use None to run on CPU')
+    p.add_argument('--gpus', type=none_or_int, default=-1, help='Use -1 to use all available. Use None to run on CPU')
     p.add_argument('--distributed_backend', type=str, default='dp', help='supports three options dp, ddp, ddp2')
     # TODO - ddp2,ddp Untested. Multiple GPUS - not tested
 
@@ -117,7 +119,7 @@ def train_main():
     else:
         nn = F2PEncoderDecoderTemporal(parser())
 
-    # nn.identify_system()
+    nn.identify_system()
 
     # Bring in data:
     ldrs = f2p_completion_loaders(nn.hp)

@@ -446,6 +446,7 @@ class DFaustWindowedSequential(ParametricCompletionDataset):
             raise ValueError("Seeing the fully-rand methods have no connection to the partition, we cannot support "
                              "a split dataset here")
         # Logic:
+        print(f"stride is {stride} window is {window_size}")
         s_nums = to_list(s_nums)
         subjects = list(self._hit.get_id_union_by_depth(depth=1))
         subjects = split_frac(subjects, split)
