@@ -522,10 +522,12 @@ class DFaustWindowedSequential(ParametricCompletionDataset):
         data_sampler = SubsetChoiceSampler(ids, set_size)
         # Compiler Transforms:
         transforms = self._transformation_finalizer_by_method(method, transforms, n_channels)
-
+        #sampler = EncompassedBatchSampler(data_sampler,
+#EncompassedBatchSampler(Sampler):
+ #   def __init__(self, subsampler, batch_size=1, window_size=2, length=None):
         return self.LOADER_CLASS(
-            FullPartWindowedSequentialTorchDataset(self, transforms, method, hit_index, window_size, stride),
-            batch_sampler=data_sampler, num_workers=n_workers, pin_memory=pin_memory,
+            FullPartWindowedSequentialTorchDataset(self, transforms, method, hit_index, window_size, stride), batch_size=batch_size,
+            sampler=data_sampler, num_workers=n_workers, pin_memory=pin_memory,
             collate_fn=completion_collate)
 
 
@@ -848,31 +850,28 @@ class SequentialAnimationBatchSampler(Sampler):
         return self.length
 
 
-class TruncatedSequentialBatchSampler(Sampler):
-    def __init__(self, indices, batch_size=1, truncation_size=650, length=None):
-        self.indices = indices
+class EncompassedBatchSampler(Sampler):
+    def __init__(self, subsampler, batch_size=1, window_size=2, length=None):
+        self.subsampler = subsampler
         if length is None:
-            length = len(self.indices)
-        self.length = length // batch_size + 1
+            length = len(self.subsampler)
+        assert batch_size%window_size==0, f"window size {window_size} does not divide batch size {batch_size}"
+        self.length = length // (batch_size*window_size) 
         self.batch_size = batch_size
-        self._truncation_size = truncation_size
-        self.i = 0
+        self.window_size = window_size
 
     def __iter__(self):
         # Inefficient, without replacement:
         # return iter(self.indices[:self.length])
-        while len(self.indices) != 0:
-            sliced_indices = self.indices[:self.batch_size]
-            del self.indices[:self.batch_size]
-            for i in range(self._truncation_size):
-                yield sliced_indices
-                self.i = self.i + 1
-                for index in range(len(sliced_indices)):
-                    sliced_indices[index] = (
-                        *sliced_indices[index][:-3], sliced_indices[index][-3] + 1, *sliced_indices[index][-2:])
-            filtered_indices = [index for index in sliced_indices if index[-2] < index[-1]]
-            self.indices += filtered_indices
-
+        entries = []
+        counter = 0
+        for sample in self.subsampler:
+            counter += 1
+            entries += [sample]
+            if counter == self.batch_size*self.window_size:
+                yield entries
+                entries = []
+            
     def __len__(self):
         return self.length
 

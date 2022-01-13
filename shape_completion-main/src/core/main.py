@@ -18,7 +18,7 @@ def parser():
     # Check-pointing
     p.add_argument('--exp_name', type=str, default='SiameseEncodersActual_++',  # TODO - Don't forget to change me!
                    help='The experiment name. Leave empty for default')
-    p.add_argument('--version', type=none_or_int, default=0,
+    p.add_argument('--version', type=none_or_int, default=1,
                    help='Weights will be saved at weight_dir=exp_name/version_{version}. '
                         'Use NonFe to automatically choose an unused version')
     p.add_argument('--resume_cfg', nargs=2, type=bool, default=(False, True),
@@ -33,7 +33,7 @@ def parser():
     p.add_argument('--cosine_annealing_t_max', type=int, default=10,help="T max taken for cosine annealing, if enabled")
     # Dataset Config:
     # NOTE: A well known ML rule: double the learning rate if you double the batch size.
-    p.add_argument('--batch_size', type=int, default=5, help='SGD batch size')
+    p.add_argument('--batch_size', type=int, default=10, help='SGD batch size')
     # TODO: This parameter applies for P & Q, however it can be overridden is some architecture
     p.add_argument('--in_channels', choices=[3, 6, 12], default=6,
                    help='Number of input channels')
@@ -43,7 +43,7 @@ def parser():
                    help="Force train for this amount. Usually we'd early stop using the callback. Use 1 to disable")
     p.add_argument('--max_epochs', type=int, default=None,  # Must be over 1
                    help='Maximum epochs to train for. Use None for close to infinite epochs')
-    p.add_argument('--lr', type=float, default=0.006, help='The learning step to use')
+    p.add_argument('--lr', type=float, default=0.003, help='The learning step to use')
     p.add_argument('--stride', type=int, default=6, help='The learning step to use')
     p.add_argument('--window_size', type=int, default=2, help='The learning step to use')
     p.add_argument('--counts', nargs=3, type=none_or_int, default=(10000, 1000, 1000), # TODO - Change me as needed
@@ -54,8 +54,8 @@ def parser():
 
 
     # Optimizer
-    p.add_argument("--weight_decay", type=float, default=1e-4, help="Adam's weight decay - usually use 1e-4")
-    p.add_argument("--plateau_patience", type=none_or_int, default=20,
+    p.add_argument("--weight_decay", type=float, default=0,  help="Adam's weight decay - usually use 1e-4")
+    p.add_argument("--plateau_patience", type=none_or_int, default=30,
                    help="Number of epoches to wait on learning plateau before reducing step size. Use None to shut off")
     p.add_argument("--early_stop_patience", type=int, default=80,  # TODO - Remember to setup resume_cfg correctly
                    help="Number of epoches to wait on learning plateau before stopping train")
@@ -64,7 +64,7 @@ def parser():
     # Without early stop callback, we'll train for cfg.MAX_EPOCHS
 
     # L2 Losses: Use 0 to ignore, >0 to lightning
-    p.add_argument('--lambdas', nargs=7, type=float, default=(1, 0.1, 0, 0, 0, 0, 0 , 0),
+    p.add_argument('--lambdas', nargs=7, type=float, default=(1, 0.01, 0, 0, 0, 0, 0 , 0),
                    help='[XYZ,Normal,Moments,EuclidDistMat,EuclidNormalDistMap,FaceAreas,Volume, Velocity]'
                         'loss multiplication modifiers')
     p.add_argument('--mask_penalties', nargs=7, type=float, default=(0, 0, 0, 0, 0, 0, 0),
@@ -118,7 +118,6 @@ def train_main():
         nn = F2PEncoderDecoderEncodingPost(parser())
     else:
         nn = F2PEncoderDecoderTemporal(parser())
-
     nn.identify_system()
 
     # Bring in data:

@@ -114,8 +114,8 @@ class SubsetChoiceSampler(Sampler):
     def __iter__(self):
         # Inefficient, without replacement:
         # return iter(self.indices[:self.length])
-        subset = (self.indices[i] for i in torch.randperm(len(self.indices))[:self.length])
-        return subset
+        subset = [self.indices[i] for i in torch.randperm(len(self.indices))][:self.length]
+        return iter(subset)
         # Efficient, with replacement:
         # return (self.indices[i] for i in torch.randint(low=0,high=len(self.indices),size=(self.length,)))
 

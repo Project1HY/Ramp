@@ -732,13 +732,12 @@ class FullPartWindowedSequentialTorchDataset(Dataset):
         # self.get_func = getattr(self._ds_inst, f'_get_datapoint_func')(hit_index)
         self.self_len = self._ds_inst.num_datapoints_by_method(self._method)
         self.use_unsafe_meth = not self._ds_inst._suspected_corrupt
-
     def __len__(self):
         return self.self_len
 
     def __getitem__(self, pose_tup):
         items = []
-        for i in range(-self.window_size,1):
+        for i in range(-self.window_size+1,1):
             pose_index = pose_tup[2]+i*self.stride
             if pose_index<0:
                 pose_index = 0
