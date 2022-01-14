@@ -146,9 +146,13 @@ class ShapeDiffLoss:
         """
         loss = torch.zeros(1, device=self.dev, dtype=self.def_prec)
         loss_dict = {}
-        orig_shape_1 = shape_1
-        shape_1 = shape_1.reshape(-1,shape_1.shape[-2],shape_1.shape[-1])
-        assert False,f"shape of 1 is {shape_1.shape} shape of 2 is {shape_2.shape}"
+        shape1_sequential = None
+        shape2_sequential = None
+        shape_of_1 = shape_1.shape
+        if len(shape_of_1) > 3:
+            shape1_sequential = shape_1
+            shape2_sequential = shape_2.reshape(shape_of_1[0], shape_of_1[1], shape_of_1[2], -1)
+            shape_1 = shape_1.reshape(-1, shape_1.shape[-2], shape_1.shape[-1])
         for i, lamb in enumerate(self.lambdas):
             if lamb > 0:
                 if i == 0:  # XYZ
@@ -208,7 +212,8 @@ class ShapeDiffLoss:
                     loss_dict['Volumes'] = loss_volumes
                     loss += loss_volumes
                 elif i == 7:
-                    loss_velocity = lamb * vertex_velocity(shape_1[:, :, 0:3], shape_2)
+                    assert len(shape_of_1) > 3, "Dataset should be configured for sequential data"
+                    loss_velocity = lamb * vertex_velocity(shape1_sequential[:, :, :, 0:3], shape2_sequential)
                     loss_dict['Velocity'] = loss_velocity
                     loss += loss_velocity
                 # TODO: implement chamfer distance loss
