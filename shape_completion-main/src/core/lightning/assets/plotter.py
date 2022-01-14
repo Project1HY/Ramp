@@ -183,6 +183,7 @@ class CompletionPlotter(ParallelPlotterBase):
                 # TODO - Add support for normals & P2P
                 # TODO - Check why in mesh method + tensor colors, colors are interpolated onto the faces.
                 p.subplot(subplt_row_id, 0)  # GT Reconstructed with colored mask
+                assert False,f"gtrb shape {gtrb.shape} gt shape {gt.shape} tp shape {tp.shape}"
                 add_mesh(p, v=gtrb, f=self.f, n=gtr_vnb,
                          clr=vertex_clr, label=f'{set_name} Reconstruction {i}', **self.kwargs)
                 p.subplot(subplt_row_id, 1)  # GT with colored mask

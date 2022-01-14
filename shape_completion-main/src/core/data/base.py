@@ -1047,11 +1047,11 @@ def completion_collate(batch, stop: bool = False):
                         data[suffix] = entry[suffix]
                     else:
                         data[suffix] = torch.cat((data[suffix], entry[suffix]))
-            for suffix in ['gt_hi','tp_hi','tp_f','gt_f','gt_mask']:
+            for suffix in ['gt_hi','tp_hi','gt_mask']:
                 for entry in d:
                     if suffix not in data:
                         data[suffix] = []
-                    data[suffix] += [entry[suffix]]
+                    data[suffix] += entry[suffix]
             data_arr += [data]
         out_dict = {}
         for suffix in ['gt', 'tp', 'gt_part']:  # TODO
@@ -1060,12 +1060,11 @@ def completion_collate(batch, stop: bool = False):
                     out_dict[suffix] = entry[suffix].unsqueeze(0)
                 else:
                     out_dict[suffix] = torch.cat((out_dict[suffix], entry[suffix].unsqueeze(0)))
-        for suffix in ['gt_hi', 'tp_hi', 'tp_f', 'gt_f', 'gt_mask']:
+        for suffix in ['gt_hi', 'tp_hi', 'gt_mask']:
             for entry in data_arr:
                 if suffix not in out_dict:
                     out_dict[suffix] = []
-                out_dict[suffix] += [entry[suffix]]
-        assert False,f"out dict is {out_dict}"
+                out_dict[suffix] += entry[suffix]
         return out_dict
     elem_type = type(elem)
     if isinstance(elem, torch.Tensor):
