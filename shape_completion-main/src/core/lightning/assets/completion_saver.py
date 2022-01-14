@@ -20,7 +20,10 @@ class CompletionSaver:
         dump_dp = self.dump_dirs[set_id]
 
         # TODO - Make this generic, and not key dependent. Insert support for P2P
-        gtrb = pred['completion_xyz'].cpu().numpy()
+        gtrb = pred['completion_xyz']
+        if len(gtrb.shape) > 3:
+            gtrb = gtrb.reshape(-1, gtrb.shape[-2], gtrb.shape[-1])
+        gtrb = gtrb.cpu().numpy()
         for i, (gt_hi, tp_hi) in enumerate(zip(b['gt_hi'], b['tp_hi'])):
             gt_hi, tp_hi = '_'.join(str(x) for x in gt_hi), '_'.join(str(x) for x in tp_hi)
             gtr_v = gtrb[i, :, :3]
