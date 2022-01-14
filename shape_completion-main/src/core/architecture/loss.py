@@ -146,7 +146,9 @@ class ShapeDiffLoss:
         """
         loss = torch.zeros(1, device=self.dev, dtype=self.def_prec)
         loss_dict = {}
+        orig_shape_1 = shape_1
         shape_1 = shape_1.reshape(-1,shape_1.shape[-2],shape_1.shape[-1])
+        assert False,f"shape of 1 is {shape_1.shape} shape of 2 is {shape_2.shape}"
         for i, lamb in enumerate(self.lambdas):
             if lamb > 0:
                 if i == 0:  # XYZ
