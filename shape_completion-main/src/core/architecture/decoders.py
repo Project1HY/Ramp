@@ -63,13 +63,10 @@ class LSTMDecoder(BaseDecoder):
             nn.Conv1d(self.code_size // 32, self.code_size // 256, 1),
             nn.BatchNorm1d(self.code_size // 256),
             nn.ReLU(),
-            nn.Conv1d(self.code_size // 256, self.code_size // 512, 1),
-            nn.BatchNorm1d(self.code_size // 512),
-            nn.ReLU(),
 
         ])
 
-        self.lstm = nn.LSTM(input_size=n_verts * (self.code_size // 512), hidden_size=hidden_size, dropout=dropout,
+        self.lstm = nn.LSTM(input_size=n_verts , hidden_size=hidden_size, dropout=dropout,
                             bidirectional=bidirectional, num_layers=layer_count,batch_first=True)
         D = 2 if bidirectional else 1
         self.reshape_matrix = nn.Sequential(nn.Linear(hidden_size * D, 1024), nn.ReLU(), nn.Linear(1024, 3 * n_verts))
@@ -83,18 +80,19 @@ class LSTMDecoder(BaseDecoder):
         bs = x.size(0)
         window_size = x.size(1)
         nv = x.size(-2)
-
         x = x.reshape(bs * window_size, nv, -1)
-
+        
         x = x.transpose(2, 1).contiguous()  # [b x nv x in_channels]
         x = self.convolutions(x)
-        x = x.reshape(bs, window_size, nv, -1)
+        x = x.reshape(bs, window_size, -1)
+        # assert False,f"x shape is {x.shape}"
+        #assert False,f"shape of x is {x.shape}"
         # x = x.transpose(0, 1)
         # seq_len = self.seq_len if x.shape[0]%self.seq_len ==0 else
-        x = x.reshape(bs, window_size, x.shape[1] * x.shape[2])
         out, _ = self.lstm(x)
-        out = out.squeeze(1)
-        out = self.reshape_matrix(out).reshape(x.shape[0], self.n_verts, 3)
+        
+        out = out.reshape(bs*window_size,-1)
+        out = self.reshape_matrix(out).reshape(bs*window_size, self.n_verts, 3)
         # out = 2 * self.thl(out)
         return out
 

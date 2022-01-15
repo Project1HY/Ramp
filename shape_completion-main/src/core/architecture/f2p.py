@@ -320,7 +320,7 @@ class F2PEncoderDecoderTemporal(F2PEncoderDecoderBase):
         self.encoder_full = PointNetShapeEncoder(in_channels=self.hp.in_channels, code_size=self.hp.code_size)
         self.encoder_part = self.encoder_full
 
-        self.decoder = LSTMDecoder(code_size=self.hp.in_channels + 3 * self.hp.code_size,
+        self.decoder = LSTMDecoder(code_size=self.hp.in_channels + 2 * self.hp.code_size,
                                    out_channels=self.hp.out_channels, hidden_size=self.hp.decoder_hidden_size,
                                    dropout=self.hp.decoder_dropout, bidirectional=self.hp.decoder_bidirectional,
                                    layer_count=self.hp.decoder_layer_count, n_verts=6890)
