@@ -46,7 +46,7 @@ def parser():
     p.add_argument('--lr', type=float, default=0.003, help='The learning step to use')
     p.add_argument('--stride', type=int, default=6, help='The learning step to use')
     p.add_argument('--window_size', type=int, default=2, help='The learning step to use')
-    p.add_argument('--counts', nargs=3, type=none_or_int, default=(10000, 1000, 1000), # TODO - Change me as needed
+    p.add_argument('--counts', nargs=3, type=none_or_int, default=(10000, 1000, 1000000), # TODO - Change me as needed
                    help='The default train,validation and test counts. Recommended [8000-20000, 500-1000, 500-1000]. '
                         'Use None to take all examples in the partition - '
                         'for big datasets, this could blow up the epoch')

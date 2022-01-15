@@ -223,7 +223,7 @@ def _join_loader_sets(*args):
 # ----------------------------------------------------------------------------------------------------------------------
 #our new loader
 
-def new_loaders(hp, ds_name='DFaustProj', transforms: Union[List, Tuple] = tuple(), method='rand_f2p',subject_keep = None, pose_keep = None):
+def new_loaders(hp, ds_name='DFaustProjRandomSequential', transforms: Union[List, Tuple] = tuple(), method='rand_f2p',subject_keep = None, pose_keep = None):
     transforms = list(transforms)
     # transforms.append(L2BallNormalize())  # Always normalize to the L2 Ball
     transforms.append(Center())

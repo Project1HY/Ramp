@@ -319,7 +319,6 @@ class F2PEncoderDecoderTemporal(F2PEncoderDecoderBase):
     def _build_model(self):
         self.encoder_full = PointNetShapeEncoder(in_channels=self.hp.in_channels, code_size=self.hp.code_size)
         self.encoder_part = self.encoder_full
-        self.encoder_pre = self.encoder_full
 
         self.decoder = LSTMDecoder(code_size=self.hp.in_channels + 3 * self.hp.code_size,
                                    out_channels=self.hp.out_channels, hidden_size=self.hp.decoder_hidden_size,
@@ -332,19 +331,21 @@ class F2PEncoderDecoderTemporal(F2PEncoderDecoderBase):
         full = input_dict['tp']
 
         # part, full [bs x nv x in_channels]
+
         bs = full.size(0)
-        nv = full.size(1)
-        part_shifted_right = torch.cat((part[0, :, :].unsqueeze(0), part[:-1, :, :]), dim=0)
-        part_shifted_left = torch.cat((part[1:, :, :], part[-1, :, :].unsqueeze(0)), dim=0)
+        window_size = full.size(1)
+        nv = full.size(-2)
+
+        full = full.reshape(bs * window_size, nv, -1)
+        part = part.reshape(bs * window_size, nv, -1)
         part_code = self.encoder_part(part)  # [b x code_size]
         full_code = self.encoder_full(full)  # [b x code_size]
-        pre_code = self.encoder_pre(part_shifted_right)
 
-        part_code = part_code.unsqueeze(1).expand(bs, nv, self.hp.code_size)  # [b x nv x code_size]
-        full_code = full_code.unsqueeze(1).expand(bs, nv, self.hp.code_size)  # [b x nv x code_size]
-        pre_code = pre_code.unsqueeze(1).expand(bs, nv, self.hp.code_size)  # [b x nv x code_size]
-        y = torch.cat((full, part_code, full_code, pre_code),
-                      2).contiguous()  # [b x nv x (in_channels + 4*code_size)]
+        part_code = part_code.unsqueeze(1).expand(bs * window_size, nv, self.hp.code_size)  # [b x nv x code_size]
+        full_code = full_code.unsqueeze(1).expand(bs * window_size, nv, self.hp.code_size)  # [b x nv x code_size]
+
+        y = torch.cat((full, part_code, full_code), 2).contiguous()  # [b x nv x (in_channels + 2*code_size)]
+        y = y.reshape(bs,window_size,nv,-1)
         y = self.decoder(y)
         return {'completion_xyz': y}
 

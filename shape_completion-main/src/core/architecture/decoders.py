@@ -70,7 +70,7 @@ class LSTMDecoder(BaseDecoder):
         ])
 
         self.lstm = nn.LSTM(input_size=n_verts * (self.code_size // 512), hidden_size=hidden_size, dropout=dropout,
-                            bidirectional=bidirectional, num_layers=layer_count)
+                            bidirectional=bidirectional, num_layers=layer_count,batch_first=True)
         D = 2 if bidirectional else 1
         self.reshape_matrix = nn.Sequential(nn.Linear(hidden_size * D, 1024), nn.ReLU(), nn.Linear(1024, 3 * n_verts))
 
@@ -80,10 +80,18 @@ class LSTMDecoder(BaseDecoder):
         :param x:  Point code for each point: [b x nv x pnt_code_size] pnt_code_size == in_channels + 2*shape_code
         :return: predicted coordinates for each point, after the deformation [B x nv x 3]
         """
+        bs = x.size(0)
+        window_size = x.size(1)
+        nv = x.size(-2)
+
+        x = x.reshape(bs * window_size, nv, -1)
+
         x = x.transpose(2, 1).contiguous()  # [b x nv x in_channels]
         x = self.convolutions(x)
+        x = x.reshape(bs, window_size, nv, -1)
+        # x = x.transpose(0, 1)
         # seq_len = self.seq_len if x.shape[0]%self.seq_len ==0 else
-        x = x.reshape(x.shape[0], 1, x.shape[1] * x.shape[2])
+        x = x.reshape(bs, window_size, x.shape[1] * x.shape[2])
         out, _ = self.lstm(x)
         out = out.squeeze(1)
         out = self.reshape_matrix(out).reshape(x.shape[0], self.n_verts, 3)
