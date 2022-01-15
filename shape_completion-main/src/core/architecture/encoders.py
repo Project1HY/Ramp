@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from architecture.base import BaseEncoder
 from geom.mesh.op.gpu.dist import batch_knn
-
+from pct import PointTransformerCls
 
 # ----------------------------------------------------------------------------------------------------------------------
 #                                                       Encoders
@@ -22,6 +22,21 @@ class PointNetShapeEncoder(BaseEncoder):
 
     def forward(self, x):
         return self.graph(x)
+
+class PCTShapeEncoder(BaseEncoder):
+    def __init__(self, code_size=1024, in_channels=3):
+        super().__init__(code_size=code_size, in_channels=in_channels)
+
+        self.graph = nn.Sequential(
+            PointTransformerCls(self.code_size, self.in_channels),
+            nn.Linear(self.code_size, self.code_size),
+            nn.BatchNorm1d(self.code_size),
+            nn.ReLU()
+        )
+
+    def forward(self, x):
+        return self.graph(x)
+
 
 
 class PointNetGlobalFeatures(BaseEncoder):

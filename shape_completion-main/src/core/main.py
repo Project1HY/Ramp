@@ -28,9 +28,11 @@ def parser():
     p.add_argument('--save_completions', type=int, choices=[0, 1, 2, 3], default=2,
                    help='Use 0 for no save. Use 1 for vertex only save in obj file. Use 2 for a full mesh save (v&f). '
                         'Use 3 for gt,tp,gt_part,tp_part save as well.')
-    p.add_argument('--use_cosine_annealing', type=bool, default=False, help="Use True to enable cosine annealing, False "
-                                                                          "to disable")
-    p.add_argument('--cosine_annealing_t_max', type=int, default=10,help="T max taken for cosine annealing, if enabled")
+    p.add_argument('--use_cosine_annealing', type=bool, default=False,
+                   help="Use True to enable cosine annealing, False "
+                        "to disable")
+    p.add_argument('--cosine_annealing_t_max', type=int, default=10,
+                   help="T max taken for cosine annealing, if enabled")
     # Dataset Config:
     # NOTE: A well known ML rule: double the learning rate if you double the batch size.
     p.add_argument('--batch_size', type=int, default=10, help='SGD batch size')
@@ -46,15 +48,13 @@ def parser():
     p.add_argument('--lr', type=float, default=0.003, help='The learning step to use')
     p.add_argument('--stride', type=int, default=6, help='The learning step to use')
     p.add_argument('--window_size', type=int, default=2, help='The learning step to use')
-    p.add_argument('--counts', nargs=3, type=none_or_int, default=(10000, 1000, 1000000), # TODO - Change me as needed
+    p.add_argument('--counts', nargs=3, type=none_or_int, default=(10000, 1000, 1000000),  # TODO - Change me as needed
                    help='The default train,validation and test counts. Recommended [8000-20000, 500-1000, 500-1000]. '
                         'Use None to take all examples in the partition - '
                         'for big datasets, this could blow up the epoch')
 
-
-
     # Optimizer
-    p.add_argument("--weight_decay", type=float, default=0,  help="Adam's weight decay - usually use 1e-4")
+    p.add_argument("--weight_decay", type=float, default=0, help="Adam's weight decay - usually use 1e-4")
     p.add_argument("--plateau_patience", type=none_or_int, default=30,
                    help="Number of epoches to wait on learning plateau before reducing step size. Use None to shut off")
     p.add_argument("--early_stop_patience", type=int, default=80,  # TODO - Remember to setup resume_cfg correctly
@@ -64,7 +64,7 @@ def parser():
     # Without early stop callback, we'll train for cfg.MAX_EPOCHS
 
     # L2 Losses: Use 0 to ignore, >0 to lightning
-    p.add_argument('--lambdas', nargs=7, type=float, default=(1, 0.01, 0, 0, 0, 0, 0 , 0),
+    p.add_argument('--lambdas', nargs=7, type=float, default=(1, 0.01, 0, 0, 0, 0, 0, 0),
                    help='[XYZ,Normal,Moments,EuclidDistMat,EuclidNormalDistMap,FaceAreas,Volume, Velocity]'
                         'loss multiplication modifiers')
     p.add_argument('--mask_penalties', nargs=7, type=float, default=(0, 0, 0, 0, 0, 0, 0),
@@ -75,8 +75,8 @@ def parser():
                         'increased weight on distant vertices. Use val <= 1 to disable')
     p.add_argument('--loss_class', type=str, choices=['BasicLoss', 'SkepticLoss'], default='BasicLoss',
                    help='The loss class')  # TODO - generalize this
-    p.add_argument('--encoder_type', type=int, choices=[0,1,2,3,10], default=10,
-                  help='The encoder type')  # TODO - generalize this
+    p.add_argument('--encoder_type', type=int, choices=[1, 2, 10], default=10,
+                   help='The encoder type')  # TODO - generalize this
     p.add_argument('--use_frozen_encoder', type=bool, default=True,
                    help='Use frozen encoder')  # TODO - generalize this
 
@@ -110,12 +110,8 @@ def train_main():
     print(f"enc type is {args.encoder_type}")
     if args.encoder_type == 10:
         nn = F2PEncoderDecoderWindowed(parser())
-    elif args.encoder_type==2:
-        nn = F2PEncoderDecoderEncodingPair(parser())
-    elif args.encoder_type==1:
-        nn = F2PEncoderDecoderEncodingPre(parser())
-    elif args.encoder_type==0:
-        nn = F2PEncoderDecoderEncodingPost(parser())
+    elif args.encoder_type == 2:
+        nn = F2PPCTDecoderWindowed(parser())
     else:
         nn = F2PEncoderDecoderTemporal(parser())
     nn.identify_system()
@@ -137,13 +133,15 @@ def test_main():
     banner('Network Init')
     nn = F2PEncoderDecoderBase(parser())
     # print(nn.hp)
-    #ldrs = f2p_completion_loaders(nn.hp)
-    nn.hp.counts = (1000000,1000000,1000000)
+    # ldrs = f2p_completion_loaders(nn.hp)
+    nn.hp.counts = (1000000, 1000000, 1000000)
     ldrs = f2p_completion_loaders(nn.hp)
     # banner('Testing')
     trainer = LightningTrainer(nn, ldrs)
     trainer.test()
     trainer.finalize()
+
+
 #
 # def run_completion():
 #     nn = F2PEncoderDecoderBase(parser())
