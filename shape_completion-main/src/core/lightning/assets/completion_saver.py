@@ -16,6 +16,22 @@ class CompletionSaver:
             dp.mkdir(parents=True, exist_ok=True)
             self.dump_dirs.append(dp)
 
+    def get_completions_as_pil(self, pred, b):
+        # TODO - Make this generic, and not key dependent. Insert support for P2P
+        gtrb = pred['completion_xyz']
+        if len(gtrb.shape) > 3:
+            gtrb = gtrb.reshape(-1, gtrb.shape[-2], gtrb.shape[-1])
+        gtrb = gtrb.cpu().numpy()
+        pils = []
+        for i in range(len(b['gt_hi'])):
+            gtr_v = gtrb[i, :, :3]
+            if 'gt_f' in b:
+                gt_f = b['gt_f'][i]
+            else:
+                gt_f = self.f
+            pils += [geom.mesh.io.base.numpy_to_pil(gtr_v, gt_f)]
+        return pils
+
     def save_completions_by_batch(self, pred, b, set_id):
         dump_dp = self.dump_dirs[set_id]
 

@@ -16,7 +16,7 @@ def parser():
     p = HyperOptArgumentParser(strategy='random_search')
 
     # Check-pointing
-    p.add_argument('--exp_name', type=str, default='SiameseEncodersActual_++',  # TODO - Don't forget to change me!
+    p.add_argument('--exp_name', type=str, default='Test',  # TODO - Don't forget to change me!
                    help='The experiment name. Leave empty for default')
     p.add_argument('--version', type=none_or_int, default=1,
                    help='Weights will be saved at weight_dir=exp_name/version_{version}. '
@@ -81,7 +81,7 @@ def parser():
                    help='Use frozen encoder')  # TODO - generalize this
     p.add_argument('--run_baseline', type=bool, default=True, help='flag if we want to run baseline model')
     # Computation
-    p.add_argument('--gpus', type=none_or_int, default=-1, help='Use -1 to use all available. Use None to run on CPU')
+    p.add_argument('--gpus', type=none_or_int, default=None, help='Use -1 to use all available. Use None to run on CPU')
     p.add_argument('--distributed_backend', type=str, default='dp', help='supports three options dp, ddp, ddp2')
     # TODO - ddp2,ddp Untested. Multiple GPUS - not tested
 
@@ -109,6 +109,7 @@ def train_main():
     args = parser()[0].parse_args()
     if args.run_baseline:
         nn= F2PEncoderDecoderBase(parser())
+        # nn.identify_system()
         ldrs = f2p_completion_loaders(nn.hp, train='DFaustProj')
 
     else:

@@ -5,7 +5,7 @@ import pyvista as pv
 import meshio
 from itertools import chain
 import pickle as pk
-
+import PIL
 
 # ---------------------------------------------------------------------------------------------------------------------#
 #                                                Collectors
@@ -268,7 +268,6 @@ def write_collada(fp, v, f, mesh_name="exported_mesh"):
 
     mesh.write(fp)
 
-
 # ---------------------------------------------------------------------------------------------------------------------#
 #                                                       Oddities
 # ---------------------------------------------------------------------------------------------------------------------#
@@ -325,6 +324,16 @@ def numpy2trimesh(v, f):
     import trimesh
     return trimesh.Trimesh(vertices=v, faces=f, process=False)
 
+
+def numpy_to_pil(v,f):
+    pv_mesh = numpy2pyvista_mesh(v,f)
+    plotter = pv.Plotter(off_screen=True)
+    plotter.camera_position = ((0, 0, 5.5), (0, 0, 0), (0, 1.5, 0))
+    plotter.add_mesh(pv_mesh)
+    plotter.show(screenshot="aa.png")
+    image = plotter.image
+    img = PIL.Image.fromarray(image)
+    return img
 
 # ---------------------------------------------------------------------------------------------------------------------#
 #                                                   Test Suite
