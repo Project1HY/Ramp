@@ -89,7 +89,6 @@ def read_obj(fp):
 def read_off_verts(fp):
     v = []
     try:
-        # TODO: yiftach change this back
         with open(fp,
                   "r") as fh:
             first = fh.readline().strip()
@@ -276,7 +275,6 @@ def write_collada(fp, v, f, mesh_name="exported_mesh"):
 
 def read_npz_mask(fp):
     try:
-        # TODO: yiftach change this back
         return np.load(
             fp)[
             "mask"]

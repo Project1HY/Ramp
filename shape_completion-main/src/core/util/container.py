@@ -90,7 +90,6 @@ def split_frac(l, fracs):
     # splits += 0.5 instead of round() before casting to int
     splits += 0.5
     splits = splits.astype(np.int)
-    l = np.random.permutation(l)
     return np.split(l, splits)
 
 

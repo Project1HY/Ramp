@@ -169,23 +169,6 @@ class SMALTest(SMALBase):
 # ----------------------------------------------------------------------------------------------------------------------
 #                                                       DFaust
 # ----------------------------------------------------------------------------------------------------------------------
-
-class DFaust(ParametricCompletionDataset):
-    def __init__(self, data_dir_override, deformation):
-        super().__init__(n_verts=6890, data_dir_override=r"R:\Mano\data\DFaust\DFaust", deformation=deformation,
-                         cls='synthetic',
-                         suspected_corrupt=False)
-
-    def _hi2proj_path_default(self, hi):
-        return self._proj_dir / f'{hi[0]}{hi[1]}{hi[2]:>05}_{hi[3]}.npz'
-
-    def _hi2full_path_default(self, hi):
-        return self._full_dir / hi[0] / hi[1] / f'{hi[2]:>05}.npy'
-
-    def _hi2proj_path_semantic_cuts(self, hi):
-        return self._proj_dir / hi[0] / hi[1] / f'{hi[2]:>05}_{hi[3]}.npz'
-
-
 class DFaust(ParametricCompletionDataset):
     def __init__(self, deformation, data_dir_override=r"./DFaust/"):
         super().__init__(n_verts=6890, data_dir_override=data_dir_override, deformation=deformation, cls='synthetic',
@@ -196,7 +179,7 @@ class DFaust(ParametricCompletionDataset):
         return self._proj_dir / f'{hi[0]}{hi[1]}{hi[2]:>05}_{hi[3]}.npz'
 
     def _hi2full_path_default(self, hi):
-        return self._full_dir / hi[0] / hi[1] / f'{hi[2]:>05}.npy'
+        return self._full_dir / hi[0] / hi[1] / f'{hi[2]:>05}.off'
 
     def _hi2proj_path_semantic_cuts(self, hi):
         return self._proj_dir / hi[0] / hi[1] / f'{hi[2]:>05}_{hi[3]}.npz'

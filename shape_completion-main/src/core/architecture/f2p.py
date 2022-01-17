@@ -26,7 +26,7 @@ class F2PEncoderDecoderBase(CompletionLightningModel):
     @staticmethod
     def add_model_specific_args(parent_parser):
         p = HyperOptArgumentParser(parents=parent_parser, add_help=False, conflict_handler='resolve')
-        p.add_argument('--code_size', default=128, type=int)
+        p.add_argument('--code_size', default=512, type=int)
         p.add_argument('--out_channels', default=3, type=int)
         p.add_argument('--decoder_convl', default=5, type=int)
         if not parent_parser:  # Name clash with parent

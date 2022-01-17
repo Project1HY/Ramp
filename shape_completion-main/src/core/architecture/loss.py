@@ -34,6 +34,8 @@ class BasicLoss:
 
         loss_dict = loss_dict_comp
         loss_dict.update(total_loss=loss_dict['total_loss_comp'])
+
+        #compute and area and volume losses too
         return loss_dict
 
 
@@ -207,10 +209,10 @@ class ShapeDiffLoss:
                     f_volume_1 = batch_surface_volume(shape_1[:, :, 0:3], self.torch_f.unsqueeze(0))
 
                     f_volume_2 = batch_surface_volume(shape_2, self.torch_f.unsqueeze(0))
-                    loss_volumes = lamb * torch.linalg.norm(f_volume_1 - f_volume_2)
+                    loss_volumes = torch.linalg.norm(f_volume_1 - f_volume_2)
                     # loss_volumes = self._l2_loss(f_volume_1, f_volume_2, lamb=lamb, vertex_mask=w)
                     loss_dict['Volumes'] = loss_volumes
-                    loss += loss_volumes
+                    loss += lamb*loss_volumes
                 elif i == 7:
                     assert len(shape_of_1) > 3, "Dataset should be configured for sequential data"
                     loss_velocity = lamb * vertex_velocity(shape1_sequential[:, :, :, 0:3], shape2_sequential)

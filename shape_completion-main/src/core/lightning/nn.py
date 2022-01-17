@@ -1,5 +1,5 @@
 import torch
-from torch.optim.lr_scheduler import ReduceLROnPlateau ,CosineAnnealingLR # , CosineAnnealingLR
+from torch.optim.lr_scheduler import ReduceLROnPlateau  # , CosineAnnealingLR
 import architecture.loss
 # from util.mesh.ops import batch_vnrmls
 from collections import defaultdict
@@ -8,6 +8,7 @@ from util.func import all_variables_by_module_name
 from copy import deepcopy
 import sys
 import wandb
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 #
@@ -60,11 +61,9 @@ class CompletionLightningModel(PytorchNet):
         self.opt = torch.optim.Adam(self.parameters(), lr=self.hp.lr, weight_decay=self.hp.weight_decay)
 
         if self.hp.plateau_patience is not None:
-            if self.hp.use_cosine_annealing:
-                sched = CosineAnnealingLR(self.opt, T_max=self.hp.cosine_annealing_t_max)
-            else:
-                sched = ReduceLROnPlateau(self.opt, mode='min', patience=self.hp.plateau_patience, verbose=True,
-                                          cooldown=self.hp.DEF_LR_SCHED_COOLDOWN, eps=self.hp.DEF_MINIMAL_LR, factor=0.5)
+            sched = ReduceLROnPlateau(self.opt, mode='min', patience=self.hp.plateau_patience, verbose=True,
+                                      cooldown=self.hp.DEF_LR_SCHED_COOLDOWN, eps=self.hp.DEF_MINIMAL_LR,
+                                      factor=0.5)
             # Options: factor=0.1, threshold=0.0001, threshold_mode='rel', cooldown=0, min_lr=0, eps=1e-08
             return [self.opt], [sched]
         else:
@@ -87,6 +86,15 @@ class CompletionLightningModel(PytorchNet):
     def validation_step(self, b, batch_idx, set_id=0):
         pred = self.complete(b)
         batch_validation_mesh = pred['completion_xyz']
+        if batch_idx == 0 and set_id == 0:
+            batch_validation_mesh = torch.index_select(pred['completion_xyz'].cpu().detach(), 1,
+                                                       torch.LongTensor([2, 0, 1]))
+
+            batch_validation_mesh = batch_validation_mesh.numpy()[-1]
+            wandb.log({"point_cloud": wandb.Object3D(batch_validation_mesh)})
+        if set_id == 1:
+            #plot animation
+            pass
         if batch_idx == 0 and set_id == 0 and self.assets.plt is not None and self.assets.plt.cache_is_filled():
             # On first batch, of first dataset, only if plotter exists and only if training step has been activated
             # before (last case does not happen if we run in dev mode).
@@ -129,14 +137,6 @@ class CompletionLightningModel(PytorchNet):
     def test_step(self, b, batch_idx, set_id=0):
 
         pred = self.complete(b)
-        if self.assets.plt is None:
-            print('bye')
-        # if batch_idx == 0 and set_id == 0 and self.assets.plt is not None and self.assets.plt.cache_is_filled():
-        #     # On first batch, of first dataset, only if plotter exists and only if training step has been activated
-        #     # before (last case does not happen if we run in dev mode).
-        #     new_data = (self.assets.plt.uncache(), self.assets.plt.prepare_plotter_dict(b, pred))
-        #     self.assets.plt.push(new_data=new_data, new_epoch=self.current_epoch)
-
         if self.assets.saver is not None:  # TODO - Generalize this
             self.assets.saver.save_completions_by_batch(pred, b, set_id)
         return self.loss.compute(b, pred)

@@ -64,7 +64,7 @@ def parser():
     # Without early stop callback, we'll train for cfg.MAX_EPOCHS
 
     # L2 Losses: Use 0 to ignore, >0 to lightning
-    p.add_argument('--lambdas', nargs=7, type=float, default=(1, 0.01, 0, 0, 0, 0, 0 , 0.00005),
+    p.add_argument('--lambdas', nargs=7, type=float, default=(1, 0.01, 0, 0, 0, 0, 0 , 0),
                    help='[XYZ,Normal,Moments,EuclidDistMat,EuclidNormalDistMap,FaceAreas,Volume, Velocity]'
                         'loss multiplication modifiers')
     p.add_argument('--mask_penalties', nargs=7, type=float, default=(0, 0, 0, 0, 0, 0, 0),
@@ -79,7 +79,7 @@ def parser():
                    help='The encoder type')  # TODO - generalize this
     p.add_argument('--use_frozen_encoder', type=bool, default=True,
                    help='Use frozen encoder')  # TODO - generalize this
-
+    p.add_argument('--run_baseline', type=bool, default=True, help='flag if we want to run baseline model')
     # Computation
     p.add_argument('--gpus', type=none_or_int, default=-1, help='Use -1 to use all available. Use None to run on CPU')
     p.add_argument('--distributed_backend', type=str, default='dp', help='supports three options dp, ddp, ddp2')
@@ -107,17 +107,22 @@ def train_main():
     banner('Network Init')
     # nn = F2PEncoderDecoderBase(parser()
     args = parser()[0].parse_args()
-    print(f"enc type is {args.encoder_type}")
-    if args.encoder_type == 10:
-        nn = F2PEncoderDecoderWindowed(parser())
-    elif args.encoder_type == 2:
-        nn = F2PPCTDecoderWindowed(parser())
-    else:
-        nn = F2PEncoderDecoderTemporal(parser())
-    nn.identify_system()
+    if args.run_baseline:
+        nn= F2PEncoderDecoderBase(parser())
+        ldrs = f2p_completion_loaders(nn.hp, train='DFaustProj')
 
-    # Bring in data:
-    ldrs = f2p_completion_loaders(nn.hp)
+    else:
+        print(f"enc type is {args.encoder_type}")
+        if args.encoder_type == 10:
+            nn = F2PEncoderDecoderWindowed(parser())
+        elif args.encoder_type == 2:
+            nn = F2PPCTDecoderWindowed(parser())
+        else:
+            nn = F2PEncoderDecoderTemporal(parser())
+        nn.identify_system()
+        ldrs = f2p_completion_loaders(nn.hp, train='DFaustProjRandomSequential')
+
+
     # [ [train_loader], [vald_loaders] , [test_loaders] ]
     #
 

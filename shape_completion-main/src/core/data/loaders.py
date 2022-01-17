@@ -166,15 +166,15 @@ def _loaders(hp, ds_name='DFaust', cls='train', transforms: Union[List, Tuple] =
                           s_transform=transforms,
                           batch_size=batch_size, device=hp.dev, n_channels=hp.in_channels,
                           method=method, s_shuffle=[True] * 3,
-                          s_dynamic=[train_dynamic_partition, False, False], stride=hp.stride, window_size=hp.window_size)
+                          s_dynamic=[train_dynamic_partition, False, False])
     elif cls == 'vald_test':
         return [None] + ds.loaders(split=VALD_SPLIT, s_nums=hp.counts[1:3], s_transform=transforms,
                                    batch_size=batch_size, device=hp.dev, n_channels=hp.in_channels,
-                                   method=method, s_shuffle=[True] * 2, s_dynamic=[False, False], stride=hp.stride, window_size=hp.window_size)
+                                   method=method, s_shuffle=[True] * 2, s_dynamic=[False, False])
     elif cls == 'test':
         return [None, None, ds.loaders(split=[1], s_nums=hp.counts[2], s_transform=transforms,
                                        batch_size=batch_size, device=hp.dev, n_channels=hp.in_channels,
-                                       method=method, s_shuffle=[True], s_dynamic=[False],stride=hp.stride, window_size=hp.window_size)]
+                                       method=method, s_shuffle=[True], s_dynamic=[False])]
     else:
         raise AssertionError
 
