@@ -147,7 +147,7 @@ class CompletionLightningModel(PytorchNet):
         if self.assets.saver is not None:  # TODO - Generalize this
             rows = []
             for completion_gif_path, completion, completion_name in tqdm.tqdm(self.assets.saver.load_completions()):
-                wandb.log({"completion_video": wandb.Video(completion, fps=60, format="gif")})
+                wandb.log({"completion_video": wandb.Video(completion_gif_path, fps=60, format="gif")})
                 completion = np.array(completion)
                 completions_shifted = completion[1:]
                 completion = completion[:-1]
