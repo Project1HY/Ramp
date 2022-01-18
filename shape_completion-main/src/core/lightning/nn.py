@@ -9,6 +9,8 @@ from copy import deepcopy
 import sys
 import wandb
 import tqdm
+import numpy as np
+
 
 # ----------------------------------------------------------------------------------------------------------------------
 #
@@ -93,18 +95,12 @@ class CompletionLightningModel(PytorchNet):
             batch_validation_mesh = batch_validation_mesh.numpy()[-1]
             wandb.log({"point_cloud": wandb.Object3D(batch_validation_mesh)})
             if self.assets.saver is not None:  # TODO - Generalize this
-               images = self.assets.saver.get_completions_as_pil(pred, b)
-               wandb.log({"completions": [wandb.Image(image) for image in images]})
+                images = self.assets.saver.get_completions_as_pil(pred, b)
+                wandb.log({"completions": [wandb.Image(image) for image in images]})
 
-        if set_id == 1:
-            #plot animation
-            pass
         if batch_idx == 0 and set_id == 0 and self.assets.plt is not None and self.assets.plt.cache_is_filled():
             # On first batch, of first dataset, only if plotter exists and only if training step has been activated
             # before (last case does not happen if we run in dev mode).
-            batch_validation_mesh = pred['completion_xyz'].cpu().detach().numpy()[-1]
-            wandb.log({"point_cloud": wandb.Object3D(batch_validation_mesh)})
-
             new_data = (self.assets.plt.uncache(), self.assets.plt.prepare_plotter_dict(b, pred))
             self.assets.plt.push(new_data=new_data, new_epoch=self.current_epoch)
 
@@ -149,11 +145,18 @@ class CompletionLightningModel(PytorchNet):
         if self.assets.data.num_test_loaders() == 1:
             outputs = [outputs]  # Incase singleton case
         if self.assets.saver is not None:  # TODO - Generalize this
-            for completion in tqdm.tqdm(self.assets.saver.load_completions()):
+            rows = []
+            for completion_gif_path, completion, completion_name in tqdm.tqdm(self.assets.saver.load_completions()):
                 wandb.log({"completion_video": wandb.Video(completion, fps=60, format="gif")})
+                completion = np.array(completion)
+                completions_shifted = completion[1:]
+                completion = completion[:-1]
+                mean_velocity = np.mean(completions_shifted - completion)
+                rows += [[completion_name, mean_velocity]]
+            columns = ["completion subject and pose", "mean velocity"]
+            wandb.log({"completion temporal metrics": wandb.Table(columns=columns, data=rows)})
             log_dict, progbar_dict = {}, {}
         avg_test_loss = 0
-        videos = self.assets.saver.load_completions()
 
         for i in range(len(outputs)):  # Number of test datasets
             ds_name = self.assets.data.index2test_ds_name(i)

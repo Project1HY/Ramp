@@ -340,8 +340,9 @@ def numpy_to_pil(v,f):
 # ---------------------------------------------------------------------------------------------------------------------#
 
 def _fbx_tester():
-    p = r'C:\Users\idoim\Desktop\681.fbx'
-    v, f = read_mesh(p)
+    p = r'/Users/yiftachedelstain/Downloads/shape_completion-main/src/visualize/smpl_segmentations_data/gt_50025_knees_457_1_tp_50025_running_on_spot_144_res.ply'
+    v= read_ply_verts(p)
+    print(v.shape)
 
 
 def _io_tester():
