@@ -1,5 +1,9 @@
+import random
+
 from geom.mesh.op.cpu.remesh import trunc_to_vertex_mask
 import geom.mesh.io.base
+import geom.mesh.io.animate
+import glob
 
 
 class CompletionSaver:
@@ -7,6 +11,8 @@ class CompletionSaver:
     def __init__(self, exp_dir, testset_names, extended_save, f):
         from cfg import SAVE_MESH_AS
         self.save_func = getattr(geom.mesh.io.base, f'write_{SAVE_MESH_AS}')
+        self.read_func = getattr(geom.mesh.io.base, f'read_{SAVE_MESH_AS}')
+
         self.extended_save = extended_save
         self.f = f  # Might be None
 
@@ -31,6 +37,35 @@ class CompletionSaver:
                 gt_f = self.f
             pils += [geom.mesh.io.base.numpy_to_pil(gtr_v, gt_f)]
         return pils
+
+    def load_completions(self, set_id=0):
+        dump_dp = self.dump_dirs[set_id]
+        completions = glob.glob(dump_dp / "*")
+        subjects = {}
+        for file in completions:
+            filename = file.split("/")[-1]
+            name_split = filename.split("_")
+            subject = name_split[1]
+            frame_loc = [i for i, n in enumerate(name_split) if n.isdigit()][1]
+            frame = name_split[frame_loc]
+            pose = name_split[2:frame_loc]
+            pose = '_'.join(str(x) for x in pose)
+            if subject not in subjects:
+                subjects[subject] = {}
+            if pose in subjects[subject]:
+                subjects[subject][pose] = {}
+            if frame in subjects[subject][pose]:
+                subjects[subject][pose][frame] = []
+            subjects[subject][pose][frame] += [file]
+        for subject in subjects:
+            for pose in subjects[subject]:
+                for frame in subjects[subject][pose]:
+                    subjects[subject][pose][frame] = random.choice(subjects[subject][pose][frame])
+                    subjects[subject][pose][frame] = self.read_func(subjects[subject][pose][frame])
+                subjects[subject][pose] = subjects[subject][pose].values()
+                geometries_comp = [self.read_func(path)[0] for path in subjects[subject][pose]]
+                geom.mesh.io.animate.animate(geometries_comp, self.f, dump_dp / f"{subject}_{pose}.gif")
+                yield dump_dp / f"{subject}_{pose}.gif"
 
     def save_completions_by_batch(self, pred, b, set_id):
         dump_dp = self.dump_dirs[set_id]

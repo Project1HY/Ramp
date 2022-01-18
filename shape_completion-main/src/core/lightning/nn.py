@@ -148,8 +148,13 @@ class CompletionLightningModel(PytorchNet):
     def test_end(self, outputs):
         if self.assets.data.num_test_loaders() == 1:
             outputs = [outputs]  # Incase singleton case
-        log_dict, progbar_dict = {}, {}
+        if self.assets.saver is not None:  # TODO - Generalize this
+            for completion in self.assets.saver.load_completions():
+                wandb.log({"completion_video": wandb.Video(completion, fps=60, format="gif")})
+            log_dict, progbar_dict = {}, {}
         avg_test_loss = 0
+        videos = self.assets.saver.load_completions()
+
         for i in range(len(outputs)):  # Number of test datasets
             ds_name = self.assets.data.index2test_ds_name(i)
             for k in outputs[i][0].keys():
