@@ -173,13 +173,13 @@ class DFaust(ParametricCompletionDataset):
     def __init__(self, deformation, data_dir_override=r"./DFaust/"):
         super().__init__(n_verts=6890, data_dir_override=data_dir_override, deformation=deformation, cls='synthetic',
                          suspected_corrupt=False)
-        #self._full_dir = Path(r'D:\yift_hadas_data\DFAUST_VERT_PICK')
-
+        # self._full_dir = Path(r'D:\yift_hadas_data\DFAUST_VERT_PICK')
+        self._full_dir = self._vert_pick
     def _hi2proj_path_default(self, hi):
         return self._proj_dir / f'{hi[0]}{hi[1]}{hi[2]:>05}_{hi[3]}.npz'
 
     def _hi2full_path_default(self, hi):
-        return self._full_dir / hi[0] / hi[1] / f'{hi[2]:>05}.OFF'
+        return self._full_dir / hi[0] / hi[1] / f'{hi[2]:>05}.npy'
 
     def _hi2proj_path_semantic_cuts(self, hi):
         return self._proj_dir / hi[0] / hi[1] / f'{hi[2]:>05}_{hi[3]}.npz'
