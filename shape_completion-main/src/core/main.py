@@ -81,7 +81,7 @@ def parser():
                    help='Use frozen encoder')  # TODO - generalize this
     p.add_argument('--run_baseline', type=bool, default=True, help='flag if we want to run baseline model')
     # Computation
-    p.add_argument('--gpus', type=none_or_int, default=None, help='Use -1 to use all available. Use None to run on CPU')
+    p.add_argument('--gpus', type=none_or_int, default=-1, help='Use -1 to use all available. Use None to run on CPU')
     p.add_argument('--distributed_backend', type=str, default='dp', help='supports three options dp, ddp, ddp2')
     # TODO - ddp2,ddp Untested. Multiple GPUS - not tested
 
@@ -140,8 +140,8 @@ def test_main():
     nn = F2PEncoderDecoderBase(parser())
     # print(nn.hp)
     # ldrs = f2p_completion_loaders(nn.hp)
-    nn.hp.counts = (1000000, 1000000, 1000000)
-    ldrs = f2p_completion_loaders(nn.hp)
+    nn.hp.counts = (1000000, 1000000, 20)
+    ldrs = f2p_completion_loaders(nn.hp, train='DFaustProj')
     # banner('Testing')
     trainer = LightningTrainer(nn, ldrs)
     trainer.test()
@@ -159,4 +159,4 @@ def test_main():
 #
 # ----------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
-    train_main()
+    test_main()

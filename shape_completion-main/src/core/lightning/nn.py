@@ -8,7 +8,7 @@ from util.func import all_variables_by_module_name
 from copy import deepcopy
 import sys
 import wandb
-
+import tqdm
 
 # ----------------------------------------------------------------------------------------------------------------------
 #
@@ -149,7 +149,7 @@ class CompletionLightningModel(PytorchNet):
         if self.assets.data.num_test_loaders() == 1:
             outputs = [outputs]  # Incase singleton case
         if self.assets.saver is not None:  # TODO - Generalize this
-            for completion in self.assets.saver.load_completions():
+            for completion in tqdm.tqdm(self.assets.saver.load_completions()):
                 wandb.log({"completion_video": wandb.Video(completion, fps=60, format="gif")})
             log_dict, progbar_dict = {}, {}
         avg_test_loss = 0

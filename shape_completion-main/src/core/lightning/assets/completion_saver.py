@@ -40,7 +40,7 @@ class CompletionSaver:
 
     def load_completions(self, set_id=0):
         dump_dp = self.dump_dirs[set_id]
-        completions = glob.glob(dump_dp / "*")
+        completions = glob.glob(f"{str(dump_dp)}/*")
         subjects = {}
         for file in completions:
             filename = file.split("/")[-1]
@@ -52,20 +52,19 @@ class CompletionSaver:
             pose = '_'.join(str(x) for x in pose)
             if subject not in subjects:
                 subjects[subject] = {}
-            if pose in subjects[subject]:
+            if pose not in subjects[subject]:
                 subjects[subject][pose] = {}
-            if frame in subjects[subject][pose]:
+            if frame not in subjects[subject][pose]:
                 subjects[subject][pose][frame] = []
             subjects[subject][pose][frame] += [file]
         for subject in subjects:
             for pose in subjects[subject]:
                 for frame in subjects[subject][pose]:
                     subjects[subject][pose][frame] = random.choice(subjects[subject][pose][frame])
-                    subjects[subject][pose][frame] = self.read_func(subjects[subject][pose][frame])
                 subjects[subject][pose] = subjects[subject][pose].values()
-                geometries_comp = [self.read_func(path)[0] for path in subjects[subject][pose]]
-                geom.mesh.io.animate.animate(geometries_comp, self.f, dump_dp / f"{subject}_{pose}.gif")
-                yield dump_dp / f"{subject}_{pose}.gif"
+                geometries_comp = [geom.mesh.io.base.read_ply_verts(path) for path in subjects[subject][pose]]
+                geom.mesh.io.animate.animate(geometries_comp, self.f, str(dump_dp / f"{subject}_{pose}.gif"))
+                yield str(dump_dp / f"{subject}_{pose}.gif")
 
     def save_completions_by_batch(self, pred, b, set_id):
         dump_dp = self.dump_dirs[set_id]
