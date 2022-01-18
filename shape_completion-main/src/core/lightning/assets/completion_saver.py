@@ -40,7 +40,7 @@ class CompletionSaver:
 
     def load_completions(self, set_id=0):
         dump_dp = self.dump_dirs[set_id]
-        completions = glob.glob(f"{str(dump_dp)}/*")
+        completions = glob.glob(f"{str(dump_dp)}/*.ply")
         subjects = {}
         for file in completions:
             filename = file.split("/")[-1]
@@ -64,7 +64,7 @@ class CompletionSaver:
                     frame_paths += [random.choice(subjects[subject][pose][frame])]
                 subjects[subject][pose] = frame_paths
                 geometries_comp = [geom.mesh.io.base.read_ply_verts(path) for path in subjects[subject][pose]]
-                geom.mesh.io.animate.animate(geometries_comp, self.f, str(dump_dp / f"{subject}_{pose}.gif"),titles=f"{subject}_{pose})
+                geom.mesh.io.animate.animate(geometries_comp, self.f, str(dump_dp / f"{subject}_{pose}.gif"),titles=[f"{subject}_{pose}"]*len(frame_paths))
                 yield str(dump_dp / f"{subject}_{pose}.gif")
 
     def save_completions_by_batch(self, pred, b, set_id):
