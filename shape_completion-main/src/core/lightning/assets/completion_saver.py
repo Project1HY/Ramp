@@ -59,11 +59,12 @@ class CompletionSaver:
             subjects[subject][pose][frame] += [file]
         for subject in subjects:
             for pose in subjects[subject]:
-                for frame in subjects[subject][pose]:
-                    subjects[subject][pose][frame] = random.choice(subjects[subject][pose][frame])
-                subjects[subject][pose] = subjects[subject][pose].values()
+                frame_paths = []
+                for frame in sorted(subjects[subject][pose]):
+                    frame_paths += [random.choice(subjects[subject][pose][frame])]
+                subjects[subject][pose] = frame_paths
                 geometries_comp = [geom.mesh.io.base.read_ply_verts(path) for path in subjects[subject][pose]]
-                geom.mesh.io.animate.animate(geometries_comp, self.f, str(dump_dp / f"{subject}_{pose}.gif"))
+                geom.mesh.io.animate.animate(geometries_comp, self.f, str(dump_dp / f"{subject}_{pose}.gif"),titles=f"{subject}_{pose})
                 yield str(dump_dp / f"{subject}_{pose}.gif")
 
     def save_completions_by_batch(self, pred, b, set_id):
