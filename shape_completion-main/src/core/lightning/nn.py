@@ -167,7 +167,7 @@ class CompletionLightningModel(PytorchNet):
             if i == 0:  # Always use the first dataset as the test loss
                 avg_test_loss = ds_test_loss
                 progbar_dict['test_loss'] = avg_test_loss
-
+        wandb.log({"completion test metrics":wandb.Table(columns=log_dict.keys(),data=log_dict.values())})
         return {"test_loss": avg_test_loss,
                 "progress_bar": progbar_dict,
                 "log": log_dict}
