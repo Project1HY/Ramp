@@ -110,7 +110,7 @@ def train_main():
     if args.run_baseline:
         nn= F2PEncoderDecoderBase(parser())
         # nn.identify_system()
-        ldrs = f2p_completion_loaders(nn.hp, train='DFaustProj')
+        ldrs = f2p_completion_loaders(nn.hp, train='FaustProj')
 
     else:
         print(f"enc type is {args.encoder_type}")
@@ -141,7 +141,7 @@ def test_main():
     # print(nn.hp)
     # ldrs = f2p_completion_loaders(nn.hp)
     nn.hp.counts = (1000000, 1000000, 20)
-    ldrs = f2p_completion_loaders(nn.hp, train='DFaustProj')
+    ldrs = f2p_completion_loaders(nn.hp, train='FaustProj')
     # banner('Testing')
     trainer = LightningTrainer(nn, ldrs)
     trainer.test()
@@ -159,4 +159,4 @@ def test_main():
 #
 # ----------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
-    test_main()
+    train_main()

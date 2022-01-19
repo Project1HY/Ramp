@@ -155,7 +155,7 @@ class CompletionLightningModel(PytorchNet):
                 rows += [[completion_name, mean_velocity]]
             columns = ["completion subject and pose", "mean velocity"]
             wandb.log({"completion temporal metrics": wandb.Table(columns=columns, data=rows)})
-            log_dict, progbar_dict = {}, {}
+        log_dict, progbar_dict = {}, {}
         avg_test_loss = 0
 
         for i in range(len(outputs)):  # Number of test datasets
@@ -167,7 +167,10 @@ class CompletionLightningModel(PytorchNet):
             if i == 0:  # Always use the first dataset as the test loss
                 avg_test_loss = ds_test_loss
                 progbar_dict['test_loss'] = avg_test_loss
-        wandb.log({"completion test metrics":wandb.Table(columns=log_dict.keys(),data=log_dict.values())})
+        table_dict = {}
+        for key in log_dict:
+            table_dict[key] = log_dict[key].item()    
+        wandb.log({"completion test metrics":wandb.Table(columns=list(table_dict.keys()),data=[list(table_dict.values())])})
         return {"test_loss": avg_test_loss,
                 "progress_bar": progbar_dict,
                 "log": log_dict}
