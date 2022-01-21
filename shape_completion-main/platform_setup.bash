@@ -19,10 +19,16 @@
 # git config --global user.email "ido.imanuel@gmail.com"
 # git remote set-url origin https://github.com/iimanu/Deep-Shape.git
 
+<<<<<<< HEAD
 eval "$(conda shell.bash hook)"
 #echo 123 | sudo -S mount -t cifs -w -o username=yiftach.e -o password=Lagoonparon1995 //132.68.39.206/gipfs ~/gipfs
 conda update -y -n base -c defaults conda
 conda create -y -n ProjectHY python=3.8.11 
+=======
+# eval "$(conda shell.bash hook)"
+# conda update -y -n base -c defaults conda
+# conda create -y -n ProjectHY python=3.8.11 
+>>>>>>> add_metrics
 conda activate ProjectHY
 
 #---------------------------------------------------------------------------------------------#

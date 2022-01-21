@@ -1,5 +1,9 @@
 from lightning.pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
+<<<<<<< HEAD
 from lightning.pytorch_lightning.loggers import TestTubeLogger, WandbLogger
+=======
+from lightning.pytorch_lightning.loggers import TestTubeLogger,WandbLogger
+>>>>>>> add_metrics
 from lightning.pytorch_lightning import Trainer
 from lightning.assets.completion_saver import CompletionSaver
 from lightning.assets.emailer import TensorboardEmailer
@@ -85,8 +89,12 @@ class LightningTrainer:
         # Checkpointing and Logging:
         tb_log = TestTubeLogger(save_dir=self.hp.PRIMARY_RESULTS_DIR, description=f"{self.hp.exp_name} Experiment",
                                 name=self.hp.exp_name, version=self.hp.version)
+<<<<<<< HEAD
         wandb_log = WandbLogger(project="my-test-project", entity="temporal_shape_recon",name=self.hp.exp_name)
         # wandb_log.config = self.hp
+=======
+        wandb_log = WandbLogger(project="my-test-project", entity="temporal_shape_recon")                        
+>>>>>>> add_metrics
 
         self.exp_dp = Path(os.path.dirname(tb_log.experiment.log_dir)).resolve()  # Extract experiment path
         checkpoint = ModelCheckpoint(filepath=self.exp_dp / 'checkpoints', save_top_k=1, verbose=True,
