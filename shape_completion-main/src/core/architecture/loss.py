@@ -1,8 +1,10 @@
+from pyrsistent import b
 import torch
 from geom.mesh.op.gpu.base import batch_vnrmls, batch_fnrmls_fareas, batch_moments, batch_surface_volume, \
     vertex_velocity
 from geom.mesh.op.gpu.dist import batch_l2_pdist
 from util.strings import warn
+from core.architecture.benchmark_stats import *
 
 
 # from chamferdist import ChamferDist
@@ -224,6 +226,9 @@ class ShapeDiffLoss:
 
         loss_dict['total_loss'] = loss
         return loss_dict
+
+    def compute_loss_end(self, gt, part, tp, comp, w, face_override=False):
+        return collect_reconstruction_stats(gt, part, tp, comp)
 
     def _mask_part_weight(self, mask_b, nv):
         """

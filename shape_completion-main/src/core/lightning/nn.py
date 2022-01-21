@@ -1,6 +1,7 @@
 import torch
 from torch.optim.lr_scheduler import ReduceLROnPlateau  # , CosineAnnealingLR
 import architecture.loss
+import core.geom.mesh.op.cpu
 # from util.mesh.ops import batch_vnrmls
 from collections import defaultdict
 from util.torch.nn import PytorchNet
@@ -24,6 +25,7 @@ class CompletionLightningModel(PytorchNet):
         self.hp = self.hparams  # Aliasing
         self._append_config_args()  # Must be done here, seeing we need hp.dev
         self.temp_data = []
+        self.test_step_data = []
 
         # Bookeeping:
         self.assets = None  # Set by Trainer
@@ -147,8 +149,15 @@ class CompletionLightningModel(PytorchNet):
                 "log": log_dict}
 
     def test_step(self, b, batch_idx, set_id=0):
-
         pred = self.complete(b)
+        part = core.geom.mesh.op.cpu.remesh.trunc_to_vertex_mask(b['gt'], b['gt_mask'])
+        tp = b['tp'][:, :3]
+        results = architecture.loss.compute_loss_end(b['gt'], part, tp, pred)
+        #new_test_data = self.assets.plt.prepare_plotter_dict(b, pred)
+        if len(self.test_step_data)==0:
+            self.test_step_data=[results]
+        else:
+            self.test_step_data += [results]
         if self.assets.saver is not None:  # TODO - Generalize this
             self.assets.saver.save_completions_by_batch(pred, b, set_id)
         return self.loss.compute(b, pred)
