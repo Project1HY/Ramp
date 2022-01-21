@@ -110,7 +110,7 @@ def train_main():
     if args.run_baseline:
         nn= F2PEncoderDecoderBase(parser())
         # nn.identify_system()
-        ldrs = f2p_completion_loaders(nn.hp, train='FaustProj')
+        ldrs = f2p_completion_loaders(nn.hp, train='DFaustProj')
 
     else:
         print(f"enc type is {args.encoder_type}")
