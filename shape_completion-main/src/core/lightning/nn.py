@@ -6,6 +6,7 @@ from collections import defaultdict
 from util.torch.nn import PytorchNet
 from util.func import all_variables_by_module_name
 from copy import deepcopy
+import numpy as np
 import sys
 import wandb
 import tqdm
@@ -22,6 +23,7 @@ class CompletionLightningModel(PytorchNet):
         self.hparams = self.add_model_specific_args(hp).parse_args()
         self.hp = self.hparams  # Aliasing
         self._append_config_args()  # Must be done here, seeing we need hp.dev
+        self.temp_data = []
 
         # Bookeeping:
         self.assets = None  # Set by Trainer
@@ -84,6 +86,8 @@ class CompletionLightningModel(PytorchNet):
             'loss': train_loss,  # Must use 'loss' instead of 'train_loss' due to old_lightning framework
             'log': loss_dict
         }
+    def on_validation_start(self):
+        self.temp_data = []
 
     def validation_step(self, b, batch_idx, set_id=0):
         pred = self.complete(b)
@@ -101,8 +105,14 @@ class CompletionLightningModel(PytorchNet):
         if batch_idx == 0 and set_id == 0 and self.assets.plt is not None and self.assets.plt.cache_is_filled():
             # On first batch, of first dataset, only if plotter exists and only if training step has been activated
             # before (last case does not happen if we run in dev mode).
-            new_data = (self.assets.plt.uncache(), self.assets.plt.prepare_plotter_dict(b, pred))
-            self.assets.plt.push(new_data=new_data, new_epoch=self.current_epoch)
+            #new_data = (self.assets.plt.uncache(), self.assets.plt.prepare_plotter_dict(b, pred))
+            new_data = self.assets.plt.prepare_plotter_dict(b, pred)
+            if len(self.temp_data)==0:
+                self.temp_data=new_data['gtrb']
+            else:
+                self.temp_data = np.concatenate((self.temp_data, new_data['gtrb']),axis=0)
+
+            #self.assets.plt.push(new_data=new_data, new_epoch=self.current_epoch)
 
         return self.loss.compute(b, pred)
 
@@ -125,6 +135,8 @@ class CompletionLightningModel(PytorchNet):
             if i == 0:  # Always use the first dataset as the validation loss
                 avg_val_loss = ds_val_loss
                 progbar_dict['val_loss'] = avg_val_loss
+
+        self.assets.plt.push(new_data=self.temp_data, new_epoch=self.current_epoch)
 
         lr = self.learning_rate(self.opt)  # Also log learning rate
         progbar_dict['lr'], log_dict['lr'] = lr, lr

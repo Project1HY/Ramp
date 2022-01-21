@@ -5,6 +5,13 @@ from multiprocessing import Process, Manager
 from copy import deepcopy
 from abc import ABC
 import numpy as np
+#from plotter.vis.vista import *
+#from multi_plot import *
+#from animation import *
+#from multi_plot import *
+#from src.core.plotter import *
+from . import vista
+from lightning.assets.vista import *
 
 # ---------------------------------------------------------------------------------------------------------------------#
 #                                               Parallel Plot suite
@@ -51,7 +58,7 @@ class ParallelPlotterBase(Process, ABC):
         current_epoch = self.sd['epoch']
         if current_epoch != self.last_plotted_epoch:
             self.last_plotted_epoch = current_epoch
-            self.train_d, self.val_d = deepcopy(self.sd['data'])
+            self.val_d = deepcopy(self.sd['data'])
         if final:
             self.plt_title = f'Final visualization before closing for Epoch {self.last_plotted_epoch}'
         else:
@@ -144,7 +151,8 @@ class CompletionPlotter(ParallelPlotterBase):
     def prepare_plotter_dict(self, b, network_output):
         # TODO - Generalize this
         gtrb = network_output['completion_xyz']
-        max_b_idx = self.VIS_N_MESH_SETS
+        #max_b_idx = self.VIS_N_MESH_SETS
+        max_b_idx = gtrb.shape[0]
         dict = {'gt': b['gt'].detach().cpu().numpy()[:max_b_idx, :, :3],
                 'tp': b['tp'].detach().cpu().numpy()[:max_b_idx, :, :3],
                 'gtrb': gtrb.detach().cpu().numpy()[:max_b_idx]}
@@ -166,39 +174,47 @@ class CompletionPlotter(ParallelPlotterBase):
         gtr_vnb = None
         gt_vnb = None
         p = pv.Plotter(shape=(2 * self.VIS_N_MESH_SETS, 4), title=self.plt_title)
-        for di, (d, set_name) in enumerate(zip([self.train_d, self.val_d], ['Train', 'Vald'])):
-            for i in range(self.VIS_N_MESH_SETS):
-                subplt_row_id = i + di * self.VIS_N_MESH_SETS
-                if 'gt_mask' in d:
-                    vertex_clr = vertex_mask_indicator(self.n_v, d['gt_mask'][i])
-                else:
-                    vertex_clr = 'coral'
-                gtrb = d['gtrb'][i].squeeze()
-                gt = d['gt'][i].squeeze()
-                tp = d['tp'][i].squeeze()
-                if self.VIS_SHOW_NORMALS:
-                    gtr_vnb = d['gtr_vnb'][i].squeeze()
-                    gt_vnb = d['gt_vnb'][i].squeeze()
-
-                # TODO - Add support for normals & P2P
-                # TODO - Check why in mesh method + tensor colors, colors are interpolated onto the faces.
-                p.subplot(subplt_row_id, 0)  # GT Reconstructed with colored mask
-                add_mesh(p, v=gtrb, f=self.f, n=gtr_vnb,
-                         clr=vertex_clr, label=f'{set_name} Reconstruction {i}', **self.kwargs)
-                p.subplot(subplt_row_id, 1)  # GT with colored mask
-                add_mesh(p, v=gt, f=self.f, n=gt_vnb,
-                         clr=vertex_clr, label=f'{set_name} GT {i}', **self.kwargs)
-                p.subplot(subplt_row_id, 2)  # TP with colored mask
-                add_mesh(p, v=tp, f=self.f, clr=vertex_clr, label=f'{set_name} TP {i}', **self.kwargs)
-                p.subplot(subplt_row_id, 3)  # GT Reconstructed + Part
-                add_mesh(p, v=gtrb, f=self.f, clr=vertex_clr, **self.kwargs)
-                # TODO - Remove hard coded 'r'. Do we want to enable part as mesh?
-
-                if 'gt_mask' in d: # TODO - Quick hack for F2F Support
-                    add_mesh(p, v=gt[vertex_clr, :], f=None, clr='r', label=f'{set_name} Part + Recon {i}', **self.kwargs)
-
-        # p.link_views()
-        p.show()
+        #animate(d[], self.f)
+        #animate(self.val_d['gtrb'])
+        animate(self.val_d)
+        # for di, (d, set_name) in enumerate(zip([self.train_d, self.val_d], ['Train', 'Vald'])):
+        #     for i in range(self.VIS_N_MESH_SETS):
+        #         subplt_row_id = i + di * self.VIS_N_MESH_SETS
+        #         if 'gt_mask' in d:
+        #             vertex_clr = vertex_mask_indicator(self.n_v, d['gt_mask'][i])
+        #         else:
+        #             vertex_clr = 'coral'
+        #         gtrb = d['gtrb'][i].squeeze()
+        #         gt = d['gt'][i].squeeze()
+        #         tp = d['tp'][i].squeeze()
+        #         if self.VIS_SHOW_NORMALS:
+        #             gtr_vnb = d['gtr_vnb'][i].squeeze()
+        #             gt_vnb = d['gt_vnb'][i].squeeze()
+        #
+        #         # TODO - Add support for normals & P2P
+        #         # TODO - Check why in mesh method + tensor colors, colors are interpolated onto the faces.
+        #         # #p.subplot(subplt_row_id, 0)  # GT Reconstructed with colored mask
+        #         # add_mesh(p, v=gtrb, f=self.f, n=gtr_vnb,
+        #         #          clr=vertex_clr, label=f'{set_name} Reconstruction {i}', **self.kwargs)
+        #         # #p.subplot(subplt_row_id, 1)  # GT with colored mask
+        #         # add_mesh(p, v=gt, f=self.f, n=gt_vnb,
+        #         #          clr=vertex_clr, label=f'{set_name} GT {i}', **self.kwargs)
+        #         # p.subplot(subplt_row_id, 2)  # TP with colored mask
+        #         # add_mesh(p, v=tp, f=self.f, clr=vertex_clr, label=f'{set_name} TP {i}', **self.kwargs)
+        #         # p.subplot(subplt_row_id, 3)  # GT Reconstructed + Part
+        #         # add_mesh(p, v=gtrb, f=self.f, clr=vertex_clr, **self.kwargs)
+        #         # TODO - Remove hard coded 'r'. Do we want to enable part as mesh?
+        #
+        #         #_mesh_montage_test()
+        #
+        #
+        #
+        #
+        #         if 'gt_mask' in d: # TODO - Quick hack for F2F Support
+        #             add_mesh(p, v=gt[vertex_clr, :], f=None, clr='r', label=f'{set_name} Part + Recon {i}', **self.kwargs)
+        #
+        # # p.link_views()
+        # p.show()show
 
 
 class SkinningPlotter(ParallelPlotterBase):
