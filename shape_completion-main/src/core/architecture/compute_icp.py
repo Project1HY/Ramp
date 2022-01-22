@@ -14,7 +14,7 @@ def best_fit_transform(A, B):
       t: mx1 translation vector
     '''
 
-    assert A.shape == B.shape
+    assert A.shape == B.shape, f"A shape {A.shape} B shape {B.shape}"
 
     # get number of dimensions
     m = A.shape[1]
@@ -79,8 +79,7 @@ def icp(A, B, init_pose=None, max_iterations=20, tolerance=0.001):
         distances: Euclidean distances (errors) of the nearest neighbor
         i: number of iterations to converge
     '''
-
-    assert A.shape == B.shape
+    assert A.shape == B.shape, f"A shape {A.shape} B shape {B.shape}"
 
     # get number of dimensions
     m = A.shape[1]
@@ -115,7 +114,8 @@ def icp(A, B, init_pose=None, max_iterations=20, tolerance=0.001):
 
     # calculate final transformation
     T,_,_ = best_fit_transform(A, src[:m,:].T)
-
-    return T, distances, i
+    src = src[:3,:]/src[-1,:][None,:]
+    src = src.T
+    return src
 
     

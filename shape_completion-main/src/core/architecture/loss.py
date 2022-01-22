@@ -4,7 +4,7 @@ from geom.mesh.op.gpu.base import batch_vnrmls, batch_fnrmls_fareas, batch_momen
     vertex_velocity
 from geom.mesh.op.gpu.dist import batch_l2_pdist
 from util.strings import warn
-from core.architecture.benchmark_stats import *
+from .collect_reconstruction_stats import collect_reconstruction_stats
 
 
 # from chamferdist import ChamferDist
@@ -15,7 +15,10 @@ from core.architecture.benchmark_stats import *
 class BasicLoss:
     def __init__(self, hp, f):
         self.shape_diff = ShapeDiffLoss(hp, f)
-
+        self.f = f
+    def compute_loss_end(self, gt, masks, tp, comp, face_override=False):
+        return collect_reconstruction_stats(gt, masks, tp, comp, self.f)
+    
     def compute(self, x, network_output):
         """
         :param x: The input batch dictionary
@@ -227,8 +230,8 @@ class ShapeDiffLoss:
         loss_dict['total_loss'] = loss
         return loss_dict
 
-    def compute_loss_end(self, gt, part, tp, comp, w, face_override=False):
-        return collect_reconstruction_stats(gt, part, tp, comp)
+    def compute_loss_end(self, gt, masks, tp, comp, w, face_override=False):
+        return collect_reconstruction_stats(gt, masks, tp, comp)
 
     def _mask_part_weight(self, mask_b, nv):
         """

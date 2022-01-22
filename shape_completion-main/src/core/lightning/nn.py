@@ -1,7 +1,7 @@
 import torch
 from torch.optim.lr_scheduler import ReduceLROnPlateau  # , CosineAnnealingLR
 import architecture.loss
-import core.geom.mesh.op.cpu
+import geom.mesh.op.cpu
 # from util.mesh.ops import batch_vnrmls
 from collections import defaultdict
 from util.torch.nn import PytorchNet
@@ -12,6 +12,7 @@ import sys
 import wandb
 import tqdm
 import numpy as np
+import itertools
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -150,9 +151,24 @@ class CompletionLightningModel(PytorchNet):
 
     def test_step(self, b, batch_idx, set_id=0):
         pred = self.complete(b)
-        part = core.geom.mesh.op.cpu.remesh.trunc_to_vertex_mask(b['gt'], b['gt_mask'])
-        tp = b['tp'][:, :3]
-        results = architecture.loss.compute_loss_end(b['gt'], part, tp, pred)
+        tp = b['tp']
+        results = self.loss.compute_loss_end(b['gt'], b['gt_mask'], tp,pred['completion_xyz'].cpu().detach().numpy())
+        
+        results['gt_hi'] = b['gt_hi']
+        results['tp_hi'] = b['tp_hi']
+
+        results['gt_hi'] = list(['_'.join(str(x) for x in hi) for hi in results['gt_hi']])
+        results['tp_hi'] = list(['_'.join(str(x) for x in hi) for hi in results['tp_hi']])
+        
+        if self.assets.saver is not None:  # TODO - Generalize this
+            images = self.assets.saver.get_completions_as_pil(pred, b)
+            results['images']= [wandb.Image(image) for image in images]
+
+        data = list(map(list, itertools.zip_longest(*results.values(),fillvalue=None)))
+        keys = list(results.keys())
+
+
+        wandb.log({"static metrics": wandb.Table(columns=keys, data=data)})
         #new_test_data = self.assets.plt.prepare_plotter_dict(b, pred)
         if len(self.test_step_data)==0:
             self.test_step_data=[results]

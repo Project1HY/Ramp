@@ -120,9 +120,9 @@ def train_main():
             nn = F2PPCTDecoderWindowed(parser())
         else:
             nn = F2PEncoderDecoderTemporal(parser())
-        nn.identify_system()
         ldrs = f2p_completion_loaders(nn.hp, train='DFaustProjRandomSequential')
 
+    nn.identify_system()
 
     # [ [train_loader], [vald_loaders] , [test_loaders] ]
     #
@@ -142,7 +142,7 @@ def test_main():
     # print(nn.hp)
     # ldrs = f2p_completion_loaders(nn.hp)
     nn.hp.counts = (1000000, 1000000, 20)
-    ldrs = f2p_completion_loaders(nn.hp, train='FaustProj')
+    ldrs = f2p_completion_loaders(nn.hp, train='DFaustProj')
     # banner('Testing')
     trainer = LightningTrainer(nn, ldrs)
     trainer.test()
