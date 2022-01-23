@@ -6,6 +6,9 @@ import meshio
 from itertools import chain
 import pickle as pk
 import PIL
+from multi_plot import plot_mesh_montage
+from base_plot import stringify
+
 
 # ---------------------------------------------------------------------------------------------------------------------#
 #                                                Collectors
@@ -268,6 +271,7 @@ def write_collada(fp, v, f, mesh_name="exported_mesh"):
 
     mesh.write(fp)
 
+
 # ---------------------------------------------------------------------------------------------------------------------#
 #                                                       Oddities
 # ---------------------------------------------------------------------------------------------------------------------#
@@ -325,15 +329,11 @@ def numpy2trimesh(v, f):
     return trimesh.Trimesh(vertices=v, faces=f, process=False)
 
 
-def numpy_to_pil(v,f):
-    pv_mesh = numpy2pyvista_mesh(v,f)
-    plotter = pv.Plotter(off_screen=True)
-    plotter.camera_position = ((0, 0, 5.5), (0, 0, 0), (0, 1.5, 0))
-    plotter.add_mesh(pv_mesh)
-    plotter.show(screenshot="aa.png")
-    image = plotter.image
+def numpy_to_pil(gt_hi, tp_hi, r_v, gt_v, tp_v, f):
+    image = plot_mesh_montage([r_v, gt_v, tp_v], [f] * 3, titles=[f"{stringify(gt_hi)} reconstruction", gt_hi, tp_hi])
     img = PIL.Image.fromarray(image)
     return img
+
 
 # ---------------------------------------------------------------------------------------------------------------------#
 #                                                   Test Suite
@@ -341,7 +341,7 @@ def numpy_to_pil(v,f):
 
 def _fbx_tester():
     p = r'/Users/yiftachedelstain/Downloads/shape_completion-main/src/visualize/smpl_segmentations_data/gt_50025_knees_457_1_tp_50025_running_on_spot_144_res.ply'
-    v= read_ply_verts(p)
+    v = read_ply_verts(p)
     print(v.shape)
 
 

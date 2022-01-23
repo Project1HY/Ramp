@@ -25,17 +25,25 @@ class CompletionSaver:
     def get_completions_as_pil(self, pred, b):
         # TODO - Make this generic, and not key dependent. Insert support for P2P
         gtrb = pred['completion_xyz']
+        gt = b['gt']
+        tp = b['tp']
+        gt_hi = b['gt_hi']
+        tp_hi = b['tp_hi']
         if len(gtrb.shape) > 3:
             gtrb = gtrb.reshape(-1, gtrb.shape[-2], gtrb.shape[-1])
         gtrb = gtrb.cpu().numpy()
         pils = []
         for i in range(len(b['gt_hi'])):
             gtr_v = gtrb[i, :, :3]
+            gt_v = gt[i, :, :3]
+            tp_v = tp[i, :, :3]
+            cur_gt_hi = gt_hi[i]
+            cur_tp_hi = tp_hi[i]
             if 'gt_f' in b:
                 gt_f = b['gt_f'][i]
             else:
                 gt_f = self.f
-            pils += [geom.mesh.io.base.numpy_to_pil(gtr_v, gt_f)]
+            pils += [geom.mesh.io.base.numpy_to_pil(cur_gt_hi,cur_tp_hi,gtr_v,gt_v,tp_v, gt_f)]
         return pils
 
     def load_completions(self, set_id=0):
