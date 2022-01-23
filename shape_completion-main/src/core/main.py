@@ -81,7 +81,7 @@ def parser():
                    help='Use frozen encoder')  # TODO - generalize this
     p.add_argument('--run_baseline', type=bool, default=True, help='flag if we want to run baseline model')
     # Computation
-    p.add_argument('--gpus', type=none_or_int, default=None, help='Use -1 to use all available. Use None to run on CPU')
+    p.add_argument('--gpus', type=none_or_int, default=-1, help='Use -1 to use all available. Use None to run on CPU')
     p.add_argument('--distributed_backend', type=str, default='dp', help='supports three options dp, ddp, ddp2')
     # TODO - ddp2,ddp Untested. Multiple GPUS - not tested
 

@@ -152,14 +152,18 @@ class CompletionLightningModel(PytorchNet):
     def test_step(self, b, batch_idx, set_id=0):
         pred = self.complete(b)
         tp = b['tp']
-        results = self.loss.compute_loss_end(b['gt'], b['gt_mask'], tp,pred['completion_xyz'].cpu().detach().numpy())
-        
+        results,_ = self.loss.compute_loss_end(b['gt'], b['gt_mask'], tp,pred['completion_xyz'].cpu().detach().numpy())
+        #results,best_results= self.loss.compute_loss_end(b['gt'], b['gt_mask'], tp,pred['completion_xyz'].cpu().detach().numpy())
+
         results['gt_hi'] = b['gt_hi']
         results['tp_hi'] = b['tp_hi']
 
         results['gt_hi'] = list(['_'.join(str(x) for x in hi) for hi in results['gt_hi']])
         results['tp_hi'] = list(['_'.join(str(x) for x in hi) for hi in results['tp_hi']])
         
+        #best_mean_index = stats['mean_error']).index(min(stats['mean_error']))
+        #best_tp_by_mean = tps[best_mean_index]
+
         if self.assets.saver is not None:  # TODO - Generalize this
             images = self.assets.saver.get_completions_as_pil(pred, b)
             results['images']= [wandb.Image(image) for image in images]
@@ -177,6 +181,16 @@ class CompletionLightningModel(PytorchNet):
         if self.assets.saver is not None:  # TODO - Generalize this
             self.assets.saver.save_completions_by_batch(pred, b, set_id)
         return self.loss.compute(b, pred)
+
+        #wandb.log({"best metrics": wandb.Table(columns=keys, data=data)})
+        #if len(self.test_step_data)==0:
+        #    self.test_step_data=[results]
+        #else:
+        #    self.test_step_data += [results]
+        #if self.assets.saver is not None:  # TODO - Generalize this
+        #    self.assets.saver.save_completions_by_batch(pred, b, set_id)
+        #return self.loss.compute(b, pred)
+
 
     def test_end(self, outputs):
         if self.assets.data.num_test_loaders() == 1:
@@ -211,6 +225,11 @@ class CompletionLightningModel(PytorchNet):
         return {"test_loss": avg_test_loss,
                 "progress_bar": progbar_dict,
                 "log": log_dict}
+        
+        best_metrics = return_best_stats() 
+        vals = ["mean", "volume", "temp"]
+        wandb.log({"best metrics": wandb.Table(columns=vals, data=best_metrics)})
+         
 
     def hyper_params(self):
         return deepcopy(self.hp)

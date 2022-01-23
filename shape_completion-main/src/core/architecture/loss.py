@@ -16,9 +16,23 @@ class BasicLoss:
     def __init__(self, hp, f):
         self.shape_diff = ShapeDiffLoss(hp, f)
         self.f = f
+        self.best = {}
     def compute_loss_end(self, gt, masks, tp, comp, face_override=False):
-        return collect_reconstruction_stats(gt, masks, tp, comp, self.f)
-    
+        #return collect_reconstruction_stats(gt, masks, tp, comp, self.f)
+        stats =  collect_reconstruction_stats(gt, masks, tp, comp)
+        best = {}
+        best['mean_error'] = min(stats['mean_error'])
+        best['volume_error'] = min(stats['volume_error'])
+        best['template_mean_error'] = min(stats['template_mean_error'])
+        #best_mean_index = stats['mean_error']).index(min(stats['mean_error']))
+        #best_tp_by_mean = tps[best_mean_index]
+        self.best = best
+        return stats
+
+    def return_best_stats(self):
+        best = self.best
+        return best
+
     def compute(self, x, network_output):
         """
         :param x: The input batch dictionary
@@ -230,8 +244,17 @@ class ShapeDiffLoss:
         loss_dict['total_loss'] = loss
         return loss_dict
 
-    def compute_loss_end(self, gt, masks, tp, comp, w, face_override=False):
-        return collect_reconstruction_stats(gt, masks, tp, comp)
+    #def compute_loss_end(self, gt, masks, tp, comp, w, face_override=False):
+    #   stats =  collect_reconstruction_stats(gt, masks, tp, comp)
+    #    best = {}
+    #    best['mean_error'] = min(stats['mean_error'])
+    #    best['volume_error'] = min(stats['volume_error'])
+    #    best['template_mean_error'] = min(stats['template_mean_error'])
+    #    #best_mean_index = stats['mean_error']).index(min(stats['mean_error']))
+    #    #best_tp_by_mean = tps[best_mean_index]
+    #    self.best = best
+
+        return stats
 
     def _mask_part_weight(self, mask_b, nv):
         """

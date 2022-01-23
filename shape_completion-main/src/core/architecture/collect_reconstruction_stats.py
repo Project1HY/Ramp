@@ -42,10 +42,17 @@ def collect_reconstruction_stats(gts,masks, tps, comps,faces):
     stats['mean_error'] = list(me_err[:,0])
     stats['volume_error'] = list(vol_err[:,0])
     stats['template_mean_error'] = list(tp_me_err[:,0])
+    
 
+    #best = {}
+    #best['mean_error'] = min(stats['mean_error'])
+    #best['volume_error'] = min(stats['volume_error'])
+    #best['template_mean_error'] = min(stats['template_mean_error'])
+    #best_mean_index = stats['mean_error']).index(min(stats['mean_error']))
+    #best_tp_by_mean = tps[best_mean_index]
 
+    #return stats, best
     return stats
-
 
 #TODO: report through wandb
 
