@@ -20,8 +20,8 @@ def collect_reconstruction_stats(gts,masks, tps, comps,faces):
         part = gt[mask,:]
         gt = gt[:,:3]
         tp = tp[:,:3]
-        gt = gt.numpy()
-        tp = tp.numpy()
+        gt = gt.cpu().numpy()
+        tp = tp.cpu().numpy()
         comp = icp(comp, gt, True)
         diff_tp = np.power(abs(icp(tp,gt,True) - gt), 2)
         tp_me_err[i] = (np.sum(diff_tp[:])/tp.shape[0])

@@ -35,8 +35,8 @@ class CompletionSaver:
         pils = []
         for i in range(len(b['gt_hi'])):
             gtr_v = gtrb[i, :, :3]
-            gt_v = gt[i, :, :3]
-            tp_v = tp[i, :, :3]
+            gt_v = gt[i, :, :3].cpu().numpy()
+            tp_v = tp[i, :, :3].cpu().numpy()
             cur_gt_hi = gt_hi[i]
             cur_tp_hi = tp_hi[i]
             if 'gt_f' in b:

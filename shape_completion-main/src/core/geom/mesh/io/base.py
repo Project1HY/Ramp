@@ -6,8 +6,8 @@ import meshio
 from itertools import chain
 import pickle as pk
 import PIL
-from multi_plot import plot_mesh_montage
-from base_plot import stringify
+from geom.mesh.io.multi_plot import plot_mesh_montage
+from geom.mesh.io.base_plot import stringify
 
 
 # ---------------------------------------------------------------------------------------------------------------------#
@@ -330,7 +330,7 @@ def numpy2trimesh(v, f):
 
 
 def numpy_to_pil(gt_hi, tp_hi, r_v, gt_v, tp_v, f):
-    image = plot_mesh_montage([r_v, gt_v, tp_v], [f] * 3, titles=[f"{stringify(gt_hi)} reconstruction", gt_hi, tp_hi])
+    image = plot_mesh_montage([r_v, gt_v, tp_v], [f] * 3, titles=[f"{gt_hi[1]}\nreconstruction", gt_hi[1], tp_hi[1]])
     img = PIL.Image.fromarray(image)
     return img
 

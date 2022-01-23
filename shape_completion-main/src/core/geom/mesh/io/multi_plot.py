@@ -2,7 +2,7 @@ import math
 
 import numpy as np
 
-from base_plot import plotter, add_mesh, hybrid_kwarg_index
+from geom.mesh.io.base_plot import plotter, add_mesh, hybrid_kwarg_index
 from util.container import is_number
 
 
@@ -67,12 +67,12 @@ def plot_mesh_montage(vs, fs=None, ns=None, lines=None, colors='w',  # Input
                                                  depth_peeling=depth_peeling,
                                                  lighting=lighting,
                                                  # camera_pos=camera_pos,
-                                                 color=colors, normal_color=normal_color, edge_color=edge_color,
+                                                 edge_color=edge_color,
                                                  line_color=line_color,
                                                  cmap=cmap, show_scalar_bar=show_scalar_bar, show_edges=show_edges,
-                                                 normal_scale=normal_scale, point_size=point_size,
+                                                 point_size=point_size,
                                                  line_width=line_width, grid_on=grid_on, opacity=1, title=titles,
-                                                 axes_on=axes_on, unit_sphere_on=unit_sphere_on),
+                                                 axes_on=axes_on),
                          camera_pos=camera_pos_i, clim=clim_i)
             if ret_meshes:
                 meshes.append(p.mesh)

@@ -19,7 +19,7 @@ class BasicLoss:
         self.best = {}
     def compute_loss_end(self, gt, masks, tp, comp, face_override=False):
         #return collect_reconstruction_stats(gt, masks, tp, comp, self.f)
-        stats =  collect_reconstruction_stats(gt, masks, tp, comp)
+        stats =  collect_reconstruction_stats(gt, masks, tp, comp,self.f)
         best = {}
         best['mean_error'] = min(stats['mean_error'])
         best['volume_error'] = min(stats['volume_error'])

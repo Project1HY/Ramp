@@ -1,4 +1,4 @@
-from base_plot import plotter, stringify, add_mesh, busy_wait
+from geom.mesh.io.base_plot import plotter, stringify, add_mesh, busy_wait
 
 
 def animate(vs, f=None, gif_name=None, titles=None, first_frame_index=0, pause=0.05,
