@@ -5,7 +5,7 @@ from geom.mesh.op.gpu.base import batch_vnrmls, batch_fnrmls_fareas, batch_momen
 from geom.mesh.op.gpu.dist import batch_l2_pdist
 from util.strings import warn
 from .collect_reconstruction_stats import collect_reconstruction_stats
-
+import numpy as np
 
 # from chamferdist import ChamferDist
 # distpc1topc2, distpc2topc1, idx1, idx2 = chamferDist(pc1, pc2)
@@ -17,21 +17,42 @@ class BasicLoss:
         self.shape_diff = ShapeDiffLoss(hp, f)
         self.f = f
         self.best = {}
-    def compute_loss_end(self, gt, masks, tp, comp, face_override=False):
+    def compute_loss_end(self, gt_hi, tp_hi, gt, masks, tp, comp, face_override=False):
         #return collect_reconstruction_stats(gt, masks, tp, comp, self.f)
         stats =  collect_reconstruction_stats(gt, masks, tp, comp,self.f)
-        best = {}
-        best['mean_error'] = min(stats['mean_error'])
-        best['volume_error'] = min(stats['volume_error'])
-        best['template_mean_error'] = min(stats['template_mean_error'])
-        #best_mean_index = stats['mean_error']).index(min(stats['mean_error']))
-        #best_tp_by_mean = tps[best_mean_index]
-        self.best = best
+  
+        best_vals = {}
+        best_vals['Comp-GT Vertex L2'] = (
+            gt_hi[np.argmin(stats['Comp-GT Vertex L2'])], 
+            tp_hi[np.argmin(stats['Comp-GT Vertex L2'])],
+             min(stats['Comp-GT Vertex L2']))
+        best_vals['Comp-GT Vertex L2 No ICP'] =  (
+            gt_hi[np.argmin(stats['Comp-GT Vertex L2 No ICP'])],
+             tp_hi[np.argmin(stats['Comp-GT Vertex L2 No ICP'])],
+              min(stats['Comp-GT Vertex L2 No ICP']))
+        best_vals['Comp-GT Volume L1'] = (
+            gt_hi[np.argmin(stats['Comp-GT Volume L1'])], 
+            tp_hi[np.argmin(stats['Comp-GT Volume L1'])], 
+            min(stats['Comp-GT Volume L1']))
+        best_vals['TP-GT Vertex L2'] = (
+            gt_hi[np.argmin(stats['TP-GT Vertex L2'])], 
+            tp_hi[np.argmin(stats['TP-GT Vertex L2'])], 
+            min(stats['TP-GT Vertex L2']))
+        if len(self.best) != 0:
+            if best_vals['Comp-GT Vertex L2'][2] < self.best['Comp-GT Vertex L2'][2]:
+                self.best['Comp-GT Vertex L2'] = best_vals['Comp-GT Vertex L2']
+            if best_vals['Comp-GT Volume L1'][2] < self.best['Comp-GT Volume L1'][2]:
+                self.best['Comp-GT Volume L1'] = best_vals['Comp-GT Volume L1']
+            if best_vals['TP-GT Vertex L2'][2] < self.best['TP-GT Vertex L2'][2]:
+                self.best['TP-GT Vertex L2'] = best_vals['TP-GT Vertex L2']
+            if best_vals['Comp-GT Vertex L2 No ICP'][2] < self.best['Comp-GT Vertex L2 No ICP'][2]:
+                self.best['Comp-GT Vertex L2 No ICP'] = best_vals['Comp-GT Vertex L2 No ICP']
+        else:
+            self.best = best_vals
         return stats
 
     def return_best_stats(self):
-        best = self.best
-        return best
+        return self.best
 
     def compute(self, x, network_output):
         """

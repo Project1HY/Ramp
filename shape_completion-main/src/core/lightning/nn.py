@@ -92,6 +92,24 @@ class CompletionLightningModel(PytorchNet):
     def on_validation_start(self):
         self.temp_data = []
 
+    def report_static_metrics(self,b,pred):
+        tp = b['tp']
+        results = self.loss.compute_loss_end(b['gt_hi'], b['tp_hi'], b['gt'], b['gt_mask'], tp,pred['completion_xyz'].cpu().detach().numpy())
+        results['gt_hi'] = b['gt_hi']
+        results['tp_hi'] = b['tp_hi']
+
+        results['gt_hi'] = list(['_'.join(str(x) for x in hi) for hi in results['gt_hi']])
+        results['tp_hi'] = list(['_'.join(str(x) for x in hi) for hi in results['tp_hi']])
+
+        # if self.assets.saver is not None:  # TODO - Generalize this
+        #     images = self.assets.saver.get_completions_as_pil(pred, b)
+        #     results['images']= [wandb.Image(image) for image in images]
+
+        data = list(map(list, itertools.zip_longest(*results.values(),fillvalue=None)))
+        keys = list(results.keys())
+
+        wandb.log({"static metrics validation": wandb.Table(columns=keys, data=data)})
+
     def validation_step(self, b, batch_idx, set_id=0):
         pred = self.complete(b)
         batch_validation_mesh = pred['completion_xyz']
@@ -114,9 +132,11 @@ class CompletionLightningModel(PytorchNet):
                 self.temp_data=new_data['gtrb']
             else:
                 self.temp_data = np.concatenate((self.temp_data, new_data['gtrb']),axis=0)
-
+            
+            self.report_static_metrics(b,pred)
             #self.assets.plt.push(new_data=new_data, new_epoch=self.current_epoch)
 
+      
         return self.loss.compute(b, pred)
 
     def validation_end(self, output_per_dset):
@@ -144,6 +164,11 @@ class CompletionLightningModel(PytorchNet):
         lr = self.learning_rate(self.opt)  # Also log learning rate
         progbar_dict['lr'], log_dict['lr'] = lr, lr
 
+        best_stats = self.loss.return_best_stats()
+        log_dict["best_mean_error"]=best_stats['Comp-GT Vertex L2'][2]
+        log_dict["best_volume_error"]=best_stats['Comp-GT Volume L1'][2]
+        log_dict["best_template_mean_error"]=best_stats['TP-GT Vertex L2'][2]
+
         # This must be kept as "val_loss" and not "avg_val_loss" due to old_lightning bug
         return {"val_loss": avg_val_loss,  # TODO - Remove double entry for val_koss
                 "progress_bar": progbar_dict,
@@ -152,7 +177,7 @@ class CompletionLightningModel(PytorchNet):
     def test_step(self, b, batch_idx, set_id=0):
         pred = self.complete(b)
         tp = b['tp']
-        results,_ = self.loss.compute_loss_end(b['gt'], b['gt_mask'], tp,pred['completion_xyz'].cpu().detach().numpy())
+        results = self.loss.compute_loss_end(b['gt_hi'], b['tp_hi'], b['gt'], b['gt_mask'], tp,pred['completion_xyz'].cpu().detach().numpy())
         #results,best_results= self.loss.compute_loss_end(b['gt'], b['gt_mask'], tp,pred['completion_xyz'].cpu().detach().numpy())
 
         results['gt_hi'] = b['gt_hi']

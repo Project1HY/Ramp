@@ -28,4 +28,4 @@ conda activate $CONDA_ENV
 # mount -o ro //132.68.39.206/gipfs ~/gipfs
 # jupyter lab --no-browser --ip=$(hostname -I) --port-retries=100
 wandb login 19e347e092a58ca11a380ad43bd1fd5103f4d14a
-xvfb-run -a -s "-screen 0 1440x900x24" python src/core/main.py --exp_name FaustBaseline --run_baseline True
+xvfb-run -a -s "-screen 0 1440x900x24" python src/core/main.py --exp_name DFaustBaselineBestResTest0903 --run_baseline True

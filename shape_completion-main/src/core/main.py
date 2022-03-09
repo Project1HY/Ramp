@@ -18,7 +18,7 @@ def parser():
     # Check-pointing
     p.add_argument('--exp_name', type=str, default='Test',  # TODO - Don't forget to change me!
                    help='The experiment name. Leave empty for default')
-    p.add_argument('--version', type=none_or_int, default=1,
+    p.add_argument('--version', type=none_or_int, default=None,
                    help='Weights will be saved at weight_dir=exp_name/version_{version}. '
                         'Use NonFe to automatically choose an unused version')
     p.add_argument('--resume_cfg', nargs=2, type=bool, default=(False, True),
@@ -48,7 +48,7 @@ def parser():
     p.add_argument('--lr', type=float, default=0.003, help='The learning step to use')
     p.add_argument('--stride', type=int, default=6, help='The learning step to use')
     p.add_argument('--window_size', type=int, default=2, help='The learning step to use')
-    p.add_argument('--counts', nargs=3, type=none_or_int, default=(20, 1000, 1000000),  # TODO - Change me as needed
+    p.add_argument('--counts', nargs=3, type=none_or_int, default=(20000, 1000, 1000000),  # TODO - Change me as needed
                    help='The default train,validation and test counts. Recommended [8000-20000, 500-1000, 500-1000]. '
                         'Use None to take all examples in the partition - '
                         'for big datasets, this could blow up the epoch')
