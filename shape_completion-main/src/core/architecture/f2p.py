@@ -82,11 +82,10 @@ class F2PEncoderDecoderWindowed(CompletionLightningModel):
         full = input_dict['tp']
 
         # part, full [bs x nv x in_channels]
-        
+        assert False, f"batch size: {full.size(0)}, window size: {full.size(1)}"
         bs = full.size(0)
         window_size = full.size(1)
         nv = full.size(-2)
-
         full = full.reshape(bs*window_size,nv,-1)
         part = part.reshape(bs*window_size,nv,-1)
         part_code = self.encoder_part(part)  # [b x code_size]

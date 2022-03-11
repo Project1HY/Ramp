@@ -356,7 +356,12 @@ class DFaustWindowedSequential(ParametricCompletionDataset):
         self._hits = []
         # print("yiftach now is :",self._full_dir)
         self._full_dir = self._vert_pick
+        self.window_size=1
+        self.stride=0
 
+    def set_window_params(self,window_size,stride):
+        self.window_size=window_size
+        self.stride=stride
     def _get_datapoint_func(self, hit_index):
         _hit: HierarchicalIndexTree = self._hits[hit_index]
 
@@ -481,6 +486,7 @@ class DFaustWindowedSequential(ParametricCompletionDataset):
                 truncation_size=3, hit_index=0, stride=3, window_size=3):
 
         # Handle Device:
+
         device = str(device).split(':')[0]  # Compatible for both strings & pytorch devs
         assert device in ['cuda', 'cpu', 'cpu-single']
         pin_memory = (device == 'cuda')
@@ -509,9 +515,9 @@ class DFaustWindowedSequential(ParametricCompletionDataset):
 #EncompassedBatchSampler(Sampler):
  #   def __init__(self, subsampler, batch_size=1, window_size=2, length=None):
         return self.LOADER_CLASS(
-            FullPartWindowedSequentialTorchDataset(self, transforms, method, hit_index, window_size, stride), batch_size=batch_size,
+            FullPartWindowedSequentialTorchDataset(self, transforms, method, hit_index, self.window_size, self.stride), batch_size=batch_size,
             sampler=data_sampler, num_workers=n_workers, pin_memory=pin_memory,
-            collate_fn=completion_collate)
+            collate_fn=sequential_completion_collate)
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -715,7 +721,7 @@ class DatasetMenu:
 
         'DFaustProj': (DFaust, AzimuthalProjection()),
         'DFaustProjSequential': (DFaustSequential, AzimuthalProjection()),
-        'DFaustProjRandomSequential': (DFaustWindowedSequential, AzimuthalProjection()),
+        'DFaustProjRandomWindowed': (DFaustWindowedSequential, AzimuthalProjection()),
         'DFaustSemCuts': (DFaust, SemanticCut(n_expected_proj=4)),
 
         # 'DFaustAccessories' : (DFaustAccessories, AzimuthalProjection()),

@@ -1032,6 +1032,7 @@ def completion_collate(batch, stop: bool = False):
     if stop:
         return batch
     elem = batch[0]
+
     elem_type = type(elem)
     if isinstance(elem, torch.Tensor):
         out = None
@@ -1094,7 +1095,7 @@ def sequential_completion_collate(batch, stop: bool = False):
         for elem in batch:
             d = []
             for entry in elem:
-                d += [completion_collate([entry], stop)]
+                d += [sequential_completion_collate([entry], stop)]
             batch_tensor += [d]
             data = {}
             for suffix in ['gt', 'tp', 'gt_part']:  # TODO
@@ -1142,7 +1143,7 @@ def sequential_completion_collate(batch, stop: bool = False):
                     f"default_collate: batch must contain tensors, numpy arrays, "
                     f"numbers, dicts or lists; found {elem.dtype}")
 
-            return completion_collate([torch.as_tensor(b) for b in batch])
+            return sequential_completion_collate([torch.as_tensor(b) for b in batch])
         elif elem.shape == ():  # scalars
             return torch.as_tensor(batch)
     elif isinstance(elem, float):
@@ -1161,11 +1162,11 @@ def sequential_completion_collate(batch, stop: bool = False):
                     break
             else:
                 stop = False
-            d[k] = completion_collate([d[k] for d in batch], stop)
+            d[k] = sequential_completion_collate([d[k] for d in batch], stop)
         return d
         # return {key: default_collate([d[key] for d in batch],rec_level=1) for key in elem}
     elif isinstance(elem, tuple) and hasattr(elem, '_fields'):  # namedtuple
-        return elem_type(*(completion_collate(samples) for samples in zip(*batch)))
+        return elem_type(*(sequential_completion_collate(samples) for samples in zip(*batch)))
     # elif isinstance(elem, container_abcs.Sequence):
     #     transposed = zip(*batch)
     #     return [completion_collate(samples) for samples in transposed]

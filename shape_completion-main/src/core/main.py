@@ -4,7 +4,7 @@ from lightning.trainer import LightningTrainer
 from util.strings import banner, set_logging_to_stdout
 from util.torch.data import none_or_int, none_or_str
 from util.torch.nn import set_determinsitic_run
-
+import argparse
 set_logging_to_stdout()
 set_determinsitic_run()  # Set a universal random seed
 
@@ -15,6 +15,7 @@ set_determinsitic_run()  # Set a universal random seed
 def parser():
     p = HyperOptArgumentParser(strategy='random_search')
 
+    
     # Check-pointing
     p.add_argument('--exp_name', type=str, default='Test',  # TODO - Don't forget to change me!
                    help='The experiment name. Leave empty for default')
@@ -47,7 +48,7 @@ def parser():
                    help='Maximum epochs to train for. Use None for close to infinite epochs')
     p.add_argument('--lr', type=float, default=0.003, help='The learning step to use')
     p.add_argument('--stride', type=int, default=6, help='The learning step to use')
-    p.add_argument('--window_size', type=int, default=2, help='The learning step to use')
+    p.add_argument('--window_size', type=int, default=1, help='The learning step to use')
     p.add_argument('--counts', nargs=3, type=none_or_int, default=(20000, 1000, 1000000),  # TODO - Change me as needed
                    help='The default train,validation and test counts. Recommended [8000-20000, 500-1000, 500-1000]. '
                         'Use None to take all examples in the partition - '
@@ -79,7 +80,8 @@ def parser():
                    help='The encoder type')  # TODO - generalize this
     p.add_argument('--use_frozen_encoder', type=bool, default=True,
                    help='Use frozen encoder')  # TODO - generalize this
-    p.add_argument('--run_baseline', type=bool, default=True, help='flag if we want to run baseline model')
+    p.add_argument('--baseline', action='store_true', help='flag if we want to run baseline model')
+    p.add_argument('--run_windowed_encoder', action='store_true', help='flag for using a window of consecutive frames based on a chosen stride')
     # Computation
     p.add_argument('--gpus', type=none_or_int, default=-1, help='Use -1 to use all available. Use None to run on CPU')
     p.add_argument('--distributed_backend', type=str, default='dp', help='supports three options dp, ddp, ddp2')
@@ -107,20 +109,15 @@ def train_main():
     banner('Network Init')
     # nn = F2PEncoderDecoderBase(parser()
     args = parser()[0].parse_args()
-    if args.run_baseline:
+    if args.baseline:
         nn= F2PEncoderDecoderBase(parser())
         # nn.identify_system()
         ldrs = f2p_completion_loaders(nn.hp, train='DFaustProj')
-
     else:
-        print(f"enc type is {args.encoder_type}")
-        if args.encoder_type == 10:
+        if args.run_windowed_encoder:
             nn = F2PEncoderDecoderWindowed(parser())
-        elif args.encoder_type == 2:
-            nn = F2PPCTDecoderWindowed(parser())
-        else:
-            nn = F2PEncoderDecoderTemporal(parser())
-        ldrs = f2p_completion_loaders(nn.hp, train='DFaustProjRandomSequential')
+        # assert False, "window"
+        ldrs = f2p_completion_loaders(nn.hp, train='DFaustProjRandomWindowed')
 
     nn.identify_system()
 
@@ -128,7 +125,6 @@ def train_main():
     #
 
     # Commence Training
-    #trainer = LightningTrainer(nn, skim_ldrs)
     trainer = LightningTrainer(nn, ldrs)
     trainer.train(debug_mode=False)
 

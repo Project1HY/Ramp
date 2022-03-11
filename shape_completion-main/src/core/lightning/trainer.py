@@ -114,6 +114,7 @@ class LightningTrainer:
                                # accelerator="cpu",
                                early_stop_callback=self.early_stop, checkpoint_callback=checkpoint,
                                logger=wandb_log,
+                            #    logger=tb_log,
                                min_epochs=self.hp.force_train_epoches,
                                max_epochs=self.hp.max_epochs,
                                print_nan_grads=False,

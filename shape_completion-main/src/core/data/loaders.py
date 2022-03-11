@@ -154,13 +154,15 @@ def _loaders(hp, ds_name='DFaust', cls='train', transforms: Union[List, Tuple] =
     # Small Rule Corrections:
     batch_size = 1 if 'scan' in ds_name.lower() else hp.batch_size  # TODO - is this needed? Do we need CPU?
     ds: CompletionDataset = DatasetMenu.order(ds_name)
+    if 'window' in ds_name.lower():
+        ds.set_window_params(hp.window_size,hp.stride)
     if ds.num_full_shapes() > LARGE_DATASET_THERSHOLD:
         train_dynamic_partition = True  # TODO - Move inside loaders - doesn't belong here.
     else:
         train_dynamic_partition = False
         if method == 'rand_f2p':
             method = 'f2p'
-
+    # assert False, f"hp window size: {hp.window_size}"
     if cls == 'train':
         return ds.loaders(split=FULL_SPLIT, s_nums=hp.counts,
                           s_transform=transforms,
