@@ -5,6 +5,13 @@ import trimesh
 
 def collect_reconstruction_stats(gts,masks, tps, comps,faces):
 
+    if len(comps.shape) > 3:
+        comps = comps.reshape(-1, comps.shape[-2], comps.shape[-1])
+    if len(gts.shape) > 3:
+        gts = gts.reshape(-1, gts.shape[-2], gts.shape[-1])
+    if len(tps.shape) > 3:
+        tps = tps.reshape(-1, tps.shape[-2], tps.shape[-1])
+
     
     N = len(gts)
     me_err = np.zeros((N,1))
@@ -79,14 +86,6 @@ def collect_reconstruction_stats(gts,masks, tps, comps,faces):
     stats['Comp-TP Vertex L2'] = list(tp_comp_me_error[:,0])
     stats['Comp-TP Vertex L2 No ICP'] = list(tp_comp_me_error_pre_icp[:,0])
 
-    #best = {}
-    #best['mean_error'] = min(stats['mean_error'])
-    #best['volume_error'] = min(stats['volume_error'])
-    #best['template_mean_error'] = min(stats['template_mean_error'])
-    #best_mean_index = stats['mean_error']).index(min(stats['mean_error']))
-    #best_tp_by_mean = tps[best_mean_index]
-
-    #return stats, best
     return stats
 
 #TODO: report through wandb

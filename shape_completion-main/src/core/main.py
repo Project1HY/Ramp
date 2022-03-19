@@ -49,7 +49,7 @@ def parser():
     p.add_argument('--lr', type=float, default=0.003, help='The learning step to use')
     p.add_argument('--stride', type=int, default=6, help='The learning step to use')
     p.add_argument('--window_size', type=int, default=1, help='The learning step to use')
-    p.add_argument('--counts', nargs=3, type=none_or_int, default=(20000, 1000, 1000000),  # TODO - Change me as needed
+    p.add_argument('--counts', nargs=3, type=none_or_int, default=(20000, 1000, 20000),  # TODO - Change me as needed
                    help='The default train,validation and test counts. Recommended [8000-20000, 500-1000, 500-1000]. '
                         'Use None to take all examples in the partition - '
                         'for big datasets, this could blow up the epoch')
@@ -68,6 +68,10 @@ def parser():
     p.add_argument('--lambdas', nargs=7, type=float, default=(1, 0.01, 0, 0, 0, 0, 0 , 0),
                    help='[XYZ,Normal,Moments,EuclidDistMat,EuclidNormalDistMap,FaceAreas,Volume, Velocity]'
                         'loss multiplication modifiers')
+    p.add_argument('--body_part_volume_weights', nargs=7, type=float, default=(1,0),
+                   help='[Rightarm, Leftarm]'
+                        'loss multiplication modifiers')
+
     p.add_argument('--mask_penalties', nargs=7, type=float, default=(0, 0, 0, 0, 0, 0, 0),
                    help='[XYZ,Normal,Moments,EuclidDistMat,EuclidNormalDistMap,FaceAreas,Volume]'
                         'increased weight on mask vertices. Use val <= 1 to disable')
@@ -79,9 +83,12 @@ def parser():
     p.add_argument('--encoder_type', type=int, choices=[1, 2, 10], default=10,
                    help='The encoder type')  # TODO - generalize this
     p.add_argument('--use_frozen_encoder', type=bool, default=True,
-                   help='Use frozen encoder')  # TODO - generalize this
+                   help='Use frozen encoder')  # TODO - generalize this  
+    p.add_argument('--centralize_com', action='store_true', help='flag if we want to run baseline model')
     p.add_argument('--baseline', action='store_true', help='flag if we want to run baseline model')
     p.add_argument('--run_windowed_encoder', action='store_true', help='flag for using a window of consecutive frames based on a chosen stride')
+    p.add_argument('--run_windowed_lstm_decoder', action='store_true', help='flag for using a window of consecutive frames based on a chosen stride')
+
     # Computation
     p.add_argument('--gpus', type=none_or_int, default=-1, help='Use -1 to use all available. Use None to run on CPU')
     p.add_argument('--distributed_backend', type=str, default='dp', help='supports three options dp, ddp, ddp2')
@@ -116,6 +123,8 @@ def train_main():
     else:
         if args.run_windowed_encoder:
             nn = F2PEncoderDecoderWindowed(parser())
+        elif args.run_windowed_lstm_decoder:
+            nn = F2PEncoderDecoderWindowedTemporal(parser())
         # assert False, "window"
         ldrs = f2p_completion_loaders(nn.hp, train='DFaustProjRandomWindowed')
 
@@ -137,7 +146,6 @@ def test_main():
     nn = F2PEncoderDecoderBase(parser())
     # print(nn.hp)
     # ldrs = f2p_completion_loaders(nn.hp)
-    nn.hp.counts = (1000000, 1000000, 2000000000000000)
     ldrs = f2p_completion_loaders(nn.hp, train='DFaustProj')
     # banner('Testing')
     trainer = LightningTrainer(nn, ldrs)

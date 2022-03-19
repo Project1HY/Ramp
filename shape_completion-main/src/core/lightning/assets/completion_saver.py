@@ -31,6 +31,11 @@ class CompletionSaver:
         tp_hi = b['tp_hi']
         if len(gtrb.shape) > 3:
             gtrb = gtrb.reshape(-1, gtrb.shape[-2], gtrb.shape[-1])
+        if len(gt.shape) > 3:
+            gt = gt.reshape(-1, gt.shape[-2], gt.shape[-1])
+        if len(tp.shape) > 3:
+            tp = tp.reshape(-1, tp.shape[-2], tp.shape[-1])
+
         gtrb = gtrb.cpu().numpy()
         pils = []
         for i in range(len(b['gt_hi'])):
@@ -69,12 +74,12 @@ class CompletionSaver:
             for pose in subjects[subject]:
                 frame_paths = []
                 for frame in sorted(subjects[subject][pose]):
-                    frame_paths += [random.choice(subjects[subject][pose][frame])]
+                    frame_paths += [subjects[subject][pose][frame][0]]
                 subjects[subject][pose] = frame_paths
                 geometries_comp = [geom.mesh.io.base.read_ply_verts(path) for path in subjects[subject][pose]]
-                geom.mesh.io.animate.animate(geometries_comp, self.f, str(dump_dp / "output.gif"),
+                geom.mesh.io.animate.animate(geometries_comp, self.f, str(dump_dp / f"{subject}_{pose}.gif"),
                                              titles=[f"{subject}_{pose}"] * len(frame_paths))
-                yield str(dump_dp / "output.gif"), geometries_comp, f"{subject}_{pose}"
+                yield str(dump_dp / f"{subject}_{pose}.gif"), geometries_comp, f"{subject}_{pose}"
 
 
     def save_completions_by_batch(self, pred, b, set_id):

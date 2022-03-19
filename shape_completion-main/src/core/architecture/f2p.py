@@ -50,6 +50,10 @@ class F2PEncoderDecoderBase(CompletionLightningModel):
 
         y = torch.cat((full, part_code, full_code), 2).contiguous()  # [b x nv x (in_channels + 2*code_size)]
         y = self.decoder(y)
+        if self.hp.centralize_com:
+            center_of_mass= torch.mean(y, dim=1, keepdim=True)
+            center_of_mass[:,3:]=0
+            y=y-center_of_mass
         return {'completion_xyz': y}
 
 
@@ -82,7 +86,6 @@ class F2PEncoderDecoderWindowed(CompletionLightningModel):
         full = input_dict['tp']
 
         # part, full [bs x nv x in_channels]
-        assert False, f"batch size: {full.size(0)}, window size: {full.size(1)}"
         bs = full.size(0)
         window_size = full.size(1)
         nv = full.size(-2)
@@ -145,6 +148,55 @@ class F2PPCTDecoderWindowed(CompletionLightningModel):
         y = self.decoder(y)
         # y = y.reshape(bs,window_size,nv,-1)
         return {'completion_xyz': y}
+
+class F2PEncoderDecoderWindowedTemporal(F2PEncoderDecoderBase):
+    def _build_model(self):
+        self.encoder_full = PointNetShapeEncoder(in_channels=self.hp.in_channels, code_size=self.hp.code_size)
+        self.encoder_part = self.encoder_full
+
+        self.decoder = LSTMDecoder(code_size=self.hp.in_channels + 2 * self.hp.code_size,
+                                   out_channels=self.hp.out_channels, hidden_size=self.hp.decoder_hidden_size,
+                                   dropout=self.hp.decoder_dropout, bidirectional=self.hp.decoder_bidirectional,
+                                   layer_count=self.hp.decoder_layer_count, n_verts=6890)
+
+    def forward(self, input_dict):
+        # TODO - Generalize this
+        part = input_dict['gt_part'] if 'gt_part' in input_dict else input_dict['gt_noise']
+        full = input_dict['tp']
+
+        # part, full [bs x nv x in_channels]
+
+        bs = full.size(0)
+        window_size = full.size(1)
+        nv = full.size(-2)
+
+        full = full.reshape(bs * window_size, nv, -1)
+        part = part.reshape(bs * window_size, nv, -1)
+        part_code = self.encoder_part(part)  # [b x code_size]
+        full_code = self.encoder_full(full)  # [b x code_size]
+
+        part_code = part_code.unsqueeze(1).expand(bs , window_size, nv, self.hp.code_size)  # [b x nv x code_size]
+        full_code = full_code.unsqueeze(1).expand(bs , window_size, nv, self.hp.code_size)  # [b x nv x code_size]
+
+        y = torch.cat((full, part_code, full_code), 2).contiguous()  # [b x nv x (in_channels + 2*code_size)]
+        y = y.reshape(bs,window_size,nv,-1)
+        y = self.decoder(y)
+        return {'completion_xyz': y}
+
+    @staticmethod
+    def add_model_specific_args(parent_parser):
+        p = HyperOptArgumentParser(parents=parent_parser, add_help=False, conflict_handler='resolve')
+        p.add_argument('--code_size', default=128, type=int)
+        p.add_argument('--out_channels', default=3, type=int)
+        p.add_argument('--decoder_hidden_size', default=1024, type=int)
+        p.add_argument('--decoder_bidirectional', default=False, type=bool)
+        p.add_argument('--decoder_dropout', default=0.3, type=int)
+        p.add_argument('--decoder_layer_count', default=2, type=int)
+        p.add_argument('--decoder_convl', default=5, type=int)
+
+        if not parent_parser:  # Name clash with parent
+            p.add_argument('--in_channels', default=3, type=int)
+        return p
 
 class F2PEncoderDecoderTemporal(F2PEncoderDecoderBase):
     def _build_model(self):

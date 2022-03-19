@@ -1,3 +1,4 @@
+from distutils.log import error
 from pyrsistent import b
 import torch
 from geom.mesh.op.gpu.base import batch_vnrmls, batch_fnrmls_fareas, batch_moments, batch_surface_volume, \
@@ -6,6 +7,13 @@ from geom.mesh.op.gpu.dist import batch_l2_pdist
 from util.strings import warn
 from .collect_reconstruction_stats import collect_reconstruction_stats
 import numpy as np
+import statistics as st
+import sys
+import os
+sys.path.insert(0,os.path.join('..','..'))
+from visualize.get_objects_hardcoded_for_sets_base import get_segmentation_manger
+from visualize.computation_manager import ErrorComputationDiffManger
+
 
 # from chamferdist import ChamferDist
 # distpc1topc2, distpc2topc1, idx1, idx2 = chamferDist(pc1, pc2)
@@ -14,13 +22,28 @@ import numpy as np
 # ----------------------------------------------------------------------------------------------------------------------
 class BasicLoss:
     def __init__(self, hp, f):
+        self.lambdas = list(hp.lambdas)
+        self.body_part_volume_weights = list(hp.body_part_volume_weights)
         self.shape_diff = ShapeDiffLoss(hp, f)
         self.f = f
         self.best = {}
+        self.worst = {}
+        self.avg = {}
+        segmentation_manger=get_segmentation_manger()
+        self._err_manger=ErrorComputationDiffManger(f=f,segmentation_manger=segmentation_manger)
+    def compute_loss_start(self):
+        self.best = {}
+        self.worst = {}
+        self.avg = {}
     def compute_loss_end(self, gt_hi, tp_hi, gt, masks, tp, comp, face_override=False):
         #return collect_reconstruction_stats(gt, masks, tp, comp, self.f)
         stats =  collect_reconstruction_stats(gt, masks, tp, comp,self.f)
-  
+        
+        if len(gt.shape) > 3:
+            gt = gt.reshape(-1, gt.shape[-2], gt.shape[-1])
+        if len(tp.shape) > 3:
+            tp = tp.reshape(-1, tp.shape[-2], tp.shape[-1])
+
         best_vals = {}
         best_vals['Comp-GT Vertex L2'] = (
             gt_hi[np.argmin(stats['Comp-GT Vertex L2'])], 
@@ -49,10 +72,71 @@ class BasicLoss:
                 self.best['Comp-GT Vertex L2 No ICP'] = best_vals['Comp-GT Vertex L2 No ICP']
         else:
             self.best = best_vals
+
+        worst_vals = {}
+        worst_vals['Comp-GT Vertex L2'] = (
+            gt_hi[np.argmax(stats['Comp-GT Vertex L2'])], 
+            tp_hi[np.argmax(stats['Comp-GT Vertex L2'])],
+             max(stats['Comp-GT Vertex L2']))
+        worst_vals['Comp-GT Vertex L2 No ICP'] =  (
+            gt_hi[np.argmax(stats['Comp-GT Vertex L2 No ICP'])],
+             tp_hi[np.argmax(stats['Comp-GT Vertex L2 No ICP'])],
+              max(stats['Comp-GT Vertex L2 No ICP']))
+        worst_vals['Comp-GT Volume L1'] = (
+            gt_hi[np.argmax(stats['Comp-GT Volume L1'])], 
+            tp_hi[np.argmax(stats['Comp-GT Volume L1'])], 
+            max(stats['Comp-GT Volume L1']))
+        worst_vals['TP-GT Vertex L2'] = (
+            gt_hi[np.argmax(stats['TP-GT Vertex L2'])], 
+            tp_hi[np.argmax(stats['TP-GT Vertex L2'])], 
+            max(stats['TP-GT Vertex L2']))
+        if len(self.worst) != 0:
+            if worst_vals['Comp-GT Vertex L2'][2] > self.worst['Comp-GT Vertex L2'][2]:
+                self.worst['Comp-GT Vertex L2'] = worst_vals['Comp-GT Vertex L2']
+            if worst_vals['Comp-GT Volume L1'][2] > self.worst['Comp-GT Volume L1'][2]:
+                self.worst['Comp-GT Volume L1'] = worst_vals['Comp-GT Volume L1']
+            if worst_vals['TP-GT Vertex L2'][2] > self.worst['TP-GT Vertex L2'][2]:
+                self.worst['TP-GT Vertex L2'] = worst_vals['TP-GT Vertex L2']
+            if worst_vals['Comp-GT Vertex L2 No ICP'][2] > self.worst['Comp-GT Vertex L2 No ICP'][2]:
+                self.worst['Comp-GT Vertex L2 No ICP'] = worst_vals['Comp-GT Vertex L2 No ICP']
+        else:
+            self.worst = worst_vals
+        
+        # avg_vals = {}
+        # avg_vals['Comp-GT Vertex L2'] = (
+        #     # gt_hi[np.average(stats['Comp-GT Vertex L2'])], 
+        #     # tp_hi[np.average(stats['Comp-GT Vertex L2'])],
+        #      st.mean(stats['Comp-GT Vertex L2']))
+        # avg_vals['Comp-GT Vertex L2 No ICP'] =  (
+        #     # gt_hi[np.average(stats['Comp-GT Vertex L2 No ICP'])],
+        #     #  tp_hi[np.average(stats['Comp-GT Vertex L2 No ICP'])],
+        #       st.mean(stats['Comp-GT Vertex L2 No ICP']))
+        # avg_vals['Comp-GT Volume L1'] = (
+        #     # gt_hi[np.average(stats['Comp-GT Volume L1'])], 
+        #     # tp_hi[np.average(stats['Comp-GT Volume L1'])], 
+        #     st.mean(stats['Comp-GT Volume L1']))
+        # avg_vals['TP-GT Vertex L2'] = (
+        #     # gt_hi[np.average(stats['TP-GT Vertex L2'])], 
+        #     # tp_hi[np.average(stats['TP-GT Vertex L2'])], 
+        #     st.mean(stats['TP-GT Vertex L2']))
+        # if len(self.avg) != 0:
+        #     self.avg['Comp-GT Vertex L2'] = st.mean(avg_vals['Comp-GT Vertex L2'])
+        #     self.avg['Comp-GT Volume L1'] = st.mean(avg_vals['Comp-GT Volume L1'])
+        #     self.avg['TP-GT Vertex L2'] = st.mean(avg_vals['TP-GT Vertex L2'])
+        #     self.avg['Comp-GT Vertex L2 No ICP'] = st.mean(avg_vals['Comp-GT Vertex L2 No ICP'])
+        # else:
+        # self.avg = avg_vals
+
         return stats
 
     def return_best_stats(self):
         return self.best
+
+    def return_worst_stats(self):
+        return self.worst
+
+    def return_avg_stats(self):
+        return self.avg
 
     def compute(self, x, network_output):
         """
@@ -75,55 +159,23 @@ class BasicLoss:
         loss_dict = loss_dict_comp
         loss_dict.update(total_loss=loss_dict['total_loss_comp'])
 
+        #loss segments
+        shape1=completion_gt[:,:,:3]
+        shape2=completion_rec[:,:,:3]
+        errors_to_log=self._err_manger.get_compute_errors_dict(shape_1=shape1,shape_2=shape2)
+        
+        if self.lambdas[6] != 0:
+            errors_to_log['Full volume error'] *= self.lambdas[6] 
+            loss_dict['total_loss']+=errors_to_log['Full volume error']
+        
+        loss_dict['total_loss']+=self.body_part_volume_weights[0]*errors_to_log['RightArm volume error']
+        loss_dict['total_loss']+=self.body_part_volume_weights[1]*errors_to_log['LeftArm volume error']
+        loss_dict.update(total_loss=loss_dict['total_loss_comp'])
+
+        loss_dict.update(errors_to_log)
+
         #compute and area and volume losses too
         return loss_dict
-
-
-# class TBasedLoss:
-#     def __init__(self, hp, f):
-#         self.shape_diff = ShapeDiffLoss(hp, f)
-#         self.code_loss = CodeLoss()
-#
-#     def compute(self, x, network_output):
-#         # input retrieval
-#         completion_gt = x['gt']
-#         full = x['tp']
-#         part_idx = x['gt_mask']
-#
-#         # output retrieval
-#         completion_rec = network_output['completion_xyz']
-#         part_rec = network_output['part_rec']
-#         full_rec = network_output['full_rec']
-#         gt_rec = network_output['gt_rec']
-#         comp_code = network_output['comp_code']
-#         gt_code = network_output['gt_code']
-#
-#         # weights calculation
-#         nv = completion_gt.shape[1]
-#         w_part = self.shape_diff._mask_part_weight(part_idx, nv)
-#
-#         loss_dict_comp = self.shape_diff.compute(completion_gt, completion_rec, w=1)
-#         # TODO calculate mask: w, w.r.t to mask penalty (only for completion)
-#         loss_dict_part = self.shape_diff.compute(completion_gt, part_rec, w=w_part)
-#         loss_dict_full = self.shape_diff.compute(full, full_rec, w=1)
-#         loss_dict_gt = self.shape_diff.compute(gt_rec, completion_rec, w=1)
-#         # bring completion_rec close to gt_rec (gt_rec always better than completion_rec in template based decoder)
-#
-#         loss_comp = {f'{k}_comp': v for k, v in loss_dict_comp.items()}
-#         loss_part = {f'{k}_part': v for k, v in loss_dict_part.items()}
-#         loss_full = {f'{k}_full': v for k, v in loss_dict_full.items()}
-#         loss_gt = {f'{k}_gt': v for k, v in loss_dict_gt.items()}
-#
-#         loss_code = self.code_loss.compute(comp_code, gt_code)
-#
-#         loss_dict = loss_comp
-#         loss_dict.update(loss_part)
-#         loss_dict.update(loss_full)
-#         loss_dict.update(loss_gt)
-#         loss_dict.update(loss_code)
-#         loss_dict.update(total_loss=loss_dict['total_loss_comp'] + loss_dict['total_loss_part'] +
-#                                     loss_dict['total_loss_full'] + loss_dict['total_loss_gt'])
-#         return loss_dict
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -136,7 +188,7 @@ class ShapeDiffLoss:
         self.lambdas = list(hp.lambdas)
         self.mask_penalties = list(hp.mask_penalties)
         self.dist_v_penalties = list(hp.dist_v_penalties)
-
+        self.centralize_com = hp.centralize_com
         # For CUDA:
         self.dev = hp.dev  # TODO - Might be problematic for multiple GPUs
         self.non_blocking = hp.NON_BLOCKING
@@ -191,6 +243,13 @@ class ShapeDiffLoss:
         shape1_sequential = None
         shape2_sequential = None
         shape_of_1 = shape_1.shape
+        if self.centralize_com:
+            com_shape_1= torch.mean(shape_1, dim=1, keepdim=True)
+            com_shape_1[:,3:]=0
+            shape_1=shape_1-com_shape_1
+            com_shape_2= torch.mean(shape_2, dim=1, keepdim=True)
+            com_shape_2[:,3:]=0
+            shape_2=shape_2-com_shape_2
         if len(shape_of_1) > 3:
             shape1_sequential = shape_1
             shape2_sequential = shape_2.reshape(shape_of_1[0], shape_of_1[1], shape_of_1[2], -1)
@@ -246,13 +305,14 @@ class ShapeDiffLoss:
                     loss_dict['Areas'] = loss_areas
                     loss += loss_areas
                 elif i == 6:  # Volume:
-                    f_volume_1 = batch_surface_volume(shape_1[:, :, 0:3], self.torch_f.unsqueeze(0))
+                    continue
+                    # f_volume_1 = batch_surface_volume(shape_1[:, :, 0:3], self.torch_f.unsqueeze(0))
 
-                    f_volume_2 = batch_surface_volume(shape_2, self.torch_f.unsqueeze(0))
-                    loss_volumes = torch.linalg.norm(f_volume_1 - f_volume_2)
-                    # loss_volumes = self._l2_loss(f_volume_1, f_volume_2, lamb=lamb, vertex_mask=w)
-                    loss_dict['Volumes'] = loss_volumes
-                    loss += lamb*loss_volumes
+                    # f_volume_2 = batch_surface_volume(shape_2, self.torch_f.unsqueeze(0))
+                    # loss_volumes = torch.linalg.norm(f_volume_1 - f_volume_2)
+                    # # loss_volumes = self._l2_loss(f_volume_1, f_volume_2, lamb=lamb, vertex_mask=w)
+                    # loss_dict['Volumes'] = loss_volumes
+                    # loss += lamb*loss_volumes
                 elif i == 7:
                     assert len(shape_of_1) > 3, "Dataset should be configured for sequential data"
                     loss_velocity = lamb * vertex_velocity(shape1_sequential[:, :, :, 0:3], shape2_sequential)

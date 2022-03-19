@@ -132,7 +132,7 @@ class CompletionLightningModel(PytorchNet):
                 self.temp_data=new_data['gtrb']
             else:
                 self.temp_data = np.concatenate((self.temp_data, new_data['gtrb']),axis=0)
-            
+            self.loss.compute_loss_start()
             self.report_static_metrics(b,pred)
             #self.assets.plt.push(new_data=new_data, new_epoch=self.current_epoch)
 
@@ -169,6 +169,16 @@ class CompletionLightningModel(PytorchNet):
         log_dict["best_volume_error"]=best_stats['Comp-GT Volume L1'][2]
         log_dict["best_template_mean_error"]=best_stats['TP-GT Vertex L2'][2]
 
+        worst_stats = self.loss.return_worst_stats()
+        log_dict["worst_mean_error"]=worst_stats['Comp-GT Vertex L2'][2]
+        log_dict["worst_volume_error"]=worst_stats['Comp-GT Volume L1'][2]
+        log_dict["worst_template_mean_error"]=worst_stats['TP-GT Vertex L2'][2]
+
+        # avg_stats = self.loss.return_avg_stats()
+        # log_dict["average_mean_error"]=avg_stats['Comp-GT Vertex L2'][2]
+        # log_dict["average_volume_error"]=avg_stats['Comp-GT Volume L1'][2]
+        # log_dict["average_template_mean_error"]=avg_stats['TP-GT Vertex L2'][2]
+
         # This must be kept as "val_loss" and not "avg_val_loss" due to old_lightning bug
         return {"val_loss": avg_val_loss,  # TODO - Remove double entry for val_koss
                 "progress_bar": progbar_dict,
@@ -178,16 +188,12 @@ class CompletionLightningModel(PytorchNet):
         pred = self.complete(b)
         tp = b['tp']
         results = self.loss.compute_loss_end(b['gt_hi'], b['tp_hi'], b['gt'], b['gt_mask'], tp,pred['completion_xyz'].cpu().detach().numpy())
-        #results,best_results= self.loss.compute_loss_end(b['gt'], b['gt_mask'], tp,pred['completion_xyz'].cpu().detach().numpy())
 
         results['gt_hi'] = b['gt_hi']
         results['tp_hi'] = b['tp_hi']
 
         results['gt_hi'] = list(['_'.join(str(x) for x in hi) for hi in results['gt_hi']])
         results['tp_hi'] = list(['_'.join(str(x) for x in hi) for hi in results['tp_hi']])
-        
-        #best_mean_index = stats['mean_error']).index(min(stats['mean_error']))
-        #best_tp_by_mean = tps[best_mean_index]
 
         if self.assets.saver is not None:  # TODO - Generalize this
             images = self.assets.saver.get_completions_as_pil(pred, b)
@@ -254,7 +260,9 @@ class CompletionLightningModel(PytorchNet):
         best_metrics = return_best_stats() 
         vals = ["mean", "volume", "temp"]
         wandb.log({"best metrics": wandb.Table(columns=vals, data=best_metrics)})
-         
+        worst_metrics = return_worst_stats() 
+        vals2 = ["mean", "volume", "temp"]
+        wandb.log({"worst metrics": wandb.Table(columns=vals2, data=worst_metrics)})
 
     def hyper_params(self):
         return deepcopy(self.hp)

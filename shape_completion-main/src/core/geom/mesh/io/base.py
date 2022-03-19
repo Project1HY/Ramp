@@ -330,7 +330,7 @@ def numpy2trimesh(v, f):
 
 
 def numpy_to_pil(gt_hi, tp_hi, r_v, gt_v, tp_v, f):
-    image = plot_mesh_montage([r_v, gt_v, tp_v], [f] * 3, titles=[f"{gt_hi[1]}\nreconstruction", gt_hi[1], tp_hi[1]])
+    image = plot_mesh_montage([r_v, gt_v, tp_v], [f] * 3, titles=[f"{gt_hi[1]}\nreconstruction", f"{gt_hi[1]} GT", f"{tp_hi[1]} TP"])
     img = PIL.Image.fromarray(image)
     return img
 
