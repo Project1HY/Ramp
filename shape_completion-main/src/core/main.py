@@ -19,7 +19,7 @@ def parser():
     # Check-pointing
     p.add_argument('--exp_name', type=str, default='Test',  # TODO - Don't forget to change me!
                    help='The experiment name. Leave empty for default')
-    p.add_argument('--version', type=none_or_int, default=None,
+    p.add_argument('--version', type=none_or_int, default=18,
                    help='Weights will be saved at weight_dir=exp_name/version_{version}. '
                         'Use NonFe to automatically choose an unused version')
     p.add_argument('--resume_cfg', nargs=2, type=bool, default=(False, True),

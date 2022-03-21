@@ -11,8 +11,8 @@ import statistics as st
 import sys
 import os
 sys.path.insert(0,os.path.join('..','..'))
-from visualize.get_objects_hardcoded_for_sets_base import get_segmentation_manger
-from visualize.computation_manager import ErrorComputationDiffManger
+#from visualize.get_objects_hardcoded_for_sets_base import get_segmentation_manger
+#from visualize.computation_manager import ErrorComputationDiffManger
 
 
 # from chamferdist import ChamferDist
@@ -29,8 +29,8 @@ class BasicLoss:
         self.best = {}
         self.worst = {}
         self.avg = {}
-        segmentation_manger=get_segmentation_manger()
-        self._err_manger=ErrorComputationDiffManger(f=f,segmentation_manger=segmentation_manger)
+    #    segmentation_manger=get_segmentation_manger()
+    #    self._err_manger=ErrorComputationDiffManger(f=f,segmentation_manger=segmentation_manger)
     def compute_loss_start(self):
         self.best = {}
         self.worst = {}
@@ -162,17 +162,17 @@ class BasicLoss:
         #loss segments
         shape1=completion_gt[:,:,:3]
         shape2=completion_rec[:,:,:3]
-        errors_to_log=self._err_manger.get_compute_errors_dict(shape_1=shape1,shape_2=shape2)
+     #   errors_to_log=self._err_manger.get_compute_errors_dict(shape_1=shape1,shape_2=shape2)
         
-        if self.lambdas[6] != 0:
-            errors_to_log['Full volume error'] *= self.lambdas[6] 
-            loss_dict['total_loss']+=errors_to_log['Full volume error']
+     #  if self.lambdas[6] != 0:
+     #       errors_to_log['Full volume error'] *= self.lambdas[6]
+     #       loss_dict['total_loss']+=errors_to_log['Full volume error']
         
-        loss_dict['total_loss']+=self.body_part_volume_weights[0]*errors_to_log['RightArm volume error']
-        loss_dict['total_loss']+=self.body_part_volume_weights[1]*errors_to_log['LeftArm volume error']
-        loss_dict.update(total_loss=loss_dict['total_loss_comp'])
+     #   loss_dict['total_loss']+=self.body_part_volume_weights[0]*errors_to_log['RightArm volume error']
+     #   loss_dict['total_loss']+=self.body_part_volume_weights[1]*errors_to_log['LeftArm volume error']
+     #   loss_dict.update(total_loss=loss_dict['total_loss_comp'])
 
-        loss_dict.update(errors_to_log)
+#        loss_dict.update(errors_to_log)
 
         #compute and area and volume losses too
         return loss_dict
@@ -254,6 +254,7 @@ class ShapeDiffLoss:
             shape1_sequential = shape_1
             shape2_sequential = shape_2.reshape(shape_of_1[0], shape_of_1[1], shape_of_1[2], -1)
             shape_1 = shape_1.reshape(-1, shape_1.shape[-2], shape_1.shape[-1])
+            shape_2 = shape_2.reshape(-1, shape_2.shape[-2], shape_2.shape[-1])
         for i, lamb in enumerate(self.lambdas):
             if lamb > 0:
                 if i == 0:  # XYZ
@@ -386,6 +387,7 @@ class ShapeDiffLoss:
 
     @staticmethod
     def _l2_loss(v1b, v2b, lamb, vertex_mask=1):
+        #assert False, f"v1 shape {v1b.shape} v2 shape {v2b.shape}"
         return lamb * torch.mean(vertex_mask * ((v1b - v2b) ** 2))
 
 

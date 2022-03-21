@@ -118,7 +118,6 @@ class CompletionLightningModel(PytorchNet):
                                                        torch.LongTensor([2, 0, 1]))
 
             batch_validation_mesh = batch_validation_mesh.numpy()[-1]
-            wandb.log({"point_cloud": wandb.Object3D(batch_validation_mesh)})
             if self.assets.saver is not None:  # TODO - Generalize this
                 images = self.assets.saver.get_completions_as_pil(pred, b)
                 wandb.log({"completions": [wandb.Image(image) for image in images]})

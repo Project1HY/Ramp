@@ -78,10 +78,11 @@ class LSTMDecoder(BaseDecoder):
         :return: predicted coordinates for each point, after the deformation [B x nv x 3]
         """
         orig_shape = x.shape
+        nv = x.size(2)
         bs = x.size(0)
         window_size = x.size(1)
-        x = x.reshape(bs , window_size, -1)
-        assert False,f"shape is {x.shape}, bs {bs} window_size {window_size} orig shape {orig_shape}"
+        x = x.reshape(bs*window_size, nv, -1)
+        #assert False,f"shape is {x.shape}, bs {bs} window_size {window_size} orig shape {orig_shape}"
         x = x.transpose(2, 1).contiguous()  # [b x nv x in_channels]
         x = self.convolutions(x)
         x = x.reshape(bs, window_size, -1)
@@ -90,6 +91,7 @@ class LSTMDecoder(BaseDecoder):
         out = out.reshape(bs*window_size,-1)
         out = self.reshape_matrix(out).reshape(bs,window_size, self.n_verts, 3)
         # out = 2 * self.thl(out)
+        #assert False, f"out shape is {out.shape}"
         return out
 
     # ----------------------------------------------------------------------------------------------------------------------

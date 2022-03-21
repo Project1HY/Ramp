@@ -175,10 +175,12 @@ class F2PEncoderDecoderWindowedTemporal(F2PEncoderDecoderBase):
         part_code = self.encoder_part(part)  # [b x code_size]
         full_code = self.encoder_full(full)  # [b x code_size]
 
-        part_code = part_code.unsqueeze(1).expand(bs , window_size, nv, self.hp.code_size)  # [b x nv x code_size]
-        full_code = full_code.unsqueeze(1).expand(bs , window_size, nv, self.hp.code_size)  # [b x nv x code_size]
+        full = full.reshape(bs, window_size, nv, -1)
+        part_code = part_code.reshape(bs, window_size, -1).unsqueeze(2).expand(bs, window_size, nv, self.hp.code_size)  # [b x nv x code_size]
+        full_code = full_code.reshape(bs, window_size, -1).unsqueeze(2).expand(bs, window_size, nv, self.hp.code_size)  # [b x nv x code_size]
+        #assert False, f"full {full.shape} part code shape {part_code.shape} full code shape {full_code.shape}"
 
-        y = torch.cat((full, part_code, full_code), 2).contiguous()  # [b x nv x (in_channels + 2*code_size)]
+        y = torch.cat((full, part_code, full_code), 3).contiguous()  # [b x nv x (in_channels + 2*code_size)]
         y = y.reshape(bs,window_size,nv,-1)
         y = self.decoder(y)
         return {'completion_xyz': y}
