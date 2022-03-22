@@ -26,8 +26,8 @@ DANGEROUS_MASK_THRESH = 100  # The minimal length allowed for mask vertex indice
 ORIGINAL_SOURCE_CODE_DIR: pathlib.Path = pathlib.Path(r"D:\projectHY\Ramp")
 SOURCE_CODE_DIR: pathlib.Path = pathlib.Path(__file__).parents[0]
 PRIMARY_RESULTS_DIR: pathlib.Path = SOURCE_CODE_DIR / 'results'
-PRIMARY_DATA_DIR: pathlib.Path = pathlib.Path(r"R:\Mano\data\DFaust\DFaust")
-VERT_DATA_DIR: pathlib.Path = pathlib.Path(r"R:\Mano\data\DFaust\DFAUST_VERT_PICK")
+PRIMARY_DATA_DIR: pathlib.Path = pathlib.Path(r"/home/yiftach.ede/gipfs/DFaust/")
+VERT_DATA_DIR: pathlib.Path = pathlib.Path(r"/home/yiftach.ede/gipfs/DFAUST_VERT_PICK")
 
 PRIMARY_EXAMPLE_DIR: pathlib.Path = ORIGINAL_SOURCE_CODE_DIR / 'exp' / 'test' / 'examples'
 TEST_MESH_HUMAN_PATH: pathlib.Path = PRIMARY_EXAMPLE_DIR / 'fat_man.off'

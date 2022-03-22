@@ -29,8 +29,8 @@ class BasicLoss:
         self.best = {}
         self.worst = {}
         self.avg = {}
-    #    segmentation_manger=get_segmentation_manger()
-    #    self._err_manger=ErrorComputationDiffManger(f=f,segmentation_manger=segmentation_manger)
+        segmentation_manger=get_segmentation_manger()
+        self._err_manger=ErrorComputationDiffManger(f=f,segmentation_manger=segmentation_manger)
     def compute_loss_start(self):
         self.best = {}
         self.worst = {}
@@ -162,19 +162,19 @@ class BasicLoss:
         #loss segments
         shape1=completion_gt[:,:,:3]
         shape2=completion_rec[:,:,:3]
-     #   errors_to_log=self._err_manger.get_compute_errors_dict(shape_1=shape1,shape_2=shape2)
-        
-     #  if self.lambdas[6] != 0:
-     #       errors_to_log['Full volume error'] *= self.lambdas[6]
-     #       loss_dict['total_loss']+=errors_to_log['Full volume error']
-        
-     #   loss_dict['total_loss']+=self.body_part_volume_weights[0]*errors_to_log['RightArm volume error']
-     #   loss_dict['total_loss']+=self.body_part_volume_weights[1]*errors_to_log['LeftArm volume error']
-     #   loss_dict.update(total_loss=loss_dict['total_loss_comp'])
+        errors_to_log=self._err_manger.get_compute_errors_dict(shape_1=shape1,shape_2=shape2)
+            
+        if self.lambdas[6] != 0:
+            errors_to_log['Full volume error'] *= self.lambdas[6]
+            loss_dict['total_loss']+=errors_to_log['Full volume error']
+            
+        loss_dict['total_loss']+=self.body_part_volume_weights[0]*errors_to_log['RightArm volume error']
+        loss_dict['total_loss']+=self.body_part_volume_weights[1]*errors_to_log['LeftArm volume error']
+        loss_dict.update(total_loss=loss_dict['total_loss_comp'])
 
-#        loss_dict.update(errors_to_log)
+        loss_dict.update(errors_to_log)
 
-        #compute and area and volume losses too
+            #compute and area and volume losses too
         return loss_dict
 
 
