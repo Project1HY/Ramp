@@ -1,10 +1,12 @@
+import argparse, os
+
 from architecture.f2p import *
 from data.loaders import *
 from lightning.trainer import LightningTrainer
 from util.strings import banner, set_logging_to_stdout
 from util.torch.data import none_or_int, none_or_str
 from util.torch.nn import set_determinsitic_run
-import argparse
+
 set_logging_to_stdout()
 set_determinsitic_run()  # Set a universal random seed
 
@@ -15,6 +17,8 @@ set_determinsitic_run()  # Set a universal random seed
 def parser():
     p = HyperOptArgumentParser(strategy='random_search')
 
+    def dir_path(string):
+        return string
     
     # Check-pointing
     p.add_argument('--exp_name', type=str, default='Test',  # TODO - Don't forget to change me!
@@ -36,7 +40,7 @@ def parser():
                    help="T max taken for cosine annealing, if enabled")
     # Dataset Config:
     # NOTE: A well known ML rule: double the learning rate if you double the batch size.
-    p.add_argument('--batch_size', type=int, default=10, help='SGD batch size')
+    p.add_argument('--batch_size', type=int, default=8, help='SGD batch size')
     # TODO: This parameter applies for P & Q, however it can be overridden is some architecture
     p.add_argument('--in_channels', choices=[3, 6, 12], default=6,
                    help='Number of input channels')
@@ -49,7 +53,7 @@ def parser():
     p.add_argument('--lr', type=float, default=0.003, help='The learning step to use')
     p.add_argument('--stride', type=int, default=6, help='The learning step to use')
     p.add_argument('--window_size', type=int, default=1, help='The learning step to use')
-    p.add_argument('--counts', nargs=3, type=none_or_int, default=(20000, 1000, 20000),  # TODO - Change me as needed
+    p.add_argument('--counts', nargs=3, type=none_or_int, default=(20000, 1000, 2000),  # TODO - Change me as needed
                    help='The default train,validation and test counts. Recommended [8000-20000, 500-1000, 500-1000]. '
                         'Use None to take all examples in the partition - '
                         'for big datasets, this could blow up the epoch')
@@ -65,11 +69,11 @@ def parser():
     # Without early stop callback, we'll train for cfg.MAX_EPOCHS
 
     # L2 Losses: Use 0 to ignore, >0 to lightning
-    p.add_argument('--lambdas', nargs=7, type=float, default=(1, 0.01, 0, 0, 0, 0, 0 , 0),
+    p.add_argument('--lambdas', nargs="+", type=float, default=(1, 0.01, 0, 0, 0, 0, 0 , 0),
                    help='[XYZ,Normal,Moments,EuclidDistMat,EuclidNormalDistMap,FaceAreas,Volume, Velocity]'
                         'loss multiplication modifiers')
-    p.add_argument('--body_part_volume_weights', nargs=7, type=float, default=(1,0),
-                   help='[Rightarm, Leftarm]'
+    p.add_argument('--body_part_volume_weights', nargs=5, type=float, default=(0,0,0,0,0),
+                   help='[Rightarm, Leftarm, Head, Rightleg, Leftleg]'
                         'loss multiplication modifiers')
 
     p.add_argument('--mask_penalties', nargs=7, type=float, default=(0, 0, 0, 0, 0, 0, 0),
@@ -82,12 +86,13 @@ def parser():
                    help='The loss class')  # TODO - generalize this
     p.add_argument('--encoder_type', type=int, choices=[1, 2, 10], default=10,
                    help='The encoder type')  # TODO - generalize this
-    p.add_argument('--use_frozen_encoder', type=bool, default=True,
-                   help='Use frozen encoder')  # TODO - generalize this  
+    p.add_argument('--run_frozen_encoder', type=dir_path, default=None, help='flag for using frozen encoder')
     p.add_argument('--centralize_com', action='store_true', help='flag if we want to run baseline model')
     p.add_argument('--baseline', action='store_true', help='flag if we want to run baseline model')
     p.add_argument('--run_windowed_encoder', action='store_true', help='flag for using a window of consecutive frames based on a chosen stride')
     p.add_argument('--run_windowed_lstm_decoder', action='store_true', help='flag for using a window of consecutive frames based on a chosen stride')
+    p.add_argument('--run_transformer_encoder', action='store_true', help='flag for using transformer encoder')
+    p.add_argument('--profile', action='store_true', help='flag for using transformer encoder')
 
     # Computation
     p.add_argument('--gpus', type=none_or_int, default=-1, help='Use -1 to use all available. Use None to run on CPU')
@@ -125,13 +130,17 @@ def train_main():
             nn = F2PEncoderDecoderWindowed(parser())
         elif args.run_windowed_lstm_decoder:
             nn = F2PEncoderDecoderWindowedTemporal(parser())
+            #nn.load_state_dict(torch.load(PATH), strict=False)
+
+        elif args.run_transformer_encoder:
+            nn = F2PPCTDecoderWindowed(parser())
         # assert False, "window"
         ldrs = f2p_completion_loaders(nn.hp, train='DFaustProjRandomWindowed')
-
+    if args.run_frozen_encoder is not None:
+        nn.load_state_dict(torch.load(args.run_frozen_encoder)['state_dict'], strict=False) 
+        nn.freeze_params()
     nn.identify_system()
 
-    # [ [train_loader], [vald_loaders] , [test_loaders] ]
-    #
 
     # Commence Training
     trainer = LightningTrainer(nn, ldrs)
@@ -143,10 +152,10 @@ def train_main():
 
 def test_main():
     banner('Network Init')
-    nn = F2PEncoderDecoderBase(parser())
+    nn = F2PEncoderDecoderWindowedTemporal(parser())
     # print(nn.hp)
     # ldrs = f2p_completion_loaders(nn.hp)
-    ldrs = f2p_completion_loaders(nn.hp, train='DFaustProj')
+    ldrs = f2p_completion_loaders(nn.hp, train='DFaustProjRandomWindowed')
     # banner('Testing')
     trainer = LightningTrainer(nn, ldrs)
     trainer.test()
@@ -165,4 +174,4 @@ def test_main():
 # ----------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
     train_main()
-    #test_main()
+    # test_main()

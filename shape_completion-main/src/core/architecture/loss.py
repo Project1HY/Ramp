@@ -11,8 +11,8 @@ import statistics as st
 import sys
 import os
 sys.path.insert(0,os.path.join('..','..'))
-#from visualize.get_objects_hardcoded_for_sets_base import get_segmentation_manger
-#from visualize.computation_manager import ErrorComputationDiffManger
+from visualize.get_objects_hardcoded_for_sets_base import get_segmentation_manger
+from visualize.computation_manager import ErrorComputationDiffManger, get_valid_error_computations_type_list,get_valid_error_computations_type_list_for_flow
 
 
 # from chamferdist import ChamferDist
@@ -30,7 +30,21 @@ class BasicLoss:
         self.worst = {}
         self.avg = {}
         segmentation_manger=get_segmentation_manger()
-        self._err_manger=ErrorComputationDiffManger(f=f,segmentation_manger=segmentation_manger)
+        self.organs_to_lambdas = {
+            "Rightarm": self.body_part_volume_weights[0],
+            "Leftarm": self.body_part_volume_weights[1],
+            "Head": self.body_part_volume_weights[2],
+            "Rightleg": self.body_part_volume_weights[3],
+            "Leftleg": self.body_part_volume_weights[4]
+        }
+        
+        self.organs_to_lambdas = {k:v  for (k,v) in self.organs_to_lambdas.items() if v>0}
+
+        segmentation_manger_backwards=get_segmentation_manger(organs=list(self.organs_to_lambdas.keys()))
+
+        self._err_manger_logging=ErrorComputationDiffManger(f=f,segmentation_manger=segmentation_manger)
+        self._err_manger_loss=ErrorComputationDiffManger(f=f,segmentation_manger=segmentation_manger_backwards,computation_type_list=get_valid_error_computations_type_list_for_flow())
+
     def compute_loss_start(self):
         self.best = {}
         self.worst = {}
@@ -45,14 +59,15 @@ class BasicLoss:
             tp = tp.reshape(-1, tp.shape[-2], tp.shape[-1])
 
         best_vals = {}
-        best_vals['Comp-GT Vertex L2'] = (
-            gt_hi[np.argmin(stats['Comp-GT Vertex L2'])], 
-            tp_hi[np.argmin(stats['Comp-GT Vertex L2'])],
-             min(stats['Comp-GT Vertex L2']))
-        best_vals['Comp-GT Vertex L2 No ICP'] =  (
-            gt_hi[np.argmin(stats['Comp-GT Vertex L2 No ICP'])],
-             tp_hi[np.argmin(stats['Comp-GT Vertex L2 No ICP'])],
-              min(stats['Comp-GT Vertex L2 No ICP']))
+        #ICP calcs
+        # best_vals['Comp-GT Vertex L2'] = (
+        #     gt_hi[np.argmin(stats['Comp-GT Vertex L2'])], 
+        #     tp_hi[np.argmin(stats['Comp-GT Vertex L2'])],
+        #      min(stats['Comp-GT Vertex L2']))
+        best_vals['Comp-GT Vertex L2'] =  (
+            gt_hi[np.argmin(stats['Comp-GT Vertex L2'])],
+             tp_hi[np.argmin(stats['Comp-GT Vertex L2'])],
+              min(stats['Comp-GT Vertex L2']))
         best_vals['Comp-GT Volume L1'] = (
             gt_hi[np.argmin(stats['Comp-GT Volume L1'])], 
             tp_hi[np.argmin(stats['Comp-GT Volume L1'])], 
@@ -62,26 +77,27 @@ class BasicLoss:
             tp_hi[np.argmin(stats['TP-GT Vertex L2'])], 
             min(stats['TP-GT Vertex L2']))
         if len(self.best) != 0:
-            if best_vals['Comp-GT Vertex L2'][2] < self.best['Comp-GT Vertex L2'][2]:
-                self.best['Comp-GT Vertex L2'] = best_vals['Comp-GT Vertex L2']
+            #if best_vals['Comp-GT Vertex L2'][2] < self.best['Comp-GT Vertex L2'][2]:
+            #    self.best['Comp-GT Vertex L2'] = best_vals['Comp-GT Vertex L2']
             if best_vals['Comp-GT Volume L1'][2] < self.best['Comp-GT Volume L1'][2]:
                 self.best['Comp-GT Volume L1'] = best_vals['Comp-GT Volume L1']
             if best_vals['TP-GT Vertex L2'][2] < self.best['TP-GT Vertex L2'][2]:
                 self.best['TP-GT Vertex L2'] = best_vals['TP-GT Vertex L2']
-            if best_vals['Comp-GT Vertex L2 No ICP'][2] < self.best['Comp-GT Vertex L2 No ICP'][2]:
-                self.best['Comp-GT Vertex L2 No ICP'] = best_vals['Comp-GT Vertex L2 No ICP']
+            if best_vals['Comp-GT Vertex L2'][2] < self.best['Comp-GT Vertex L2'][2]:
+                self.best['Comp-GT Vertex L2'] = best_vals['Comp-GT Vertex L2']
         else:
             self.best = best_vals
 
         worst_vals = {}
-        worst_vals['Comp-GT Vertex L2'] = (
-            gt_hi[np.argmax(stats['Comp-GT Vertex L2'])], 
-            tp_hi[np.argmax(stats['Comp-GT Vertex L2'])],
-             max(stats['Comp-GT Vertex L2']))
-        worst_vals['Comp-GT Vertex L2 No ICP'] =  (
-            gt_hi[np.argmax(stats['Comp-GT Vertex L2 No ICP'])],
-             tp_hi[np.argmax(stats['Comp-GT Vertex L2 No ICP'])],
-              max(stats['Comp-GT Vertex L2 No ICP']))
+        #ICP calc
+        # worst_vals['Comp-GT Vertex L2'] = (
+        #     gt_hi[np.argmax(stats['Comp-GT Vertex L2'])], 
+        #     tp_hi[np.argmax(stats['Comp-GT Vertex L2'])],
+        #      max(stats['Comp-GT Vertex L2']))
+        worst_vals['Comp-GT Vertex L2'] =  (
+            gt_hi[np.argmax(stats['Comp-GT Vertex L2'])],
+             tp_hi[np.argmax(stats['Comp-GT Vertex L2'])],
+              max(stats['Comp-GT Vertex L2']))
         worst_vals['Comp-GT Volume L1'] = (
             gt_hi[np.argmax(stats['Comp-GT Volume L1'])], 
             tp_hi[np.argmax(stats['Comp-GT Volume L1'])], 
@@ -91,14 +107,14 @@ class BasicLoss:
             tp_hi[np.argmax(stats['TP-GT Vertex L2'])], 
             max(stats['TP-GT Vertex L2']))
         if len(self.worst) != 0:
-            if worst_vals['Comp-GT Vertex L2'][2] > self.worst['Comp-GT Vertex L2'][2]:
-                self.worst['Comp-GT Vertex L2'] = worst_vals['Comp-GT Vertex L2']
+            #if worst_vals['Comp-GT Vertex L2'][2] > self.worst['Comp-GT Vertex L2'][2]:
+            #    self.worst['Comp-GT Vertex L2'] = worst_vals['Comp-GT Vertex L2']
             if worst_vals['Comp-GT Volume L1'][2] > self.worst['Comp-GT Volume L1'][2]:
                 self.worst['Comp-GT Volume L1'] = worst_vals['Comp-GT Volume L1']
             if worst_vals['TP-GT Vertex L2'][2] > self.worst['TP-GT Vertex L2'][2]:
                 self.worst['TP-GT Vertex L2'] = worst_vals['TP-GT Vertex L2']
-            if worst_vals['Comp-GT Vertex L2 No ICP'][2] > self.worst['Comp-GT Vertex L2 No ICP'][2]:
-                self.worst['Comp-GT Vertex L2 No ICP'] = worst_vals['Comp-GT Vertex L2 No ICP']
+            if worst_vals['Comp-GT Vertex L2'][2] > self.worst['Comp-GT Vertex L2'][2]:
+                self.worst['Comp-GT Vertex L2'] = worst_vals['Comp-GT Vertex L2']
         else:
             self.worst = worst_vals
         
@@ -160,20 +176,22 @@ class BasicLoss:
         loss_dict.update(total_loss=loss_dict['total_loss_comp'])
 
         #loss segments
-        shape1=completion_gt[:,:,:3]
-        shape2=completion_rec[:,:,:3]
-        errors_to_log=self._err_manger.get_compute_errors_dict(shape_1=shape1,shape_2=shape2)
-            
+        shape1=completion_gt.reshape(-1, completion_gt.shape[-2], completion_gt.shape[-1])[:,:,:3]
+        shape2=completion_rec.reshape(-1, completion_rec.shape[-2], completion_rec.shape[-1])[:,:,:3]
+        errors_to_log=self._err_manger_logging.get_compute_errors_dict(shape_1=shape1.detach(),shape_2=shape2.detach())
+        errors_to_loss = self._err_manger_loss.get_compute_errors_dict(shape_1=shape1,shape_2=shape2)
         if self.lambdas[6] != 0:
-            errors_to_log['Full volume error'] *= self.lambdas[6]
+            errors_to_loss['Full volume error'] *= self.lambdas[6]
             loss_dict['total_loss']+=errors_to_log['Full volume error']
-            
-        loss_dict['total_loss']+=self.body_part_volume_weights[0]*errors_to_log['RightArm volume error']
-        loss_dict['total_loss']+=self.body_part_volume_weights[1]*errors_to_log['LeftArm volume error']
+        
+        for organ,l_val in self.organs_to_lambdas.items():
+            loss_dict['total_loss']+=l_val*errors_to_loss[f'{organ} volume error']
+
         loss_dict.update(total_loss=loss_dict['total_loss_comp'])
 
         loss_dict.update(errors_to_log)
-
+        shape1=None
+        shape2=None
             #compute and area and volume losses too
         return loss_dict
 

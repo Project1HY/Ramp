@@ -164,7 +164,7 @@ def get_valid_n_joints()->list:
     return valid_n_joints
 
 
-def get_segmentation(n_joints:int=6,include_full_segmentation:bool=False,seg_f_name:str=None)->dict:
+def get_segmentation(n_joints:int=6,include_full_segmentation:bool=False,seg_f_name:str=None,organs:list = None)->dict:
     assert(n_joints in get_valid_n_joints())
     seg=None
     model=get_human_model(gender='neutral')
@@ -180,12 +180,13 @@ def get_segmentation(n_joints:int=6,include_full_segmentation:bool=False,seg_f_n
     face_seg= {k:sorted(list(set(flatten(face_seg_list_of_lists.tolist())))) for k,face_seg_list_of_lists in face_seg.items()}
 
     res=dict()
-    for k in face_seg.keys():
+    if include_full_segmentation and organs == None:
+        res['Full']={'faces':list(range(len(f))),'vertices':list(range(len(v)))}
+    if organs == None:
+        organs = face_seg.keys()
+    for k in organs:
         res[k]={'faces':face_seg[k],'vertices':vertex_seg[k]}
-    if include_full_segmentation:
-        face_seg=list(range(len(f)))
-        vertex_seg=list(range(len(v)))
-        res['Full']={'faces':face_seg,'vertices':vertex_seg}
+
     return res
 
 

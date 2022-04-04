@@ -103,10 +103,11 @@ def get_completion_dataset_f(mode:str)->CompletionDataset:
 
 
 
-def get_segmentation_manger_f()->SegmentationManger:
+def get_segmentation_manger_f(organs=None)->SegmentationManger:
     return SegmentationManger(n_joints=6,
             include_full_segmentation=True,
-            segmentation_dict_filepath=get_defult_values()['smpl_segmentation_file'])
+            segmentation_dict_filepath=get_defult_values()['smpl_segmentation_file'],
+            organs=organs)
 
 def get_completion_dataset(mode:str)->CompletionDataset:
     return visualize_chdir_warp(lambda:get_completion_dataset_f(mode=mode))
@@ -126,8 +127,8 @@ def get_amass_object()->CompletionDataset:
     return visualize_chdir_warp(lambda:get_amass_object_f())
 
 
-def get_segmentation_manger()->SegmentationManger:
-    return visualize_chdir_warp(lambda:get_segmentation_manger_f())
+def get_segmentation_manger(organs=None)->SegmentationManger:
+    return visualize_chdir_warp(lambda:get_segmentation_manger_f(organs=organs))
 
 #TODO add get reduced random hit
 def get_faces_templete_from_dataset(dataset:Dataset)->np.array:

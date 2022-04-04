@@ -21,6 +21,9 @@ class CompletionSaver:
             dp = exp_dir / 'completions' / ts_name
             dp.mkdir(parents=True, exist_ok=True)
             self.dump_dirs.append(dp)
+            dp = dp / "test"
+            dp.mkdir(parents=True, exist_ok=True)
+            
 
     def get_completions_as_pil(self, pred, b):
         # TODO - Make this generic, and not key dependent. Insert support for P2P
@@ -51,8 +54,10 @@ class CompletionSaver:
             pils += [geom.mesh.io.base.numpy_to_pil(cur_gt_hi,cur_tp_hi,gtr_v,gt_v,tp_v, gt_f)]
         return pils
 
-    def load_completions(self, set_id=0):
+    def load_completions(self, set_id=0,test_step=False):
         dump_dp = self.dump_dirs[set_id]
+        if test_step:
+            dump_dp = dump_dp/"test"
         completions = glob.glob(f"{str(dump_dp)}/*.ply")
         subjects = {}
         for file in completions:
@@ -82,8 +87,10 @@ class CompletionSaver:
                 yield str(dump_dp / f"{subject}_{pose}.gif"), geometries_comp, f"{subject}_{pose}"
 
 
-    def save_completions_by_batch(self, pred, b, set_id):
+    def save_completions_by_batch(self, pred, b, set_id,test_step_folder=False):
         dump_dp = self.dump_dirs[set_id]
+        if test_step_folder:
+            dump_dp = dump_dp / "test"
 
         # TODO - Make this generic, and not key dependent. Insert support for P2P
         gtrb = pred['completion_xyz']

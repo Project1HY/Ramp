@@ -3,6 +3,7 @@ from lightning.pytorch_lightning.loggers import TestTubeLogger, WandbLogger
 from lightning.pytorch_lightning import Trainer
 from lightning.assets.completion_saver import CompletionSaver
 from lightning.assets.emailer import TensorboardEmailer
+import wandb
 from util.container import to_list, first
 import lightning.assets.plotter
 from util.torch.nn import TensorboardSupervisor
@@ -41,8 +42,7 @@ class LightningTrainer:
             self._init_training_assets()
             # log.info(f'Training on dataset: {self.data.curr_trainset_name()}')
             self.testing_only = False
-        self._trainer(debug_mode).fit(self.nn, self.data.train_ldr, self.data.vald_ldrs, self.data.test_ldrs)
-        # train_dataloader=None, val_dataloader=None, test_dataloader=None
+        self._trainer(debug_mode).fit(self.nn, self.data.train_ldr, self.data.vald_ldrs, self.data.test_ldrs)        # train_dataloader=None, val_dataloader=None, test_dataloader=None
 
     def test(self):
         white_banner('Testing')
@@ -86,7 +86,6 @@ class LightningTrainer:
         tb_log = TestTubeLogger(save_dir=self.hp.PRIMARY_RESULTS_DIR, description=f"{self.hp.exp_name} Experiment",
                                 name=self.hp.exp_name, version=self.hp.version)
         wandb_log = WandbLogger(project="my-test-project", entity="temporal_shape_recon",name=self.hp.exp_name)
-
         self.exp_dp = Path(os.path.dirname(tb_log.experiment.log_dir)).resolve()  # Extract experiment path
         checkpoint = ModelCheckpoint(filepath=self.exp_dp / 'checkpoints', save_top_k=1, verbose=True,
                                      prefix='weight', monitor='val_loss', mode='min', period=1)
@@ -107,20 +106,23 @@ class LightningTrainer:
                 self.emailer = TensorboardEmailer(exp_dp=self.exp_dp)
             else:
                 log.warning("Could not find GMAIl credentials file - Skipping Emailer class init")
-
+        # callbacks = [self.early_stop]
+        callbacks = []
+        # assert False,f"resume_cfg {self.hp.resume_cfg}"
         self.trainer = Trainer(fast_dev_run=fast_dev_run, num_sanity_val_steps=0, weights_summary=None,
                                gpus=self.hp.gpus, distributed_backend=self.hp.distributed_backend,
                                # val_percent_check = 0.2,
                                # accelerator="cpu",
-                               early_stop_callback=self.early_stop, checkpoint_callback=checkpoint,
-                               logger=wandb_log,
+                               early_stop_callback=self.early_stop, checkpoint_callback=checkpoint,                               logger=wandb_log,
                             #    logger=tb_log,
                                min_epochs=self.hp.force_train_epoches,
-                               max_epochs=self.hp.max_epochs,
+                                max_epochs=self.hp.max_epochs,
                                print_nan_grads=False,
-                               resume_cfg=self.hp.resume_cfg,
+                                   resume_cfg=self.hp.resume_cfg,
+                            #    resume_from_checkpoint=self.hp.resume_cfg,
                                accumulate_grad_batches=self.hp.accumulate_grad_batches,
-                               log_gpu_memory=None)
+                            #    profiler=profiler
+                                )
         # log_gpu_memory = 'min_max' or 'all'  # How to log the GPU memory
         # track_grad_norm = 2  # Track L2 norm of the gradient # Track the Gradient Norm
         # log_save_interval = 100

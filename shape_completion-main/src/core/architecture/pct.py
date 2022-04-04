@@ -119,8 +119,8 @@ class PointTransformerCls(nn.Module):
         self.conv2 = nn.Conv1d(64, 64, kernel_size=1, bias=False)
         self.bn1 = nn.BatchNorm1d(64)
         self.bn2 = nn.BatchNorm1d(64)
-        self.gather_local_0 = Local_op(in_channels=128, out_channels=128)
-        self.gather_local_1 = Local_op(in_channels=256, out_channels=256)
+        self.gather_local_0 = Local_op(in_channels=70, out_channels=128)
+        self.gather_local_1 = Local_op(in_channels=134, out_channels=256)
         self.pt_last = StackedAttention()
 
         self.relu = nn.ReLU()
@@ -128,10 +128,11 @@ class PointTransformerCls(nn.Module):
                                        nn.BatchNorm1d(1024),
                                        nn.LeakyReLU(negative_slope=0.2))
 
-        self.linear1 = nn.Linear(1024, 512, bias=False)
+        self.linear1 = nn.Linear(1024, output_channels, bias=False)
 
     def forward(self, x):
-        xyz = x[..., :3]
+        #assert False, f"x shape is {x.shape}"
+        xyz = x
         x = x.permute(0, 2, 1)
         batch_size, _, _ = x.size()
         x = self.relu(self.bn1(self.conv1(x)))  # B, D, N
@@ -148,8 +149,7 @@ class PointTransformerCls(nn.Module):
         x = self.conv_fuse(x)
         x = torch.max(x, 2)[0]
         x = x.view(batch_size, -1)
-
-        return x
+        return self.linear1(x)
 
 def timeit(tag, t):
     print("{}: {}s".format(tag, time() - t))
@@ -209,7 +209,7 @@ def farthest_point_sample(xyz, npoint):
     batch_indices = torch.arange(B, dtype=torch.long).to(device)
     for i in range(npoint):
         centroids[:, i] = farthest
-        centroid = xyz[batch_indices, farthest, :].view(B, 1, 3)
+        centroid = xyz[batch_indices, farthest, :].view(B, 1, 6)
         dist = torch.sum((xyz - centroid) ** 2, -1)
         distance = torch.min(distance, dist)
         farthest = torch.max(distance, -1)[1]
@@ -251,9 +251,13 @@ def sample_and_group(npoint, radius, nsample, xyz, points, returnfps=False, knn=
         new_xyz: sampled points position data, [B, npoint, nsample, 3]
         new_points: sampled points data, [B, npoint, nsample, 3+D]
     """
+    # xyz = xyz[:,:,:3]
     B, N, C = xyz.shape
     S = npoint
+    # assert False, f"shape of x is {xyz.shape}, npoint {npoint}"
+
     fps_idx = farthest_point_sample(xyz, npoint) # [B, npoint]
+    
     torch.cuda.empty_cache()
     new_xyz = index_points(xyz, fps_idx)
     torch.cuda.empty_cache()
@@ -434,12 +438,12 @@ class PointNetFeaturePropagation(nn.Module):
         else:
             dists = square_distance(xyz1, xyz2)
             dists, idx = dists.sort(dim=-1)
-            dists, idx = dists[:, :, :3], idx[:, :, :3]  # [B, N, 3]
+            dists, idx = dists[:, :, :6], idx[:, :, :6]  # [B, N, 3]
 
             dist_recip = 1.0 / (dists + 1e-8)
             norm = torch.sum(dist_recip, dim=2, keepdim=True)
             weight = dist_recip / norm
-            interpolated_points = torch.sum(index_points(points2, idx) * weight.view(B, N, 3, 1), dim=2)
+            interpolated_points = torch.sum(index_points(points2, idx) * weight.view(B, N, 6, 1), dim=2)
 
         if points1 is not None:
             points1 = points1.permute(0, 2, 1)

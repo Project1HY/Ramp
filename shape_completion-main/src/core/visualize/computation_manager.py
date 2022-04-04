@@ -89,6 +89,22 @@ def get_valid_error_computations_type_list():
 
     return res
 
+
+def get_valid_error_computations_type_list_for_flow():
+    res=[]
+
+    #bounding_box=['','bounding box']
+    bounding_box=[False]
+    quantity_for_shapes=['volume']
+        # ,'surface area','surface area to volume ratio'] TODO: Enable more when needed
+    #normalizations=['','normalized']
+    normalizations=[False]
+    for only_bounding_box in bounding_box:
+        for quantity in quantity_for_shapes:
+            for normalization in normalizations:
+                res.append(ShapeComputationType(only_bounding_box=only_bounding_box,quantity=quantity,normalization=normalization))
+    return res
+
 class ErrorComputationDiffManger():
     def __init__(self,f:torch.Tensor,segmentation_manger:SegmentationManger,computation_type_list:list=get_valid_error_computations_type_list()):
         assert(set([comp.get_str() for comp in computation_type_list]).issubset(set(comp.get_str() for comp in get_valid_error_computations_type_list())))

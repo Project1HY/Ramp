@@ -66,7 +66,7 @@ class LSTMDecoder(BaseDecoder):
 
         ])
 
-        self.lstm = nn.LSTM(input_size=n_verts , hidden_size=hidden_size, dropout=dropout,
+        self.lstm = nn.LSTM(input_size=n_verts*(self.code_size // 256), hidden_size=hidden_size, dropout=dropout,
                             bidirectional=bidirectional, num_layers=layer_count,batch_first=True)
         D = 2 if bidirectional else 1
         self.reshape_matrix = nn.Sequential(nn.Linear(hidden_size * D, 1024), nn.ReLU(), nn.Linear(1024, 3 * n_verts))
@@ -83,14 +83,14 @@ class LSTMDecoder(BaseDecoder):
         window_size = x.size(1)
         x = x.reshape(bs*window_size, nv, -1)
         #assert False,f"shape is {x.shape}, bs {bs} window_size {window_size} orig shape {orig_shape}"
-        x = x.transpose(2, 1).contiguous()  # [b x nv x in_channels]
+        x = x.transpose(2, 1).contiguous()  # [b*window x nv x in_channels]
         x = self.convolutions(x)
         x = x.reshape(bs, window_size, -1)
         out, _ = self.lstm(x)
         
         out = out.reshape(bs*window_size,-1)
         out = self.reshape_matrix(out).reshape(bs,window_size, self.n_verts, 3)
-        # out = 2 * self.thl(out)
+        out = 2 * self.thl(out)
         #assert False, f"out shape is {out.shape}"
         return out
 

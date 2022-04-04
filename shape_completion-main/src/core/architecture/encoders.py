@@ -29,11 +29,9 @@ class PCTShapeEncoder(BaseEncoder):
 
         self.graph = nn.Sequential(
             PointTransformerCls(out_channels = self.code_size, input_dim = self.in_channels),
-            nn.Linear(self.code_size, self.code_size),
             nn.BatchNorm1d(self.code_size),
-            nn.ReLU()
-        )
-
+            nn.ReLU())
+       
     def forward(self, x):
         return self.graph(x)
 

@@ -27,14 +27,14 @@ class CompletionLightningModel(PytorchNet):
         self._append_config_args()  # Must be done here, seeing we need hp.dev
         self.temp_data = []
         self.test_step_data = []
-
+        self.init_val_loss = True
         # Bookeeping:
         self.assets = None  # Set by Trainer
         self.loss, self.opt = None, None
         self.min_losses = defaultdict(lambda: float('inf'))
 
         self._build_model()
-        self.type(dst_type=getattr(torch, self.hparams.UNIVERSAL_PRECISION))  # Transfer to precision
+        self.type(dst_type=getattr(torch, self.hp.UNIVERSAL_PRECISION))  # Transfer to precision
         self._init_model()
 
     @staticmethod  # You need to override this method
@@ -75,7 +75,7 @@ class CompletionLightningModel(PytorchNet):
             return [self.opt], [sched]
         else:
             return [self.opt]
-
+    
     def training_step(self, b, batch_idx):
         completion = self.complete(b)
         loss_dict = self.loss.compute(b, completion)
@@ -84,11 +84,14 @@ class CompletionLightningModel(PytorchNet):
 
         if self.assets.plt is not None and batch_idx == 0:  # On first batch
             self.assets.plt.cache(self.assets.plt.prepare_plotter_dict(b, completion))  # New tensors, without grad
-
         return {
             'loss': train_loss,  # Must use 'loss' instead of 'train_loss' due to old_lightning framework
             'log': loss_dict
         }
+
+    # def training_epoch_end(self, outputs):
+    #     return {"val_loss": 1}      
+
     def on_validation_start(self):
         self.temp_data = []
 
@@ -108,7 +111,7 @@ class CompletionLightningModel(PytorchNet):
         data = list(map(list, itertools.zip_longest(*results.values(),fillvalue=None)))
         keys = list(results.keys())
 
-        wandb.log({"static metrics validation": wandb.Table(columns=keys, data=data)})
+        self.logger.experiment.log({"static metrics validation": wandb.Table(columns=keys, data=data)})
 
     def validation_step(self, b, batch_idx, set_id=0):
         pred = self.complete(b)
@@ -120,7 +123,7 @@ class CompletionLightningModel(PytorchNet):
             batch_validation_mesh = batch_validation_mesh.numpy()[-1]
             if self.assets.saver is not None:  # TODO - Generalize this
                 images = self.assets.saver.get_completions_as_pil(pred, b)
-                wandb.log({"completions": [wandb.Image(image) for image in images]})
+                self.logger.experiment.log({"completions": [wandb.Image(image) for image in images]})
 
         if batch_idx == 0 and set_id == 0 and self.assets.plt is not None and self.assets.plt.cache_is_filled():
             # On first batch, of first dataset, only if plotter exists and only if training step has been activated
@@ -134,8 +137,7 @@ class CompletionLightningModel(PytorchNet):
             self.loss.compute_loss_start()
             self.report_static_metrics(b,pred)
             #self.assets.plt.push(new_data=new_data, new_epoch=self.current_epoch)
-
-      
+        # assert False,f"keys {loss.keys()}"
         return self.loss.compute(b, pred)
 
     def validation_end(self, output_per_dset):
@@ -202,17 +204,17 @@ class CompletionLightningModel(PytorchNet):
         keys = list(results.keys())
 
 
-        wandb.log({"static metrics": wandb.Table(columns=keys, data=data)})
+        self.logger.experiment.log({"static metrics": wandb.Table(columns=keys, data=data)})
         #new_test_data = self.assets.plt.prepare_plotter_dict(b, pred)
         if len(self.test_step_data)==0:
             self.test_step_data=[results]
         else:
             self.test_step_data += [results]
         if self.assets.saver is not None:  # TODO - Generalize this
-            self.assets.saver.save_completions_by_batch(pred, b, set_id)
+            self.assets.saver.save_completions_by_batch(pred, b, set_id,True)
         return self.loss.compute(b, pred)
 
-        #wandb.log({"best metrics": wandb.Table(columns=keys, data=data)})
+        #self.logger.experiment.log({"best metrics": wandb.Table(columns=keys, data=data)})
         #if len(self.test_step_data)==0:
         #    self.test_step_data=[results]
         #else:
@@ -227,15 +229,15 @@ class CompletionLightningModel(PytorchNet):
             outputs = [outputs]  # Incase singleton case
         if self.assets.saver is not None:  # TODO - Generalize this
             rows = []
-            for completion_gif_path, completion, completion_name in tqdm.tqdm(self.assets.saver.load_completions()):
-                wandb.log({"completion_video": wandb.Video(completion_gif_path, fps=60, format="gif")})
+            for completion_gif_path, completion, completion_name in tqdm.tqdm(self.assets.saver.load_completions(test_step=True)):
+                self.logger.experiment.log({"completion_video": wandb.Video(completion_gif_path, fps=60, format="gif")})
                 completion = np.array(completion)
                 completions_shifted = completion[1:]
                 completion = completion[:-1]
                 mean_velocity = np.mean(completions_shifted - completion)
                 rows += [[completion_name, mean_velocity]]
             columns = ["completion subject and pose", "mean velocity"]
-            wandb.log({"completion temporal metrics": wandb.Table(columns=columns, data=rows)})
+            self.logger.experiment.log({"completion temporal metrics": wandb.Table(columns=columns, data=rows)})
         log_dict, progbar_dict = {}, {}
         avg_test_loss = 0
 
@@ -251,17 +253,17 @@ class CompletionLightningModel(PytorchNet):
         table_dict = {}
         for key in log_dict:
             table_dict[key] = log_dict[key].item()    
-        wandb.log({"completion test metrics":wandb.Table(columns=list(table_dict.keys()),data=[list(table_dict.values())])})
+        self.logger.experiment.log({"completion test metrics":wandb.Table(columns=list(table_dict.keys()),data=[list(table_dict.values())])})
         return {"test_loss": avg_test_loss,
                 "progress_bar": progbar_dict,
                 "log": log_dict}
         
         best_metrics = return_best_stats() 
         vals = ["mean", "volume", "temp"]
-        wandb.log({"best metrics": wandb.Table(columns=vals, data=best_metrics)})
+        self.logger.experiment.log({"best metrics": wandb.Table(columns=vals, data=best_metrics)})
         worst_metrics = return_worst_stats() 
         vals2 = ["mean", "volume", "temp"]
-        wandb.log({"worst metrics": wandb.Table(columns=vals2, data=worst_metrics)})
+        self.logger.experiment.log({"worst metrics": wandb.Table(columns=vals2, data=worst_metrics)})
 
     def hyper_params(self):
         return deepcopy(self.hp)

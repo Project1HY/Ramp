@@ -174,6 +174,7 @@ def warn(s, stacklevel=1):
 def set_logging_to_stdout():
     # Set logging to both the STDOUT and the File
     root = logging.getLogger()
+    # assert False,f"len root handlers: {len(root.handlers)}"
     hdlr = root.handlers[0]
     fmt = logging.Formatter('[%(asctime)s] %(message)s')  # ,'%x %X.%f'
     hdlr.setFormatter(fmt)

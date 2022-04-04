@@ -250,10 +250,10 @@ class Segmentation():
 
 class SegmentationManger():
     #segmantation manger for smpl
-    def __init__(self,n_joints:int=6,include_full_segmentation:bool=True,segmentation_dict_filepath:str=None):
+    def __init__(self,n_joints:int=6,include_full_segmentation:bool=True,segmentation_dict_filepath:str=None,organs=None):
         assert(n_joints in get_valid_n_joints())
         self._human_template=get_human_model(gender='neutral')
-        self._segmentations=get_segmentation(n_joints=n_joints,include_full_segmentation=include_full_segmentation,seg_f_name=segmentation_dict_filepath)
+        self._segmentations=get_segmentation(n_joints=n_joints,include_full_segmentation=include_full_segmentation,seg_f_name=segmentation_dict_filepath,organs=organs)
         for seg_name,seg in self._segmentations.items():
             self._segmentations[seg_name]=Segmentation(full_mesh=self._human_template,segmentation=seg)
     def get_volumes_of_segments(self,v:torch.Tensor)->dict:

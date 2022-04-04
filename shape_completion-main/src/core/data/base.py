@@ -1122,6 +1122,7 @@ def sequential_completion_collate(batch, stop: bool = False):
                 if suffix not in out_dict:
                     out_dict[suffix] = []
                 out_dict[suffix] += entry[suffix]
+                
         return out_dict
     elem_type = type(elem)
     if isinstance(elem, torch.Tensor):
