@@ -41,7 +41,7 @@ class BasicLoss:
             "RightLeg": self.body_part_volume_weights[3],
             "LeftLeg": self.body_part_volume_weights[4]
         }
-        
+
         self.organs_to_lambdas = {k:v  for (k,v) in self.organs_to_lambdas.items() if v>0}
 
         segmentation_manger_backwards=get_segmentation_manger(organs=list(self.organs_to_lambdas.keys()))
@@ -173,15 +173,15 @@ class BasicLoss:
         # if self.lambdas[6] != 0:
         #     errors_to_loss['Full volume error'] *= self.lambdas[6]
         #     loss_dict['total_loss']+=errors_to_log['Full volume error']
-        
+
         for organ,l_val in self.organs_to_lambdas.items():
             loss_dict['total_loss']+=l_val*errors_to_loss[f'{organ} volume error']
             loss_dict[f"{organ}_volume_error"]=errors_to_loss[f'{organ} volume error']
         loss_dict.update(total_loss=loss_dict['total_loss_comp'])
 
         # loss_dict.update(errors_to_log)
-        # shape1=None
-        # shape2=None
+        shape1=None
+        shape2=None
             #compute and area and volume losses too
         return loss_dict
 

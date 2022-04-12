@@ -38,6 +38,8 @@ class F2PEncoderDecoderBase(CompletionLightningModel):
         part = input_dict['gt_part'] if 'gt_part' in input_dict else input_dict['gt_noise']
         full = input_dict['tp']
         # part, full [bs x nv x in_channels]
+        part_device = part.device
+        full_device = full.device
         bs = full.size(0)
         nv = full.size(1)
 

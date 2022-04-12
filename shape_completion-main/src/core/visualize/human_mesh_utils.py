@@ -21,7 +21,7 @@ def get_defult_dir_values()->dict():
     #get defult dir values and beats and dmpls num
     cached_dataset_objects_dir=os.path.join(os.curdir,'cached_objects')
     #smpl_segmentation_dir=os.path.join(os.curdir,'smpl_segmentations_data')
-    smpl_segmentation_file=os.path.join('/','home','yiftach.ede','Ramp','shape_completion-main','src','core','visualize','smpl_segmentations_data','mixamo_smpl_segmentation.pkl')
+    smpl_segmentation_file=os.path.join(r'D:\Users\Yiftach\Ramp\shape_completion-main\src\core\visualize\smpl_segmentations_data','mixamo_smpl_segmentation.pkl')
     soft_link_dir=os.path.join(os.curdir,'soft_links')
     num_betas=16
     num_dmpls=8
@@ -343,7 +343,7 @@ def covert_path_to_current_os(path:str)->str:
     return re.sub(another_sep,sperator,path)
 
 def chdir_to_visuallize_folder():
-    os.chdir("./src/core")
+    # os.chdir("src/core")
     vis_folder_name='visualize'
     if os.path.exists(os.path.join(os.curdir,vis_folder_name)):
         return #no need to chdir,already on right dir

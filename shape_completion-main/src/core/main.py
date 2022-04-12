@@ -40,7 +40,7 @@ def parser():
                    help="T max taken for cosine annealing, if enabled")
     # Dataset Config:
     # NOTE: A well known ML rule: double the learning rate if you double the batch size.
-    p.add_argument('--batch_size', type=int, default=8, help='SGD batch size')
+    p.add_argument('--batch_size', type=int, default=4, help='SGD batch size')
     # TODO: This parameter applies for P & Q, however it can be overridden is some architecture
     p.add_argument('--in_channels', choices=[3, 6, 12], default=6,
                    help='Number of input channels')
