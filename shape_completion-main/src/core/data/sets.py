@@ -354,7 +354,7 @@ class DFaustWindowedSequential(ParametricCompletionDataset):
         super().__init__(n_verts=6890, data_dir_override=data_dir_override, deformation=deformation, cls='synthetic',
                          suspected_corrupt=False)
         self._hits = []
-        # print("yiftach now is :",self._full_dir)
+        self.counter = 0
         self._full_dir = self._vert_pick
         self.window_size=1
         self.stride=0
@@ -366,28 +366,11 @@ class DFaustWindowedSequential(ParametricCompletionDataset):
         _hit: HierarchicalIndexTree = self._hits[hit_index]
 
         def _datapoint_via_path_tup(path_tup):
-            if path_tup[2] >= path_tup[-1]:
-                # TODO: return zeros.
-                gt_dict = {}
-                tp_hi = _hit.random_path_from_partial_path([path_tup[0]])[:-1]  # Shorten hi by 1
-                # tp_hi = gt_dict['gt_hi'][:-1]
-                tp_dict = self._full_dict_by_hi(tp_hi)
-                gt_dict['gt_f'] = tp_dict['gt_f']
-                gt_dict['tp_hi'] = tp_dict['gt_hi']
-                gt_dict['tp'] = tp_dict['gt']
-                gt_dict['tp_f'] = tp_dict['gt_f']
-                gt_dict['gt_hi'] = path_tup
-                gt_dict['gt'] = np.zeros((6890, 3), dtype='float32')
-                gt_dict['gt_mask'] = self._mask_by_hi(tp_hi + (path_tup[3],))
-                gt_dict['gt_real_sample'] = False
-                return gt_dict
             gt_dict = self._full_dict_by_hi(path_tup)
             tp_hi = _hit.random_path_from_partial_path([gt_dict['gt_hi'][0]])[:-1]  # Shorten hi by 1
             tp_dict = self._full_dict_by_hi(tp_hi)
             gt_dict['tp'], gt_dict['tp_hi'], gt_dict['tp_f'] = tp_dict['gt'], tp_dict['gt_hi'], tp_dict['gt_f']
             gt_dict['gt_mask'] = self._mask_by_hi(path_tup)
-            gt_dict['gt_real_sample'] = True
-
             return gt_dict
 
         return _datapoint_via_path_tup
@@ -494,6 +477,7 @@ class DFaustWindowedSequential(ParametricCompletionDataset):
             n_workers = 0
         else:
             n_workers = determine_worker_num(10e7, batch_size)
+            # assert False, f"n_workers is {n_workers}"
         import itertools
 
         ids = partial_hit.get_path_union_by_depth(3)
@@ -505,15 +489,11 @@ class DFaustWindowedSequential(ParametricCompletionDataset):
         if set_size is None:
             set_size = len(ids)
         assert len(ids) > 0, "Found loader with no data samples inside"
-        length = sum([dp[-1] for dp in ids])
-        sampler_length = min(set_size, len(ids))  # Allows for dynamic partitions
-
+        
         data_sampler = SubsetChoiceSampler(ids, set_size)
         # Compiler Transforms:
         transforms = self._transformation_finalizer_by_method(method, transforms, n_channels)
-        #sampler = EncompassedBatchSampler(data_sampler,
-#EncompassedBatchSampler(Sampler):
- #   def __init__(self, subsampler, batch_size=1, window_size=2, length=None):
+        self.counter += 1
         return self.LOADER_CLASS(
             FullPartWindowedSequentialTorchDataset(self, transforms, method, hit_index, self.window_size, self.stride), batch_size=batch_size,
             sampler=data_sampler, num_workers=n_workers, pin_memory=pin_memory,

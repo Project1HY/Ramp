@@ -47,7 +47,6 @@ class BasicShapeDecoder(BaseDecoder):
 class LSTMDecoder(BaseDecoder):
     def __init__(self, code_size, out_channels, layer_count, bidirectional, dropout, n_verts, hidden_size, seq_len=3):
         super().__init__(code_size=code_size, out_channels=out_channels)
-        self.n_verts = n_verts
         self.seq_len = seq_len
         self.thl = nn.Tanh()
         self.convolutions = nn.Sequential(*[
@@ -60,7 +59,10 @@ class LSTMDecoder(BaseDecoder):
             nn.Conv1d(self.code_size // 16, self.code_size // 32, 1),
             nn.BatchNorm1d(self.code_size // 32),
             nn.ReLU(),
-            nn.Conv1d(self.code_size // 32, self.code_size // 256, 1),
+            nn.Conv1d(self.code_size // 32, self.code_size // 128, 1),
+            nn.BatchNorm1d(self.code_size // 128),
+            nn.ReLU(),
+            nn.Conv1d(self.code_size // 128, self.code_size // 256, 1),
             nn.BatchNorm1d(self.code_size // 256),
             nn.ReLU(),
 
@@ -77,23 +79,20 @@ class LSTMDecoder(BaseDecoder):
         :param x:  Point code for each point: [b x nv x pnt_code_size] pnt_code_size == in_channels + 2*shape_code
         :return: predicted coordinates for each point, after the deformation [B x nv x 3]
         """
-        orig_shape = x.shape
         nv = x.size(2)
         bs = x.size(0)
         window_size = x.size(1)
         x = x.reshape(bs*window_size, nv, -1)
-        #assert False,f"shape is {x.shape}, bs {bs} window_size {window_size} orig shape {orig_shape}"
         x = x.transpose(2, 1).contiguous()  # [b*window x nv x in_channels]
         x = self.convolutions(x)
         x = x.reshape(bs, window_size, -1)
-        out, _ = self.lstm(x)
+        x, _ = self.lstm(x)
         
-        out = out.reshape(bs*window_size,-1)
-        out = self.reshape_matrix(out).reshape(bs,window_size, self.n_verts, 3)
-        out = 2 * self.thl(out)
+        x = x.reshape(bs*window_size,-1)
+        x = self.reshape_matrix(x).reshape(bs,window_size, nv, 3)
         #assert False, f"out shape is {out.shape}"
-        return out
-
+        x = 2 * self.thl(x)
+        return x
     # ----------------------------------------------------------------------------------------------------------------------
 #                                                       Skinning Decoders
 # ----------------------------------------------------------------------------------------------------------------------

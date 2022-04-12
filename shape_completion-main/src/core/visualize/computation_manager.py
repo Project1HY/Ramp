@@ -243,13 +243,14 @@ class Computation():
     def _get_attr(self,shape_num:int,attr_name:str,f)->dict:
         #shape_num is number in [1,2]
         #f is the function that not take any input and return the quantity
-        assert(shape_num in self._shape_nums)
-        if attr_name in self._cache[shape_num]:
-            return self._cache[shape_num][attr_name]
-        else:
-            res=f()
-            self._cache[shape_num][attr_name]=res
-            return res
+        return f()
+        # assert(shape_num in self._shape_nums)
+        # if attr_name in self._cache[shape_num]:
+        #     return self._cache[shape_num][attr_name]
+        # else:
+        #     res=f()
+        #     self._cache[shape_num][attr_name]=res
+        #     return res
 
     def _get_error_diff_from_quantities_dict(self,quantities_dict:dict,normalization_needed:bool)->dict:
         #for shapes

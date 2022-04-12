@@ -1,3 +1,4 @@
+from curses import window
 import re
 import sys
 from abc import ABC
@@ -717,9 +718,7 @@ class FullPartTorchDataset(Dataset):
                             si = 0
 
 class FullPartWindowedSequentialTorchDataset(Dataset):
-    SAME_SHAPE_RETRY_BOUND = 3
-    RETRY_BOUND = SAME_SHAPE_RETRY_BOUND * 7  # Try to retry atleast 7 shapes before dying
-
+    
     # Note that changes to Dataset will be seen in any loader derived from it before
     # This should be taken into account when decimating the Dataset index
     def __init__(self, ds_inst, transforms, method, hit_index,window_size,stride):
@@ -729,7 +728,6 @@ class FullPartWindowedSequentialTorchDataset(Dataset):
         self.hit_index = hit_index
         self.window_size = window_size
         self.stride = stride
-        # self.get_func = getattr(self._ds_inst, f'_get_datapoint_func')(hit_index)
         self.self_len = self._ds_inst.num_datapoints_by_method(self._method)
         self.use_unsafe_meth = not self._ds_inst._suspected_corrupt
     def __len__(self):
@@ -743,6 +741,7 @@ class FullPartWindowedSequentialTorchDataset(Dataset):
                 pose_index = 0
             pose_tup_prev = (pose_tup[0],pose_tup[1],pose_index,pose_tup[3],pose_tup[4])
             items += [self._transforms(self._ds_inst._get_datapoint_func(self.hit_index)(pose_tup_prev))]
+        items = np.array(items)
         return items
 
 
@@ -1086,93 +1085,22 @@ def completion_collate(batch, stop: bool = False):
 
 def sequential_completion_collate(batch, stop: bool = False):
     r"""Puts each data field into a tensor with outer dimension batch size"""
-    if stop:
-        return batch
     elem = batch[0]
-    if isinstance(elem, list):
-        batch_tensor = []
-        data_arr = []
-        for elem in batch:
-            d = []
-            for entry in elem:
-                d += [sequential_completion_collate([entry], stop)]
-            batch_tensor += [d]
-            data = {}
-            for suffix in ['gt', 'tp', 'gt_part']:  # TODO
-                for entry in d:
-                    if suffix not in data:
-                        data[suffix] = entry[suffix]
-                    else:
-                        data[suffix] = torch.cat((data[suffix], entry[suffix]))
-            for suffix in ['gt_hi','tp_hi','gt_mask']:
-                for entry in d:
-                    if suffix not in data:
-                        data[suffix] = []
-                    data[suffix] += entry[suffix]
-            data_arr += [data]
-        out_dict = {}
-        for suffix in ['gt', 'tp', 'gt_part']:  # TODO
-            for entry in data_arr:
-                if suffix not in out_dict:
-                    out_dict[suffix] = entry[suffix].unsqueeze(0)
-                else:
-                    out_dict[suffix] = torch.cat((out_dict[suffix], entry[suffix].unsqueeze(0)))
-        for suffix in ['gt_hi', 'tp_hi', 'gt_mask']:
-            for entry in data_arr:
-                if suffix not in out_dict:
-                    out_dict[suffix] = []
-                out_dict[suffix] += entry[suffix]
-                
-        return out_dict
-    elem_type = type(elem)
-    if isinstance(elem, torch.Tensor):
-        out = None
-        if torch.utils.data.get_worker_info() is not None:
-            # If we're in a background process, concatenate directly into a
-            # shared memory tensor to avoid an extra copy
-            numel = sum([x.numel() for x in batch])
-            storage = elem.storage()._new_shared(numel)
-            out = elem.new(storage)
-        return torch.stack(batch, 0, out=out)
-    elif elem_type.__module__ == 'numpy' and elem_type.__name__ != 'str_' \
-            and elem_type.__name__ != 'string_':
-        elem = batch[0]
-        if elem_type.__name__ == 'ndarray':
-            # array of string classes and object
-            if NP_STR_OBJ_ARRAY_PATTERN.search(elem.dtype.str) is not None:
-                raise TypeError(
-                    f"default_collate: batch must contain tensors, numpy arrays, "
-                    f"numbers, dicts or lists; found {elem.dtype}")
-
-            return sequential_completion_collate([torch.as_tensor(b) for b in batch])
-        elif elem.shape == ():  # scalars
-            return torch.as_tensor(batch)
-    elif isinstance(elem, float):
-        return torch.tensor(batch, dtype=torch.float64)
-    elif isinstance(elem, int):
-        return torch.tensor(batch)
-    elif isinstance(elem, str):
-        return batch
-    elif isinstance(elem, Mapping):
-        # A bit hacky - but works
-        d = {}
-        for k in elem:
-            for suffix in ['_hi', '_mask', '_mask1', '_mask2', '_f',"_real_sample"]:  # TODO
-                if k.endswith(suffix):
-                    stop = True
-                    break
-            else:
-                stop = False
-            d[k] = sequential_completion_collate([d[k] for d in batch], stop)
-        return d
-        # return {key: default_collate([d[key] for d in batch],rec_level=1) for key in elem}
-    elif isinstance(elem, tuple) and hasattr(elem, '_fields'):  # namedtuple
-        return elem_type(*(sequential_completion_collate(samples) for samples in zip(*batch)))
-    # elif isinstance(elem, container_abcs.Sequence):
-    #     transposed = zip(*batch)
-    #     return [completion_collate(samples) for samples in transposed]
-    raise TypeError(
-        f"default_collate: batch must contain tensors, numpy arrays, numbers, dicts or lists; found {elem.dtype}")
+    # assert False, f"batch is {batch}"
+    # if isinstance(elem, list):
+    window_size = len(elem)
+    batch_flat = [e for sublist in batch for e in sublist]
+    res = completion_collate(batch_flat)
+    res_shape = res['gt'].shape
+    batch_size = int(res_shape[0]/window_size)
+    vertex_count = res_shape[1]
+    res['gt'] = res['gt'].reshape(batch_size,window_size,vertex_count,-1)
+    res['tp'] = res['tp'].reshape(batch_size,window_size,vertex_count,-1)
+    res['gt_part'] = res['gt_part'].reshape(batch_size,window_size,vertex_count,-1)
+    return res
+    # else:
+    #     raise TypeError(
+    #         f"default_collate: batch must contain tensors, numpy arrays, numbers, dicts or lists; found {elem.dtype}")
 
 # ----------------------------------------------------------------------------------------------------------------------
 #

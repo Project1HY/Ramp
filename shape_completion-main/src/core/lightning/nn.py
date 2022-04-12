@@ -13,7 +13,7 @@ import wandb
 import tqdm
 import numpy as np
 import itertools
-
+import gc
 
 # ----------------------------------------------------------------------------------------------------------------------
 #
@@ -26,15 +26,15 @@ class CompletionLightningModel(PytorchNet):
         self.hp = self.hparams  # Aliasing
         self._append_config_args()  # Must be done here, seeing we need hp.dev
         self.temp_data = []
-        self.test_step_data = []
-        self.init_val_loss = True
+        # self.test_step_data = []
+
         # Bookeeping:
         self.assets = None  # Set by Trainer
         self.loss, self.opt = None, None
         self.min_losses = defaultdict(lambda: float('inf'))
 
         self._build_model()
-        self.type(dst_type=getattr(torch, self.hp.UNIVERSAL_PRECISION))  # Transfer to precision
+        self.type(dst_type=getattr(torch, self.hparams.UNIVERSAL_PRECISION))  # Transfer to precision
         self._init_model()
 
     @staticmethod  # You need to override this method
@@ -75,29 +75,12 @@ class CompletionLightningModel(PytorchNet):
             return [self.opt], [sched]
         else:
             return [self.opt]
-    
-    def training_step(self, b, batch_idx):
-        completion = self.complete(b)
-        loss_dict = self.loss.compute(b, completion)
-        loss_dict = {f'{k}_train': v for k, v in loss_dict.items()}  # make different logs for train, test, validation
-        train_loss = loss_dict['total_loss_train']
 
-        if self.assets.plt is not None and batch_idx == 0:  # On first batch
-            self.assets.plt.cache(self.assets.plt.prepare_plotter_dict(b, completion))  # New tensors, without grad
-        return {
-            'loss': train_loss,  # Must use 'loss' instead of 'train_loss' due to old_lightning framework
-            'log': loss_dict
-        }
 
-    # def training_epoch_end(self, outputs):
-    #     return {"val_loss": 1}      
-
-    def on_validation_start(self):
-        self.temp_data = []
-
-    def report_static_metrics(self,b,pred):
+    def report_static_metrics(self,b,pred, stage):
+        pass
         tp = b['tp']
-        results = self.loss.compute_loss_end(b['gt_hi'], b['tp_hi'], b['gt'], b['gt_mask'], tp,pred['completion_xyz'].cpu().detach().numpy())
+        results = self.loss.compute_loss_end(b['gt_hi'], b['tp_hi'], b['gt'].cpu().detach().numpy(), b['gt_mask'], tp.cpu().detach().numpy(),pred['completion_xyz'].cpu().detach().numpy())
         results['gt_hi'] = b['gt_hi']
         results['tp_hi'] = b['tp_hi']
 
@@ -107,14 +90,54 @@ class CompletionLightningModel(PytorchNet):
         # if self.assets.saver is not None:  # TODO - Generalize this
         #     images = self.assets.saver.get_completions_as_pil(pred, b)
         #     results['images']= [wandb.Image(image) for image in images]
-
+        
         data = list(map(list, itertools.zip_longest(*results.values(),fillvalue=None)))
         keys = list(results.keys())
 
-        self.logger.experiment.log({"static metrics validation": wandb.Table(columns=keys, data=data)})
+        wandb.log({f"static metrics {stage}": wandb.Table(columns=keys, data=data)})
+
+
+    def training_step(self, b, batch_idx):
+        completion = self.complete(b)
+        loss_dict = self.loss.compute(b, completion)
+        loss_dict = {f'{k}_train': v for k, v in loss_dict.items()}  # make different logs for train, test, validation
+        train_loss = loss_dict['total_loss_train']
+        if batch_idx % 200 == 0:
+            self.report_static_metrics(b,completion,"train")
+        
+        if self.assets.plt is not None and batch_idx == 0:  # On first batch
+            self.assets.plt.cache(self.assets.plt.prepare_plotter_dict(b, completion))  # New tensors, without grad
+
+        return {
+            'loss': train_loss,  # Must use 'loss' instead of 'train_loss' due to old_lightning framework
+            'log': loss_dict
+        }
+
+    def training_end(self, output_per_dset):
+        # log_dict = {}
+        # best_stats = self.loss.return_best_stats()
+        # log_dict["best_mean_error_train"]=best_stats['Comp-GT Vertex L2'][2]
+        # log_dict["best_volume_error_train"]=best_stats['Comp-GT Volume L1'][2]
+        # log_dict["best_template_mean_error_train"]=best_stats['TP-GT Vertex L2'][2]
+
+        # worst_stats = self.loss.return_worst_stats()
+        # log_dict["worst_mean_error_train"]=worst_stats['Comp-GT Vertex L2'][2]
+        # log_dict["worst_volume_error_train"]=worst_stats['Comp-GT Volume L1'][2]
+        # log_dict["worst_template_mean_error_train"]=worst_stats['TP-GT Vertex L2'][2]
+
+        # mean_stats = self.loss.return_mean_stats()
+        # log_dict["mean_error_train"]=mean_stats['Comp-GT Vertex L2'][2]
+        # log_dict["mean_volume_error_train"]=mean_stats['Comp-GT Volume L1'][2]
+        # log_dict["template_mean_error_train"]=mean_stats['TP-GT Vertex L2'][2]
+        # wandb.log(log_dict)
+        return output_per_dset
+
+    def on_validation_start(self):
+        self.temp_data = []
 
     def validation_step(self, b, batch_idx, set_id=0):
         pred = self.complete(b)
+
         batch_validation_mesh = pred['completion_xyz']
         if batch_idx == 0 and set_id == 0:
             batch_validation_mesh = torch.index_select(pred['completion_xyz'].cpu().detach(), 1,
@@ -123,7 +146,7 @@ class CompletionLightningModel(PytorchNet):
             batch_validation_mesh = batch_validation_mesh.numpy()[-1]
             if self.assets.saver is not None:  # TODO - Generalize this
                 images = self.assets.saver.get_completions_as_pil(pred, b)
-                self.logger.experiment.log({"completions": [wandb.Image(image) for image in images]})
+                wandb.log({"completions": [wandb.Image(image) for image in images]})
 
         if batch_idx == 0 and set_id == 0 and self.assets.plt is not None and self.assets.plt.cache_is_filled():
             # On first batch, of first dataset, only if plotter exists and only if training step has been activated
@@ -134,14 +157,15 @@ class CompletionLightningModel(PytorchNet):
                 self.temp_data=new_data['gtrb']
             else:
                 self.temp_data = np.concatenate((self.temp_data, new_data['gtrb']),axis=0)
-            self.loss.compute_loss_start()
-            self.report_static_metrics(b,pred)
+            # self.loss.compute_loss_start()
+            # self.report_static_metrics(b,pred, "validation")
             #self.assets.plt.push(new_data=new_data, new_epoch=self.current_epoch)
-        # assert False,f"keys {loss.keys()}"
+
+      
         return self.loss.compute(b, pred)
 
     def validation_end(self, output_per_dset):
-
+        gc.collect()
         if self.assets.data.num_vald_loaders() == 1:
             output_per_dset = [output_per_dset]  # Incase singleton case, due to PL default behaviour
         log_dict, progbar_dict, avg_val_loss = {}, {}, 0
@@ -159,27 +183,26 @@ class CompletionLightningModel(PytorchNet):
             if i == 0:  # Always use the first dataset as the validation loss
                 avg_val_loss = ds_val_loss
                 progbar_dict['val_loss'] = avg_val_loss
-
         self.assets.plt.push(new_data=self.temp_data, new_epoch=self.current_epoch)
 
         lr = self.learning_rate(self.opt)  # Also log learning rate
         progbar_dict['lr'], log_dict['lr'] = lr, lr
 
-        best_stats = self.loss.return_best_stats()
-        log_dict["best_mean_error"]=best_stats['Comp-GT Vertex L2'][2]
-        log_dict["best_volume_error"]=best_stats['Comp-GT Volume L1'][2]
-        log_dict["best_template_mean_error"]=best_stats['TP-GT Vertex L2'][2]
+        # best_stats = self.loss.return_best_stats()
+        # log_dict["best_mean_error_val"]=best_stats['Comp-GT Vertex L2'][2]
+        # log_dict["best_volume_error_val"]=best_stats['Comp-GT Volume L1'][2]
+        # log_dict["best_template_mean_error_val"]=best_stats['TP-GT Vertex L2'][2]
 
-        worst_stats = self.loss.return_worst_stats()
-        log_dict["worst_mean_error"]=worst_stats['Comp-GT Vertex L2'][2]
-        log_dict["worst_volume_error"]=worst_stats['Comp-GT Volume L1'][2]
-        log_dict["worst_template_mean_error"]=worst_stats['TP-GT Vertex L2'][2]
+        # worst_stats = self.loss.return_worst_stats()
+        # log_dict["worst_mean_error_val"]=worst_stats['Comp-GT Vertex L2'][2]
+        # log_dict["worst_volume_error_val"]=worst_stats['Comp-GT Volume L1'][2]
+        # log_dict["worst_template_mean_error_val"]=worst_stats['TP-GT Vertex L2'][2]
 
-        # avg_stats = self.loss.return_avg_stats()
-        # log_dict["average_mean_error"]=avg_stats['Comp-GT Vertex L2'][2]
-        # log_dict["average_volume_error"]=avg_stats['Comp-GT Volume L1'][2]
-        # log_dict["average_template_mean_error"]=avg_stats['TP-GT Vertex L2'][2]
-
+        # mean_stats = self.loss.return_mean_stats()
+        # log_dict["mean_error_val"]=mean_stats['Comp-GT Vertex L2'][2]
+        # log_dict["mean_volume_error_val"]=mean_stats['Comp-GT Volume L1'][2]
+        # log_dict["template_mean_error_val"]=mean_stats['TP-GT Vertex L2'][2]
+        # self.loss.compute_loss_start()
         # This must be kept as "val_loss" and not "avg_val_loss" due to old_lightning bug
         return {"val_loss": avg_val_loss,  # TODO - Remove double entry for val_koss
                 "progress_bar": progbar_dict,
@@ -188,7 +211,7 @@ class CompletionLightningModel(PytorchNet):
     def test_step(self, b, batch_idx, set_id=0):
         pred = self.complete(b)
         tp = b['tp']
-        results = self.loss.compute_loss_end(b['gt_hi'], b['tp_hi'], b['gt'], b['gt_mask'], tp,pred['completion_xyz'].cpu().detach().numpy())
+        results = self.loss.compute_loss_end(b['gt_hi'], b['tp_hi'], b['gt'].cpu().detach(), b['gt_mask'], tp.cpu().detach(),pred['completion_xyz'].cpu().detach().numpy())
 
         results['gt_hi'] = b['gt_hi']
         results['tp_hi'] = b['tp_hi']
@@ -204,24 +227,15 @@ class CompletionLightningModel(PytorchNet):
         keys = list(results.keys())
 
 
-        self.logger.experiment.log({"static metrics": wandb.Table(columns=keys, data=data)})
+        wandb.log({"static metrics": wandb.Table(columns=keys, data=data)})
         #new_test_data = self.assets.plt.prepare_plotter_dict(b, pred)
-        if len(self.test_step_data)==0:
-            self.test_step_data=[results]
-        else:
-            self.test_step_data += [results]
+        # if len(self.test_step_data)==0:
+        #     self.test_step_data=[results]
+        # else:
+        #     self.test_step_data += [results]
         if self.assets.saver is not None:  # TODO - Generalize this
-            self.assets.saver.save_completions_by_batch(pred, b, set_id,True)
+            self.assets.saver.save_completions_by_batch(pred.detach(), b, set_id)
         return self.loss.compute(b, pred)
-
-        #self.logger.experiment.log({"best metrics": wandb.Table(columns=keys, data=data)})
-        #if len(self.test_step_data)==0:
-        #    self.test_step_data=[results]
-        #else:
-        #    self.test_step_data += [results]
-        #if self.assets.saver is not None:  # TODO - Generalize this
-        #    self.assets.saver.save_completions_by_batch(pred, b, set_id)
-        #return self.loss.compute(b, pred)
 
 
     def test_end(self, outputs):
@@ -229,15 +243,15 @@ class CompletionLightningModel(PytorchNet):
             outputs = [outputs]  # Incase singleton case
         if self.assets.saver is not None:  # TODO - Generalize this
             rows = []
-            for completion_gif_path, completion, completion_name in tqdm.tqdm(self.assets.saver.load_completions(test_step=True)):
-                self.logger.experiment.log({"completion_video": wandb.Video(completion_gif_path, fps=60, format="gif")})
+            for completion_gif_path, completion, completion_name in tqdm.tqdm(self.assets.saver.load_completions()):
+                wandb.log({"completion_video": wandb.Video(completion_gif_path, fps=60, format="gif")})
                 completion = np.array(completion)
                 completions_shifted = completion[1:]
                 completion = completion[:-1]
                 mean_velocity = np.mean(completions_shifted - completion)
                 rows += [[completion_name, mean_velocity]]
             columns = ["completion subject and pose", "mean velocity"]
-            self.logger.experiment.log({"completion temporal metrics": wandb.Table(columns=columns, data=rows)})
+            wandb.log({"completion temporal metrics": wandb.Table(columns=columns, data=rows)})
         log_dict, progbar_dict = {}, {}
         avg_test_loss = 0
 
@@ -253,18 +267,21 @@ class CompletionLightningModel(PytorchNet):
         table_dict = {}
         for key in log_dict:
             table_dict[key] = log_dict[key].item()    
-        self.logger.experiment.log({"completion test metrics":wandb.Table(columns=list(table_dict.keys()),data=[list(table_dict.values())])})
-        return {"test_loss": avg_test_loss,
-                "progress_bar": progbar_dict,
-                "log": log_dict}
+        wandb.log({"completion test metrics":wandb.Table(columns=list(table_dict.keys()),data=[list(table_dict.values())])})
         
-        best_metrics = return_best_stats() 
+        
+        best_metrics = self.loss.return_best_stats() 
         vals = ["mean", "volume", "temp"]
-        self.logger.experiment.log({"best metrics": wandb.Table(columns=vals, data=best_metrics)})
-        worst_metrics = return_worst_stats() 
+        wandb.log({"best metrics test": wandb.Table(columns=vals, data=best_metrics)})
+        worst_metrics = self.loss.return_worst_stats() 
         vals2 = ["mean", "volume", "temp"]
-        self.logger.experiment.log({"worst metrics": wandb.Table(columns=vals2, data=worst_metrics)})
-
+        wandb.log({"worst metrics test": wandb.Table(columns=vals2, data=worst_metrics)})
+        mean_metrics = self.loss.return_mean_stats() 
+        vals3 = ["mean", "volume", "temp"]
+        wandb.log({"mean metrics test": wandb.Table(columns=vals3, data=mean_metrics)})
+        return {"test_loss": avg_test_loss,
+                        "progress_bar": progbar_dict,
+                        "log": log_dict}
     def hyper_params(self):
         return deepcopy(self.hp)
 

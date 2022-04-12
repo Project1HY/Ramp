@@ -37,7 +37,6 @@ class F2PEncoderDecoderBase(CompletionLightningModel):
         # TODO - Generalize this
         part = input_dict['gt_part'] if 'gt_part' in input_dict else input_dict['gt_noise']
         full = input_dict['tp']
-
         # part, full [bs x nv x in_channels]
         bs = full.size(0)
         nv = full.size(1)
@@ -154,8 +153,6 @@ class F2PEncoderDecoderWindowedTemporal(F2PEncoderDecoderBase):
     def _build_model(self):
         self.encoder_full = PointNetShapeEncoder(in_channels=self.hp.in_channels, code_size=self.hp.code_size)
         self.encoder_part = self.encoder_full
-        # self.encoder_full.load_state_dict(torch.load(PATH), strict=False)
-        # self.encoder_part.load_state_dict(torch.load(PATH), strict=False)
 
         self.decoder = LSTMDecoder(code_size=self.hp.in_channels + 2 * self.hp.code_size,
                                    out_channels=self.hp.out_channels, hidden_size=self.hp.decoder_hidden_size,
@@ -173,7 +170,6 @@ class F2PEncoderDecoderWindowedTemporal(F2PEncoderDecoderBase):
         # TODO - Generalize this
         part = input_dict['gt_part'] if 'gt_part' in input_dict else input_dict['gt_noise']
         full = input_dict['tp']
-        #assert False, f"gt part is {part}"
 
         # part, full [bs x nv x in_channels]
         bs = full.size(0)
@@ -184,7 +180,7 @@ class F2PEncoderDecoderWindowedTemporal(F2PEncoderDecoderBase):
         part = part.reshape(bs * window_size, nv, -1)
         part_code = self.encoder_part(part)  # [b x code_size]
         full_code = self.encoder_full(full)  # [b x code_size]
-
+    
         full = full.reshape(bs, window_size, nv, -1)
         part_code = part_code.reshape(bs, window_size, -1).unsqueeze(2).expand(bs, window_size, nv, self.hp.code_size)  # [b x nv x code_size]
         full_code = full_code.reshape(bs, window_size, -1).unsqueeze(2).expand(bs, window_size, nv, self.hp.code_size)  # [b x nv x code_size]
@@ -198,7 +194,7 @@ class F2PEncoderDecoderWindowedTemporal(F2PEncoderDecoderBase):
     @staticmethod
     def add_model_specific_args(parent_parser):
         p = HyperOptArgumentParser(parents=parent_parser, add_help=False, conflict_handler='resolve')
-        p.add_argument('--code_size', default=512, type=int)
+        p.add_argument('--code_size', default=256, type=int)
         p.add_argument('--out_channels', default=3, type=int)
         p.add_argument('--decoder_hidden_size', default=1024, type=int)
         p.add_argument('--decoder_bidirectional', default=False, type=bool)

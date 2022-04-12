@@ -85,7 +85,7 @@ class LightningTrainer:
         # Checkpointing and Logging:
         tb_log = TestTubeLogger(save_dir=self.hp.PRIMARY_RESULTS_DIR, description=f"{self.hp.exp_name} Experiment",
                                 name=self.hp.exp_name, version=self.hp.version)
-        wandb_log = WandbLogger(project="my-test-project", entity="temporal_shape_recon",name=self.hp.exp_name)
+        wandb_log = WandbLogger(project="my-test-project", entity="temporal_shape_recon",name=self.hp.exp_name, id=f"{self.hp.exp_name}{self.hp.version}")
         self.exp_dp = Path(os.path.dirname(tb_log.experiment.log_dir)).resolve()  # Extract experiment path
         checkpoint = ModelCheckpoint(filepath=self.exp_dp / 'checkpoints', save_top_k=1, verbose=True,
                                      prefix='weight', monitor='val_loss', mode='min', period=1)
@@ -113,7 +113,8 @@ class LightningTrainer:
                                gpus=self.hp.gpus, distributed_backend=self.hp.distributed_backend,
                                # val_percent_check = 0.2,
                                # accelerator="cpu",
-                               early_stop_callback=self.early_stop, checkpoint_callback=checkpoint,                               logger=wandb_log,
+                               early_stop_callback=self.early_stop, checkpoint_callback=checkpoint,                               
+                               logger=wandb_log,
                             #    logger=tb_log,
                                min_epochs=self.hp.force_train_epoches,
                                 max_epochs=self.hp.max_epochs,

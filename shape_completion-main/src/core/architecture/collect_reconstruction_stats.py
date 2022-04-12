@@ -34,37 +34,26 @@ def collect_reconstruction_stats(gts,masks, tps, comps,faces):
         part = gt[mask,:]
         gt = gt[:,:3]
         tp = tp[:,:3]
-        gt = gt.cpu().numpy()
-        tp = tp.cpu().numpy()
 
         comp_pre_icp = comp
-        comp = icp(comp, gt, True)
         
-        diff_tp = np.power(abs(icp(tp,gt,True) - gt), 2)
-        tp_me_err[i] = (np.sum(diff_tp[:])/tp.shape[0])
         diff_tp_pre_icp = np.power(abs(tp - gt), 2)
         tp_me_err_pre_icp[i] = (np.sum(diff_tp_pre_icp[:])/tp.shape[0])
 
 
-        diff_tp_comp = np.power(abs(icp(comp_pre_icp,tp,True) - tp), 2)
-        tp_comp_me_error [i] = (np.sum(diff_tp_comp[:])/tp.shape[0])
 
         diff_tp_comp_no_icp = np.power(abs(comp_pre_icp - tp), 2)
         tp_comp_me_error_pre_icp[i] = (np.sum(diff_tp_comp_no_icp[:])/tp.shape[0])
         
         # Compute Mean Error
-        diff = np.power(abs(comp - gt),2) #MSE
-        me_err[i] = np.sqrt(np.sum(diff)/comp.shape[0])
         
-        diff_no_icp = np.power(abs(comp_pre_icp-gt),2) #MSE ICP
+        diff_no_icp = np.power(abs(comp_pre_icp-gt),2) #MSE NO ICP
         me_no_icp_err[i] = np.sqrt(np.sum(diff_no_icp)/comp.shape[0])
 
         #Compute Volume Error
         gtvol = trimesh.Trimesh(vertices = gt, faces=faces, process=False) #TODO: add calc
         gtvol = gtvol.volume
         
-        compvol = trimesh.Trimesh(vertices = comp, faces=faces, process=False).volume
-        vol_err[i] = abs(gtvol - compvol)/gtvol
         
         compvol_pre_icp = trimesh.Trimesh(vertices = comp_pre_icp, faces=faces, process=False).volume
         vol_err_pre_icp[i] = abs(gtvol - compvol_pre_icp)/gtvol
@@ -75,16 +64,10 @@ def collect_reconstruction_stats(gts,masks, tps, comps,faces):
         #correspondence_10_hitrate[i] = np.count_nonzero(correspondence[i]-mask)/len(mask)
 
     stats = {}
-    stats['Comp-GT Vertex L2'] = list(me_err[:,0])
-    stats['Comp-GT Vertex L2 No ICP'] = list(me_no_icp_err[:,0])
-    stats['Comp-GT Volume L1'] = list(vol_err[:,0])
-    stats['Comp-GT Volume L1 No ICP'] = list(vol_err_pre_icp[:,0])
-
-    stats['TP-GT Vertex L2'] = list(tp_me_err[:,0])
-    stats['TP-GT Vertex L2 No ICP'] = list(tp_me_err_pre_icp[:,0])
-    
-    stats['Comp-TP Vertex L2'] = list(tp_comp_me_error[:,0])
-    stats['Comp-TP Vertex L2 No ICP'] = list(tp_comp_me_error_pre_icp[:,0])
+    stats['Comp-GT Vertex L2'] = list(me_no_icp_err[:,0])
+    stats['Comp-GT Volume L1'] = list(vol_err_pre_icp[:,0])
+    stats['TP-GT Vertex L2'] = list(tp_me_err_pre_icp[:,0])
+    stats['Comp-TP Vertex L2'] = list(tp_comp_me_error_pre_icp[:,0])
 
     return stats
 

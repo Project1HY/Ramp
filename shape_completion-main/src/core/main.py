@@ -72,7 +72,7 @@ def parser():
     p.add_argument('--lambdas', nargs="+", type=float, default=(1, 0.01, 0, 0, 0, 0, 0 , 0),
                    help='[XYZ,Normal,Moments,EuclidDistMat,EuclidNormalDistMap,FaceAreas,Volume, Velocity]'
                         'loss multiplication modifiers')
-    p.add_argument('--body_part_volume_weights', nargs=5, type=float, default=(0,0,0,0,0),
+    p.add_argument('--body_part_volume_weights', nargs=5, type=float, default=(1,0,0,0,0),
                    help='[Rightarm, Leftarm, Head, Rightleg, Leftleg]'
                         'loss multiplication modifiers')
 

@@ -6,6 +6,7 @@ from copy import deepcopy
 
 def determine_worker_num(num_examples, batch_size):
     import psutil
+    return 1
     num_batch_runs = int(num_examples / batch_size)
     if num_batch_runs < 10:  # Very small amount of runs
         return 0
