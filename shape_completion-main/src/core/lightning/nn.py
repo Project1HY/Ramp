@@ -114,22 +114,22 @@ class CompletionLightningModel(PytorchNet):
         }
 
     def training_end(self, output_per_dset):
-        # log_dict = {}
-        # best_stats = self.loss.return_best_stats()
-        # log_dict["best_mean_error_train"]=best_stats['Comp-GT Vertex L2'][2]
-        # log_dict["best_volume_error_train"]=best_stats['Comp-GT Volume L1'][2]
-        # log_dict["best_template_mean_error_train"]=best_stats['TP-GT Vertex L2'][2]
+        log_dict = {}
+        best_stats = self.loss.return_best_stats()
+        log_dict["best_mean_error_train"]=best_stats['Comp-GT Vertex L2'][2]
+        log_dict["best_volume_error_train"]=best_stats['Comp-GT Volume L1'][2]
+        log_dict["best_template_mean_error_train"]=best_stats['TP-GT Vertex L2'][2]
 
-        # worst_stats = self.loss.return_worst_stats()
-        # log_dict["worst_mean_error_train"]=worst_stats['Comp-GT Vertex L2'][2]
-        # log_dict["worst_volume_error_train"]=worst_stats['Comp-GT Volume L1'][2]
-        # log_dict["worst_template_mean_error_train"]=worst_stats['TP-GT Vertex L2'][2]
+        worst_stats = self.loss.return_worst_stats()
+        log_dict["worst_mean_error_train"]=worst_stats['Comp-GT Vertex L2'][2]
+        log_dict["worst_volume_error_train"]=worst_stats['Comp-GT Volume L1'][2]
+        log_dict["worst_template_mean_error_train"]=worst_stats['TP-GT Vertex L2'][2]
 
-        # mean_stats = self.loss.return_mean_stats()
-        # log_dict["mean_error_train"]=mean_stats['Comp-GT Vertex L2'][2]
-        # log_dict["mean_volume_error_train"]=mean_stats['Comp-GT Volume L1'][2]
-        # log_dict["template_mean_error_train"]=mean_stats['TP-GT Vertex L2'][2]
-        # wandb.log(log_dict)
+        mean_stats = self.loss.return_mean_stats()
+        log_dict["mean_error_train"]=mean_stats['Comp-GT Vertex L2'][2]
+        log_dict["mean_volume_error_train"]=mean_stats['Comp-GT Volume L1'][2]
+        log_dict["template_mean_error_train"]=mean_stats['TP-GT Vertex L2'][2]
+        wandb.log(log_dict)
         return output_per_dset
 
     def on_validation_start(self):
@@ -158,8 +158,7 @@ class CompletionLightningModel(PytorchNet):
             else:
                 self.temp_data = np.concatenate((self.temp_data, new_data['gtrb']),axis=0)
             # self.loss.compute_loss_start()
-            # self.report_static_metrics(b,pred, "validation")
-            #self.assets.plt.push(new_data=new_data, new_epoch=self.current_epoch)
+            self.report_static_metrics(b,pred, "validation")
 
       
         return self.loss.compute(b, pred)
@@ -188,21 +187,21 @@ class CompletionLightningModel(PytorchNet):
         lr = self.learning_rate(self.opt)  # Also log learning rate
         progbar_dict['lr'], log_dict['lr'] = lr, lr
 
-        # best_stats = self.loss.return_best_stats()
-        # log_dict["best_mean_error_val"]=best_stats['Comp-GT Vertex L2'][2]
-        # log_dict["best_volume_error_val"]=best_stats['Comp-GT Volume L1'][2]
-        # log_dict["best_template_mean_error_val"]=best_stats['TP-GT Vertex L2'][2]
+        best_stats = self.loss.return_best_stats()
+        log_dict["best_mean_error_val"]=best_stats['Comp-GT Vertex L2'][2]
+        log_dict["best_volume_error_val"]=best_stats['Comp-GT Volume L1'][2]
+        log_dict["best_template_mean_error_val"]=best_stats['TP-GT Vertex L2'][2]
 
-        # worst_stats = self.loss.return_worst_stats()
-        # log_dict["worst_mean_error_val"]=worst_stats['Comp-GT Vertex L2'][2]
-        # log_dict["worst_volume_error_val"]=worst_stats['Comp-GT Volume L1'][2]
-        # log_dict["worst_template_mean_error_val"]=worst_stats['TP-GT Vertex L2'][2]
+        worst_stats = self.loss.return_worst_stats()
+        log_dict["worst_mean_error_val"]=worst_stats['Comp-GT Vertex L2'][2]
+        log_dict["worst_volume_error_val"]=worst_stats['Comp-GT Volume L1'][2]
+        log_dict["worst_template_mean_error_val"]=worst_stats['TP-GT Vertex L2'][2]
 
-        # mean_stats = self.loss.return_mean_stats()
-        # log_dict["mean_error_val"]=mean_stats['Comp-GT Vertex L2'][2]
-        # log_dict["mean_volume_error_val"]=mean_stats['Comp-GT Volume L1'][2]
-        # log_dict["template_mean_error_val"]=mean_stats['TP-GT Vertex L2'][2]
-        # self.loss.compute_loss_start()
+        mean_stats = self.loss.return_mean_stats()
+        log_dict["mean_error_val"]=mean_stats['Comp-GT Vertex L2'][2]
+        log_dict["mean_volume_error_val"]=mean_stats['Comp-GT Volume L1'][2]
+        log_dict["template_mean_error_val"]=mean_stats['TP-GT Vertex L2'][2]
+        self.loss.compute_loss_start()
         # This must be kept as "val_loss" and not "avg_val_loss" due to old_lightning bug
         return {"val_loss": avg_val_loss,  # TODO - Remove double entry for val_koss
                 "progress_bar": progbar_dict,
@@ -269,19 +268,51 @@ class CompletionLightningModel(PytorchNet):
             table_dict[key] = log_dict[key].item()    
         wandb.log({"completion test metrics":wandb.Table(columns=list(table_dict.keys()),data=[list(table_dict.values())])})
         
+        best_stats = self.loss.return_best_stats()
+        log_dict["best_mean_error_test"]=best_stats['Comp-GT Vertex L2'][2]
+        log_dict["best_volume_error_test"]=best_stats['Comp-GT Volume L1'][2]
+        log_dict["best_template_mean_error_test"]=best_stats['TP-GT Vertex L2'][2]
         
-        best_metrics = self.loss.return_best_stats() 
-        vals = ["mean", "volume", "temp"]
-        wandb.log({"best metrics test": wandb.Table(columns=vals, data=best_metrics)})
-        worst_metrics = self.loss.return_worst_stats() 
-        vals2 = ["mean", "volume", "temp"]
-        wandb.log({"worst metrics test": wandb.Table(columns=vals2, data=worst_metrics)})
-        mean_metrics = self.loss.return_mean_stats() 
-        vals3 = ["mean", "volume", "temp"]
-        wandb.log({"mean metrics test": wandb.Table(columns=vals3, data=mean_metrics)})
-        return {"test_loss": avg_test_loss,
-                        "progress_bar": progbar_dict,
-                        "log": log_dict}
+        worst_stats = self.loss.return_worst_stats()
+        log_dict["worst_mean_error_test"]=worst_stats['Comp-GT Vertex L2'][2]
+        log_dict["worst_volume_error_test"]=worst_stats['Comp-GT Volume L1'][2]
+        log_dict["worst_template_mean_error_test"]=worst_stats['TP-GT Vertex L2'][2]
+
+        mean_stats = self.loss.return_mean_stats()
+        log_dict["mean_error_test"]=mean_stats['Comp-GT Vertex L2'][2]
+        log_dict["mean_volume_error_test"]=mean_stats['Comp-GT Volume L1'][2]
+        log_dict["template_mean_error_test"]=mean_stats['TP-GT Vertex L2'][2]
+
+        display_vals = [str(log_dict["best_mean_error_test"]), str(log_dict["best_volume_error_test"]), str(log_dict["best_template_mean_error_test"]),
+        str(log_dict["worst_mean_error_test"]), str(log_dict["worst_volume_error_test"]), str(log_dict["worst_template_mean_error_test"]), str(log_dict["mean_error_test"]),
+        str(log_dict["mean_volume_error_test"]), str(log_dict["template_mean_error_test"])]
+
+        display_keys = ["best_mean_error_test", "best_volume_error_test", "best_template_mean_error_test", "worst_mean_error_test",
+        "worst_volume_error_test", "worst_template_mean_error_test", "mean_error_test", "mean_volume_error_test", "template_mean_error_test"]
+        result_dict = {k:v for k,v in zip(display_keys,display_vals)}
+        wandb.log({"total test results": wandb.Table(columns=list(result_dict.keys()), data=[list(result_dict.values())])})
+
+        #self.loss.compute_loss_start()
+        # This must be kept as "val_loss" and not "avg_val_loss" due to old_lightning bug
+        wandb.log(log_dict)
+        return {"test_loss": avg_test_loss,  # TODO - Remove double entry for val_koss
+                "progress_bar": progbar_dict,
+                "log": log_dict}
+        
+        
+        # best_metrics = self.loss.return_best_stats() 
+        # vals = ["mean", "volume", "temp"]
+        # wandb.log({"best metrics test": wandb.Table(columns=vals, data=best_metrics)})
+        # worst_metrics = self.loss.return_worst_stats() 
+        # vals2 = ["mean", "volume", "temp"]
+        # wandb.log({"worst metrics test": wandb.Table(columns=vals2, data=worst_metrics)})
+        # mean_metrics = self.loss.return_mean_stats() 
+        # vals3 = ["mean", "volume", "temp"]
+        # wandb.log({"mean metrics test": wandb.Table(columns=vals3, data=mean_metrics)})
+        # return {"test_loss": avg_test_loss,
+        #                 "progress_bar": progbar_dict,
+        #                 "log": log_dict}
+    
     def hyper_params(self):
         return deepcopy(self.hp)
 

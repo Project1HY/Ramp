@@ -32,7 +32,6 @@ class BasicLoss:
         self.mean = {}
         self.iter = 0
         BasicLoss.loss_instance_counter += 1
-        assert BasicLoss.loss_instance_counter!=2, f"loss instance count {BasicLoss.loss_instance_counter}"
         segmentation_manger=get_segmentation_manger()
         self.organs_to_lambdas = {
             "RightArm": self.body_part_volume_weights[0],
@@ -46,7 +45,7 @@ class BasicLoss:
 
         segmentation_manger_backwards=get_segmentation_manger(organs=list(self.organs_to_lambdas.keys()))
 
-        # self._err_manger_logging=ErrorComputationDiffManger(f=f,segmentation_manger=segmentation_manger)
+        self._err_manger_logging=ErrorComputationDiffManger(f=f,segmentation_manger=segmentation_manger)
         self._err_manger_loss=ErrorComputationDiffManger(f=f,segmentation_manger=segmentation_manger_backwards,computation_type_list=get_valid_error_computations_type_list_for_flow())
 
     def closest_to_mean(self,array,mean):
@@ -168,18 +167,18 @@ class BasicLoss:
         #loss segments
         shape1=completion_gt.reshape(-1, completion_gt.shape[-2], completion_gt.shape[-1])[:,:,:3]
         shape2=completion_rec.reshape(-1, completion_rec.shape[-2], completion_rec.shape[-1])[:,:,:3]
-        # errors_to_log=self._err_manger_logging.get_compute_errors_dict(shape_1=shape1.detach(),shape_2=shape2.detach())
+        errors_to_log=self._err_manger_logging.get_compute_errors_dict(shape_1=shape1.detach(),shape_2=shape2.detach())
         errors_to_loss = self._err_manger_loss.get_compute_errors_dict(shape_1=shape1,shape_2=shape2)
-        # if self.lambdas[6] != 0:
-        #     errors_to_loss['Full volume error'] *= self.lambdas[6]
-        #     loss_dict['total_loss']+=errors_to_log['Full volume error']
+        if self.lambdas[6] != 0:
+            errors_to_loss['Full volume error'] *= self.lambdas[6]
+            loss_dict['total_loss']+=errors_to_log['Full volume error']
         
         for organ,l_val in self.organs_to_lambdas.items():
             loss_dict['total_loss']+=l_val*errors_to_loss[f'{organ} volume error']
             loss_dict[f"{organ}_volume_error"]=errors_to_loss[f'{organ} volume error']
         loss_dict.update(total_loss=loss_dict['total_loss_comp'])
 
-        # loss_dict.update(errors_to_log)
+        loss_dict.update(errors_to_log)
         # shape1=None
         # shape2=None
             #compute and area and volume losses too
