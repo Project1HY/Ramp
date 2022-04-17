@@ -80,7 +80,9 @@ class CompletionLightningModel(PytorchNet):
     def report_static_metrics(self,b,pred, stage):
         pass
         tp = b['tp']
-        results = self.loss.compute_loss_end(b['gt_hi'], b['tp_hi'], b['gt'].cpu().detach().numpy(), b['gt_mask'], tp.cpu().detach().numpy(),pred['completion_xyz'].cpu().detach().numpy())
+        results = self.loss.compute_loss_end(b['gt_hi'], b['tp_hi'], b['gt'].cpu().detach().numpy(), b['gt_mask'], tp.cpu().detach().numpy(),pred['completion_xyz'].cpu().detach().numpy(), stage)
+        # results = self.loss.compute_loss_end(b['gt_hi'], b['tp_hi'], b['gt'].cpu().detach().numpy(), b['gt_mask'], tp.cpu().detach().numpy(),pred['completion_xyz'].cpu().detach().numpy())
+
         results['gt_hi'] = b['gt_hi']
         results['tp_hi'] = b['tp_hi']
 
@@ -102,7 +104,7 @@ class CompletionLightningModel(PytorchNet):
         loss_dict = self.loss.compute(b, completion)
         loss_dict = {f'{k}_train': v for k, v in loss_dict.items()}  # make different logs for train, test, validation
         train_loss = loss_dict['total_loss_train']
-        if batch_idx % 200 == 0:
+        if batch_idx == 0:
             self.report_static_metrics(b,completion,"train")
         
         if self.assets.plt is not None and batch_idx == 0:  # On first batch
@@ -114,22 +116,30 @@ class CompletionLightningModel(PytorchNet):
         }
 
     def training_end(self, output_per_dset):
-        # log_dict = {}
-        # best_stats = self.loss.return_best_stats()
-        # log_dict["best_mean_error_train"]=best_stats['Comp-GT Vertex L2'][2]
-        # log_dict["best_volume_error_train"]=best_stats['Comp-GT Volume L1'][2]
-        # log_dict["best_template_mean_error_train"]=best_stats['TP-GT Vertex L2'][2]
+        log_dict = {}
+        best_stats = self.loss.return_best_stats('train')
+        log_dict["best_mean_error_train"]=best_stats['Comp-GT Vertex L2'][2]
+        log_dict["best_volume_error_train"]=best_stats['Comp-GT Volume L1'][2]
+        log_dict["best_template_mean_error_train"]=best_stats['TP-GT Vertex L2'][2]
 
-        # worst_stats = self.loss.return_worst_stats()
-        # log_dict["worst_mean_error_train"]=worst_stats['Comp-GT Vertex L2'][2]
-        # log_dict["worst_volume_error_train"]=worst_stats['Comp-GT Volume L1'][2]
-        # log_dict["worst_template_mean_error_train"]=worst_stats['TP-GT Vertex L2'][2]
+        worst_stats = self.loss.return_worst_stats('train')
+        log_dict["worst_mean_error_train"]=worst_stats['Comp-GT Vertex L2'][2]
+        log_dict["worst_volume_error_train"]=worst_stats['Comp-GT Volume L1'][2]
+        log_dict["worst_template_mean_error_train"]=worst_stats['TP-GT Vertex L2'][2]
 
-        # mean_stats = self.loss.return_mean_stats()
-        # log_dict["mean_error_train"]=mean_stats['Comp-GT Vertex L2'][2]
-        # log_dict["mean_volume_error_train"]=mean_stats['Comp-GT Volume L1'][2]
-        # log_dict["template_mean_error_train"]=mean_stats['TP-GT Vertex L2'][2]
-        # wandb.log(log_dict)
+        mean_stats = self.loss.return_mean_stats('train')
+        log_dict["mean_error_train"]=mean_stats['Comp-GT Vertex L2'][2]
+        log_dict["mean_volume_error_train"]=mean_stats['Comp-GT Volume L1'][2]
+        log_dict["template_mean_error_train"]=mean_stats['TP-GT Vertex L2'][2]
+
+        wandb.run.summary['best_mean_error_train_gt_hi_tp_hi'] = f"{str(best_stats['Comp-GT Vertex L2'][0])} {str(best_stats['Comp-GT Vertex L2'][1])}"
+        wandb.run.summary['best_volume_error_train_gt_hi_tp_hi'] = f"{str(best_stats['Comp-GT Volume L1'][0])} {str(best_stats['Comp-GT Volume L1'][1])}"
+        wandb.run.summary['best_template_mean_error_train_gt_hi_tp_hi'] = f"{str(best_stats['TP-GT Vertex L2'][0])} {str(best_stats['TP-GT Vertex L2'][1])}"
+        wandb.run.summary['worst_mean_error_train_gt_hi_tp_hi'] = f"{str(worst_stats['Comp-GT Vertex L2'][0])} {str(worst_stats['Comp-GT Vertex L2'][1])}"
+        wandb.run.summary['worst_volume_error_train_gt_hi_tp_hi'] = f"{str(worst_stats['Comp-GT Volume L1'][0])} {str(worst_stats['Comp-GT Volume L1'][1])}"
+        wandb.run.summary['worst_template_mean_error_train_gt_hi_tp_hi'] = f"{str(worst_stats['TP-GT Vertex L2'][0])} {str(worst_stats['TP-GT Vertex L2'][1])}"
+
+        wandb.log(log_dict)
         return output_per_dset
 
     def on_validation_start(self):
@@ -157,9 +167,8 @@ class CompletionLightningModel(PytorchNet):
                 self.temp_data=new_data['gtrb']
             else:
                 self.temp_data = np.concatenate((self.temp_data, new_data['gtrb']),axis=0)
-            # self.loss.compute_loss_start()
-            # self.report_static_metrics(b,pred, "validation")
-            #self.assets.plt.push(new_data=new_data, new_epoch=self.current_epoch)
+            self.loss.compute_loss_start('validation')
+            self.report_static_metrics(b,pred, "validation")
 
       
         return self.loss.compute(b, pred)
@@ -188,21 +197,29 @@ class CompletionLightningModel(PytorchNet):
         lr = self.learning_rate(self.opt)  # Also log learning rate
         progbar_dict['lr'], log_dict['lr'] = lr, lr
 
-        # best_stats = self.loss.return_best_stats()
-        # log_dict["best_mean_error_val"]=best_stats['Comp-GT Vertex L2'][2]
-        # log_dict["best_volume_error_val"]=best_stats['Comp-GT Volume L1'][2]
-        # log_dict["best_template_mean_error_val"]=best_stats['TP-GT Vertex L2'][2]
+        best_stats = self.loss.return_best_stats('validation')
+        log_dict["best_mean_error_val"]=best_stats['Comp-GT Vertex L2'][2]
+        log_dict["best_volume_error_val"]=best_stats['Comp-GT Volume L1'][2]
+        log_dict["best_template_mean_error_val"]=best_stats['TP-GT Vertex L2'][2]
 
-        # worst_stats = self.loss.return_worst_stats()
-        # log_dict["worst_mean_error_val"]=worst_stats['Comp-GT Vertex L2'][2]
-        # log_dict["worst_volume_error_val"]=worst_stats['Comp-GT Volume L1'][2]
-        # log_dict["worst_template_mean_error_val"]=worst_stats['TP-GT Vertex L2'][2]
+        worst_stats = self.loss.return_worst_stats('validation')
+        log_dict["worst_mean_error_val"]=worst_stats['Comp-GT Vertex L2'][2]
+        log_dict["worst_volume_error_val"]=worst_stats['Comp-GT Volume L1'][2]
+        log_dict["worst_template_mean_error_val"]=worst_stats['TP-GT Vertex L2'][2]
 
-        # mean_stats = self.loss.return_mean_stats()
-        # log_dict["mean_error_val"]=mean_stats['Comp-GT Vertex L2'][2]
-        # log_dict["mean_volume_error_val"]=mean_stats['Comp-GT Volume L1'][2]
-        # log_dict["template_mean_error_val"]=mean_stats['TP-GT Vertex L2'][2]
-        # self.loss.compute_loss_start()
+        mean_stats = self.loss.return_mean_stats('validation')
+        log_dict["mean_error_val"]=mean_stats['Comp-GT Vertex L2'][2]
+        log_dict["mean_volume_error_val"]=mean_stats['Comp-GT Volume L1'][2]
+        log_dict["template_mean_error_val"]=mean_stats['TP-GT Vertex L2'][2]
+
+        wandb.run.summary['best_mean_error_val_gt_hi_tp_hi'] = f"{str(best_stats['Comp-GT Vertex L2'][0])} {str(best_stats['Comp-GT Vertex L2'][1])}"
+        wandb.run.summary['best_volume_error_val_gt_hi_tp_hi'] = f"{str(best_stats['Comp-GT Volume L1'][0])} {str(best_stats['Comp-GT Volume L1'][1])}"
+        wandb.run.summary['best_template_mean_error_val_gt_hi_tp_hi'] = f"{str(best_stats['TP-GT Vertex L2'][0])} {str(best_stats['TP-GT Vertex L2'][1])}"
+        wandb.run.summary['worst_mean_error_val_gt_hi_tp_hi'] = f"{str(worst_stats['Comp-GT Vertex L2'][0])} {str(worst_stats['Comp-GT Vertex L2'][1])}"
+        wandb.run.summary['worst_volume_error_val_gt_hi_tp_hi'] = f"{str(worst_stats['Comp-GT Volume L1'][0])} {str(worst_stats['Comp-GT Volume L1'][1])}"
+        wandb.run.summary['worst_template_mean_error_val_gt_hi_tp_hi'] = f"{str(worst_stats['TP-GT Vertex L2'][0])} {str(worst_stats['TP-GT Vertex L2'][1])}"
+
+        self.loss.compute_loss_start('validation')
         # This must be kept as "val_loss" and not "avg_val_loss" due to old_lightning bug
         return {"val_loss": avg_val_loss,  # TODO - Remove double entry for val_koss
                 "progress_bar": progbar_dict,
@@ -211,7 +228,7 @@ class CompletionLightningModel(PytorchNet):
     def test_step(self, b, batch_idx, set_id=0):
         pred = self.complete(b)
         tp = b['tp']
-        results = self.loss.compute_loss_end(b['gt_hi'], b['tp_hi'], b['gt'].cpu().detach(), b['gt_mask'], tp.cpu().detach(),pred['completion_xyz'].cpu().detach().numpy())
+        results = self.loss.compute_loss_end(b['gt_hi'], b['tp_hi'], b['gt'].cpu().detach().numpy(), b['gt_mask'], tp.cpu().detach().numpy(),pred['completion_xyz'].cpu().detach().numpy(), 'test')
 
         results['gt_hi'] = b['gt_hi']
         results['tp_hi'] = b['tp_hi']
@@ -234,7 +251,7 @@ class CompletionLightningModel(PytorchNet):
         # else:
         #     self.test_step_data += [results]
         if self.assets.saver is not None:  # TODO - Generalize this
-            self.assets.saver.save_completions_by_batch(pred.detach(), b, set_id)
+            self.assets.saver.save_completions_by_batch(pred, b, set_id)
         return self.loss.compute(b, pred)
 
 
@@ -269,19 +286,59 @@ class CompletionLightningModel(PytorchNet):
             table_dict[key] = log_dict[key].item()    
         wandb.log({"completion test metrics":wandb.Table(columns=list(table_dict.keys()),data=[list(table_dict.values())])})
         
+        best_stats = self.loss.return_best_stats('test')
+        log_dict["best_mean_error_test"]=best_stats['Comp-GT Vertex L2'][2]
+        log_dict["best_volume_error_test"]=best_stats['Comp-GT Volume L1'][2]
+        log_dict["best_template_mean_error_test"]=best_stats['TP-GT Vertex L2'][2]
         
-        best_metrics = self.loss.return_best_stats() 
-        vals = ["mean", "volume", "temp"]
-        wandb.log({"best metrics test": wandb.Table(columns=vals, data=best_metrics)})
-        worst_metrics = self.loss.return_worst_stats() 
-        vals2 = ["mean", "volume", "temp"]
-        wandb.log({"worst metrics test": wandb.Table(columns=vals2, data=worst_metrics)})
-        mean_metrics = self.loss.return_mean_stats() 
-        vals3 = ["mean", "volume", "temp"]
-        wandb.log({"mean metrics test": wandb.Table(columns=vals3, data=mean_metrics)})
-        return {"test_loss": avg_test_loss,
-                        "progress_bar": progbar_dict,
-                        "log": log_dict}
+        worst_stats = self.loss.return_worst_stats('test')
+        log_dict["worst_mean_error_test"]=worst_stats['Comp-GT Vertex L2'][2]
+        log_dict["worst_volume_error_test"]=worst_stats['Comp-GT Volume L1'][2]
+        log_dict["worst_template_mean_error_test"]=worst_stats['TP-GT Vertex L2'][2]
+
+        mean_stats = self.loss.return_mean_stats('test')
+        log_dict["mean_error_test"]=mean_stats['Comp-GT Vertex L2'][2]
+        log_dict["mean_volume_error_test"]=mean_stats['Comp-GT Volume L1'][2]
+        log_dict["template_mean_error_test"]=mean_stats['TP-GT Vertex L2'][2]
+
+        wandb.run.summary['best_mean_error_test_gt_hi_tp_hi'] = f"{str(best_stats['Comp-GT Vertex L2'][0])} {str(best_stats['Comp-GT Vertex L2'][1])}"
+        wandb.run.summary['best_volume_error_test_gt_hi_tp_hi'] = f"{str(best_stats['Comp-GT Volume L1'][0])} {str(best_stats['Comp-GT Volume L1'][1])}"
+        wandb.run.summary['best_template_mean_error_test_gt_hi_tp_hi'] = f"{str(best_stats['TP-GT Vertex L2'][0])} {str(best_stats['TP-GT Vertex L2'][1])}"
+        wandb.run.summary['worst_mean_error_test_gt_hi_tp_hi'] = f"{str(worst_stats['Comp-GT Vertex L2'][0])} {str(worst_stats['Comp-GT Vertex L2'][1])}"
+        wandb.run.summary['worst_volume_error_test_gt_hi_tp_hi'] = f"{str(worst_stats['Comp-GT Volume L1'][0])} {str(worst_stats['Comp-GT Volume L1'][1])}"
+        wandb.run.summary['worst_template_mean_error_test_gt_hi_tp_hi'] = f"{str(worst_stats['TP-GT Vertex L2'][0])} {str(worst_stats['TP-GT Vertex L2'][1])}"
+
+        display_vals = [str(log_dict["best_mean_error_test"]), str(log_dict["best_volume_error_test"]), str(log_dict["best_template_mean_error_test"]),
+        str(log_dict["worst_mean_error_test"]), str(log_dict["worst_volume_error_test"]), str(log_dict["worst_template_mean_error_test"]), str(log_dict["mean_error_test"]),
+        str(log_dict["mean_volume_error_test"]), str(log_dict["template_mean_error_test"])]
+
+        display_keys = ["best_mean_error_test", "best_volume_error_test", "best_template_mean_error_test", "worst_mean_error_test",
+        "worst_volume_error_test", "worst_template_mean_error_test", "mean_error_test", "mean_volume_error_test", "template_mean_error_test"]
+        result_dict = {k:v for k,v in zip(display_keys,display_vals)}
+        wandb.log({"total test results": wandb.Table(columns=list(result_dict.keys()), data=[list(result_dict.values())])})
+
+        #self.loss.compute_loss_start()
+        # This must be kept as "val_loss" and not "avg_val_loss" due to old_lightning bug
+        wandb.log(log_dict)
+        return {"test_loss": avg_test_loss,  # TODO - Remove double entry for val_koss
+                "progress_bar": progbar_dict,
+                "log": log_dict}
+        
+        
+        # best_metrics = self.loss.return_best_stats() 
+        # best_metrics = ','.join(best_metrics)
+        # vals = ["mean", "volume", "temp"]
+        # #assert False, f"best metrics: {best_metrics}"
+        # wandb.log({"best metrics test": wandb.Table(columns=vals, data=[list(best_metrics)])})
+        # worst_metrics = self.loss.return_worst_stats() 
+        # vals2 = ["mean", "volume", "temp"]
+        # wandb.log({"worst metrics test": wandb.Table(columns=vals2, data=[list(worst_metrics)])})
+        # mean_metrics = self.loss.return_mean_stats() 
+        # vals3 = ["mean", "volume", "temp"]
+        # wandb.log({"mean metrics test": wandb.Table(columns=vals3, data=[list(mean_metrics)])})
+        # return {"test_loss": avg_test_loss,
+        #                 "progress_bar": progbar_dict,
+        #                 "log": log_dict}
     def hyper_params(self):
         return deepcopy(self.hp)
 

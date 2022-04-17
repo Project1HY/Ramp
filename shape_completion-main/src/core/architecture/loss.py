@@ -27,26 +27,26 @@ class BasicLoss:
         self.body_part_volume_weights = list(hp.body_part_volume_weights)
         self.shape_diff = ShapeDiffLoss(hp, f)
         self.f = f
-        self.best = {}
-        self.worst = {}
-        self.mean = {}
+        self.best = {'train': {}, 'validation': {}, 'test': {}}
+        self.worst = {'train': {}, 'validation': {}, 'test': {}}
+        self.mean = {'train': {}, 'validation': {}, 'test': {}}
         self.iter = 0
         BasicLoss.loss_instance_counter += 1
-        assert BasicLoss.loss_instance_counter!=2, f"loss instance count {BasicLoss.loss_instance_counter}"
         segmentation_manger=get_segmentation_manger()
         self.organs_to_lambdas = {
             "RightArm": self.body_part_volume_weights[0],
             "LeftArm": self.body_part_volume_weights[1],
             "Head": self.body_part_volume_weights[2],
             "RightLeg": self.body_part_volume_weights[3],
-            "LeftLeg": self.body_part_volume_weights[4]
+            "LeftLeg": self.body_part_volume_weights[4],
+            "Torso": self.body_part_volume_weights[5]
         }
         
         self.organs_to_lambdas = {k:v  for (k,v) in self.organs_to_lambdas.items() if v>0}
 
         segmentation_manger_backwards=get_segmentation_manger(organs=list(self.organs_to_lambdas.keys()))
 
-        # self._err_manger_logging=ErrorComputationDiffManger(f=f,segmentation_manger=segmentation_manger)
+        self._err_manger_logging=ErrorComputationDiffManger(f=f,segmentation_manger=segmentation_manger)
         self._err_manger_loss=ErrorComputationDiffManger(f=f,segmentation_manger=segmentation_manger_backwards,computation_type_list=get_valid_error_computations_type_list_for_flow())
 
     def closest_to_mean(self,array,mean):
@@ -55,10 +55,10 @@ class BasicLoss:
         distance = abs(array-mean)
         return np.argmin(distance)
 
-    def compute_loss_start(self):
-        self.best = {}
-        self.worst = {}
-        self.mean = {}
+    def compute_loss_start(self, stage):
+        #self.best = {}
+        #self.worst[stage] = {}
+        self.mean[stage] = {}
         self.iter = 0
 
 
@@ -73,7 +73,7 @@ class BasicLoss:
             stats[metric][indice])
 
 
-    def compute_loss_end(self, gt_hi, tp_hi, gt, masks, tp, comp, face_override=False):
+    def compute_loss_end(self, gt_hi, tp_hi, gt, masks, tp, comp, stage, face_override=False):
         #return collect_reconstruction_stats(gt, masks, tp, comp, self.f)
         stats =  collect_reconstruction_stats(gt, masks, tp, comp,self.f)
         
@@ -95,15 +95,15 @@ class BasicLoss:
             gt_hi[np.argmin(stats['TP-GT Vertex L2'])], 
             tp_hi[np.argmin(stats['TP-GT Vertex L2'])], 
             min(stats['TP-GT Vertex L2']))
-        if len(self.best) != 0:
-            if best_vals['Comp-GT Volume L1'][2] < self.best['Comp-GT Volume L1'][2]:
-                self.best['Comp-GT Volume L1'] = best_vals['Comp-GT Volume L1']
-            if best_vals['TP-GT Vertex L2'][2] < self.best['TP-GT Vertex L2'][2]:
-                self.best['TP-GT Vertex L2'] = best_vals['TP-GT Vertex L2']
-            if best_vals['Comp-GT Vertex L2'][2] < self.best['Comp-GT Vertex L2'][2]:
-                self.best['Comp-GT Vertex L2'] = best_vals['Comp-GT Vertex L2']
+        if len(self.best[stage]) != 0:
+            if best_vals['Comp-GT Volume L1'][2] < self.best[stage]['Comp-GT Volume L1'][2]:
+                self.best[stage]['Comp-GT Volume L1'] = best_vals['Comp-GT Volume L1']
+            if best_vals['TP-GT Vertex L2'][2] < self.best[stage]['TP-GT Vertex L2'][2]:
+                self.best[stage]['TP-GT Vertex L2'] = best_vals['TP-GT Vertex L2']
+            if best_vals['Comp-GT Vertex L2'][2] < self.best[stage]['Comp-GT Vertex L2'][2]:
+                self.best[stage]['Comp-GT Vertex L2'] = best_vals['Comp-GT Vertex L2']
         else:
-            self.best = best_vals
+            self.best[stage] = best_vals
 
         worst_vals = {}
         worst_vals['Comp-GT Vertex L2'] =  (
@@ -118,31 +118,39 @@ class BasicLoss:
             gt_hi[np.argmax(stats['TP-GT Vertex L2'])], 
             tp_hi[np.argmax(stats['TP-GT Vertex L2'])], 
             max(stats['TP-GT Vertex L2']))
-        if len(self.worst) != 0:
-            if worst_vals['Comp-GT Volume L1'][2] > self.worst['Comp-GT Volume L1'][2]:
-                self.worst['Comp-GT Volume L1'] = worst_vals['Comp-GT Volume L1']
-            if worst_vals['TP-GT Vertex L2'][2] > self.worst['TP-GT Vertex L2'][2]:
-                self.worst['TP-GT Vertex L2'] = worst_vals['TP-GT Vertex L2']
-            if worst_vals['Comp-GT Vertex L2'][2] > self.worst['Comp-GT Vertex L2'][2]:
-                self.worst['Comp-GT Vertex L2'] = worst_vals['Comp-GT Vertex L2']
+        if len(self.worst[stage]) != 0:
+            if (stage == 'test'):
+                if worst_vals['Comp-GT Volume L1'][2] > self.worst[stage]['Comp-GT Volume L1'][2]:
+                    self.worst[stage]['Comp-GT Volume L1'] = worst_vals['Comp-GT Volume L1']
+                if worst_vals['TP-GT Vertex L2'][2] > self.worst[stage]['TP-GT Vertex L2'][2]:
+                    self.worst[stage]['TP-GT Vertex L2'] = worst_vals['TP-GT Vertex L2']
+                if worst_vals['Comp-GT Vertex L2'][2] > self.worst[stage]['Comp-GT Vertex L2'][2]:
+                    self.worst[stage]['Comp-GT Vertex L2'] = worst_vals['Comp-GT Vertex L2']
+            else:
+                if worst_vals['Comp-GT Volume L1'][2] < self.worst[stage]['Comp-GT Volume L1'][2]:
+                    self.worst[stage]['Comp-GT Volume L1'] = worst_vals['Comp-GT Volume L1']
+                if worst_vals['TP-GT Vertex L2'][2] < self.worst[stage]['TP-GT Vertex L2'][2]:
+                    self.worst[stage]['TP-GT Vertex L2'] = worst_vals['TP-GT Vertex L2']
+                if worst_vals['Comp-GT Vertex L2'][2] < self.worst[stage]['Comp-GT Vertex L2'][2]:
+                    self.worst[stage]['Comp-GT Vertex L2'] = worst_vals['Comp-GT Vertex L2']
         else:
-            self.worst = worst_vals
+            self.worst[stage] = worst_vals
         
-        self.mean['Comp-GT Vertex L2'] = self._get_mean_by_metric('Comp-GT Vertex L2',stats,gt_hi,tp_hi)
-        self.mean['Comp-GT Volume L1'] = self._get_mean_by_metric('Comp-GT Volume L1',stats,gt_hi,tp_hi)
-        self.mean['TP-GT Vertex L2'] = self._get_mean_by_metric('TP-GT Vertex L2',stats,gt_hi,tp_hi)
+        self.mean[stage]['Comp-GT Vertex L2'] = self._get_mean_by_metric('Comp-GT Vertex L2',stats,gt_hi,tp_hi)
+        self.mean[stage]['Comp-GT Volume L1'] = self._get_mean_by_metric('Comp-GT Volume L1',stats,gt_hi,tp_hi)
+        self.mean[stage]['TP-GT Vertex L2'] = self._get_mean_by_metric('TP-GT Vertex L2',stats,gt_hi,tp_hi)
         self.iter += 1
 
         return stats
 
-    def return_best_stats(self):
-        return self.best
+    def return_best_stats(self, stage):
+        return self.best[stage]
 
-    def return_worst_stats(self):
-        return self.worst
+    def return_worst_stats(self, stage):
+        return self.worst[stage]
 
-    def return_mean_stats(self):
-        return self.mean
+    def return_mean_stats(self, stage):
+        return self.mean[stage]
 
     def compute(self, x, network_output):
         """
@@ -168,7 +176,7 @@ class BasicLoss:
         #loss segments
         shape1=completion_gt.reshape(-1, completion_gt.shape[-2], completion_gt.shape[-1])[:,:,:3]
         shape2=completion_rec.reshape(-1, completion_rec.shape[-2], completion_rec.shape[-1])[:,:,:3]
-        # errors_to_log=self._err_manger_logging.get_compute_errors_dict(shape_1=shape1.detach(),shape_2=shape2.detach())
+        errors_to_log=self._err_manger_logging.get_compute_errors_dict(shape_1=shape1.detach(),shape_2=shape2.detach())
         errors_to_loss = self._err_manger_loss.get_compute_errors_dict(shape_1=shape1,shape_2=shape2)
         # if self.lambdas[6] != 0:
         #     errors_to_loss['Full volume error'] *= self.lambdas[6]
@@ -179,9 +187,9 @@ class BasicLoss:
             loss_dict[f"{organ}_volume_error"]=errors_to_loss[f'{organ} volume error']
         loss_dict.update(total_loss=loss_dict['total_loss_comp'])
 
-        # loss_dict.update(errors_to_log)
-        # shape1=None
-        # shape2=None
+        loss_dict.update(errors_to_log)
+        shape1=None
+        shape2=None
             #compute and area and volume losses too
         return loss_dict
 
