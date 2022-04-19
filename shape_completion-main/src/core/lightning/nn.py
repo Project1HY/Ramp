@@ -14,6 +14,7 @@ import tqdm
 import numpy as np
 import itertools
 import gc
+from visualize.get_objects_hardcoded_for_sets_base import get_segmentation_manger
 
 # ----------------------------------------------------------------------------------------------------------------------
 #
@@ -26,13 +27,14 @@ class CompletionLightningModel(PytorchNet):
         self.hp = self.hparams  # Aliasing
         self._append_config_args()  # Must be done here, seeing we need hp.dev
         self.temp_data = []
+        self.body_part_volume_weights = list(hp.body_part_volume_weights)
+
         # self.test_step_data = []
 
         # Bookeeping:
         self.assets = None  # Set by Trainer
         self.loss, self.opt = None, None
         self.min_losses = defaultdict(lambda: float('inf'))
-
         self._build_model()
         self.type(dst_type=getattr(torch, self.hparams.UNIVERSAL_PRECISION))  # Transfer to precision
         self._init_model()
@@ -227,6 +229,24 @@ class CompletionLightningModel(PytorchNet):
 
     def test_step(self, b, batch_idx, set_id=0):
         pred = self.complete(b)
+
+        if self.assets.saver is not None:  # TODO - Generalize this
+            self.assets.saver.save_completions_by_batch(pred, b, set_id)
+        
+        if self.hp.visualization_run:
+            self.organs_to_lambdas = {
+                "RightArm": self.body_part_volume_weights[0],
+                "LeftArm": self.body_part_volume_weights[1],
+                "Head": self.body_part_volume_weights[2],
+                "RightLeg": self.body_part_volume_weights[3],
+                "LeftLeg": self.body_part_volume_weights[4],
+                "Torso": self.body_part_volume_weights[5]
+            }
+            
+            self.organs_to_lambdas = {k:v  for (k,v) in self.organs_to_lambdas.items() if v>0}
+            segmentation_manger=get_segmentation_manger(organs=list(self.organs_to_lambdas.keys()))
+            segmented_meshes_watertight = segmentation_manger.get_meshes_of_segments(pred,watertight_mesh=True,center=True)
+            return
         tp = b['tp']
         results = self.loss.compute_loss_end(b['gt_hi'], b['tp_hi'], b['gt'].cpu().detach().numpy(), b['gt_mask'], tp.cpu().detach().numpy(),pred['completion_xyz'].cpu().detach().numpy(), 'test')
 
@@ -250,8 +270,7 @@ class CompletionLightningModel(PytorchNet):
         #     self.test_step_data=[results]
         # else:
         #     self.test_step_data += [results]
-        if self.assets.saver is not None:  # TODO - Generalize this
-            self.assets.saver.save_completions_by_batch(pred, b, set_id)
+        
         return self.loss.compute(b, pred)
 
 
