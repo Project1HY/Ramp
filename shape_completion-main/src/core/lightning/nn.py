@@ -238,30 +238,33 @@ class CompletionLightningModel(PytorchNet):
         return {"val_loss": avg_val_loss,  # TODO - Remove double entry for val_koss
                 "progress_bar": progbar_dict,
                 "log": log_dict}
-
+    
+    def organ_segmentation_saving(self,b,pred,set_id=0):
+        reconstructed_segmented_watertight = self.segmentation_manger.get_meshes_of_segments(pred['completion_xyz'].cpu().detach(),watertight_mesh=True,center=True)
+        gt_segmented_watertight = self.segmentation_manger.get_meshes_of_segments(b['gt'].cpu().detach(),watertight_mesh=True,center=True)
+        tp_segmented_watertight = self.segmentation_manger.get_meshes_of_segments(b['tp'].cpu().detach(),watertight_mesh=True,center=True)
+        for organ in self.organs_to_lambdas.keys():
+            batch_organ = {}
+            
+            batch_organ['gt']=np.array([np.array(gt.vertices) for gt in gt_segmented_watertight[organ]])
+            batch_organ['tp']=np.array([np.array(tp.vertices) for tp in tp_segmented_watertight[organ]])
+            batch_organ['gt_hi'] = b['gt_hi']
+            batch_organ['tp_hi'] = b['tp_hi']
+            pred_organ = {'completion_xyz':np.array([np.array(pred.vertices) for pred in reconstructed_segmented_watertight[organ]])}
+            
+            batch_organ['gt_f']=np.array([np.array(gt.faces) for gt in gt_segmented_watertight[organ]])
+            batch_organ['tp_f']=np.array([np.array(tp.faces) for tp in tp_segmented_watertight[organ]])
+            self.assets.saver.save_completions_by_batch(pred_organ,batch_organ,set_id,organ=organ)
+    
     def test_step(self, b, batch_idx, set_id=0):
         pred = self.complete(b)
+        b['gt_hi']=list(['_'.join(str(x) for x in hi) for hi in b['gt_hi']])
+        b['tp_hi']=list(['_'.join(str(x) for x in hi) for hi in b['tp_hi']])
 
         if self.assets.saver is not None:  # TODO - Generalize this
-            b['gt_hi']=list(['_'.join(str(x) for x in hi) for hi in b['gt_hi']])
-            b['tp_hi']=list(['_'.join(str(x) for x in hi) for hi in b['tp_hi']])
             self.assets.saver.save_completions_by_batch(pred, b, set_id)
         if self.hp.visualization_run:
-            reconstructed_segmented_watertight = self.segmentation_manger.get_meshes_of_segments(pred['completion_xyz'].cpu().detach(),watertight_mesh=True,center=True)
-            gt_segmented_watertight = self.segmentation_manger.get_meshes_of_segments(b['gt'].cpu().detach(),watertight_mesh=True,center=True)
-            tp_segmented_watertight = self.segmentation_manger.get_meshes_of_segments(b['tp'].cpu().detach(),watertight_mesh=True,center=True)
-            for organ in self.organs_to_lambdas.keys():
-                batch_organ = {}
-                
-                batch_organ['gt']=np.array([np.array(gt.vertices) for gt in gt_segmented_watertight[organ]])
-                batch_organ['tp']=np.array([np.array(tp.vertices) for tp in tp_segmented_watertight[organ]])
-                batch_organ['gt_hi'] = b['gt_hi']
-                batch_organ['tp_hi'] = b['tp_hi']
-                pred_organ = {'completion_xyz':np.array([np.array(pred.vertices) for pred in reconstructed_segmented_watertight[organ]])}
-                
-                batch_organ['gt_f']=np.array([np.array(gt.faces) for gt in gt_segmented_watertight[organ]])
-                batch_organ['tp_f']=np.array([np.array(tp.faces) for tp in tp_segmented_watertight[organ]])
-                self.assets.saver.save_completions_by_batch(pred_organ,batch_organ,set_id,organ=organ)
+            self.organ_segmentation_saving(b,pred,set_id)        
             return
         tp = b['tp']
         results = self.loss.compute_loss_end(b['gt_hi'], b['tp_hi'], b['gt'].cpu().detach().numpy(), b['gt_mask'], tp.cpu().detach().numpy(),pred['completion_xyz'].cpu().detach().numpy(), 'test')
@@ -293,6 +296,24 @@ class CompletionLightningModel(PytorchNet):
     def test_end(self, outputs):
         if self.assets.data.num_test_loaders() == 1:
             outputs = [outputs]  # Incase singleton case
+
+        avg_test_loss = 0
+
+        for i in range(len(outputs)):  # Number of test datasets
+            ds_name = self.assets.data.index2test_ds_name(i)
+            for k in outputs[i][0].keys():
+                log_dict[f'{k}_test_{ds_name}'] = torch.stack([x[k] for x in outputs[i]]).mean()
+            ds_test_loss = log_dict[f'total_loss_test_{ds_name}']
+            progbar_dict[f'test_loss_{ds_name}'] = ds_test_loss
+            if i == 0:  # Always use the first dataset as the test loss
+                avg_test_loss = ds_test_loss
+                progbar_dict['test_loss'] = avg_test_loss
+        
+        if self.hp.visualization_run:
+            return {"test_loss": avg_test_loss,  # TODO - Remove double entry for val_koss
+                "progress_bar": progbar_dict,
+                "log": log_dict}
+        
         if self.assets.saver is not None:  # TODO - Generalize this
             rows = []
             for completion_gif_path, completion, completion_name in tqdm.tqdm(self.assets.saver.load_completions()):
@@ -305,20 +326,7 @@ class CompletionLightningModel(PytorchNet):
             columns = ["completion subject and pose", "mean velocity"]
             wandb.log({"completion temporal metrics": wandb.Table(columns=columns, data=rows)})
         log_dict, progbar_dict = {}, {}
-        avg_test_loss = 0
 
-        for i in range(len(outputs)):  # Number of test datasets
-            ds_name = self.assets.data.index2test_ds_name(i)
-            for k in outputs[i][0].keys():
-                log_dict[f'{k}_test_{ds_name}'] = torch.stack([x[k] for x in outputs[i]]).mean()
-            ds_test_loss = log_dict[f'total_loss_test_{ds_name}']
-            progbar_dict[f'test_loss_{ds_name}'] = ds_test_loss
-            if i == 0:  # Always use the first dataset as the test loss
-                avg_test_loss = ds_test_loss
-                progbar_dict['test_loss'] = avg_test_loss
-        table_dict = {}
-        for key in log_dict:
-            table_dict[key] = log_dict[key].item()    
         wandb.log({"completion test metrics":wandb.Table(columns=list(table_dict.keys()),data=[list(table_dict.values())])})
         
         best_stats = self.loss.return_best_stats('test')

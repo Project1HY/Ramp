@@ -21,6 +21,12 @@ class CompletionSaver:
             dp = exp_dir / 'completions' / ts_name
             dp.mkdir(parents=True, exist_ok=True)
             self.dump_dirs.append(dp)
+            dp = exp_dir / 'completions' / ts_name / 'RightArm'
+            dp.mkdir(parents=True, exist_ok=True)
+            dp = exp_dir / 'completions' / ts_name / 'RightLeg'
+            dp.mkdir(parents=True, exist_ok=True)
+            dp = exp_dir / 'completions' / ts_name / 'Head'
+            dp.mkdir(parents=True, exist_ok=True)
             dp = dp / "test"
             dp.mkdir(parents=True, exist_ok=True)
             
@@ -91,7 +97,8 @@ class CompletionSaver:
         dump_dp = self.dump_dirs[set_id]
         if test_step_folder:
             dump_dp = dump_dp / "test"
-
+        if organ != None:
+            dump_dp = dump_dp / organ
         # TODO - Make this generic, and not key dependent. Insert support for P2P
         gtrb = pred['completion_xyz']
         if len(gtrb.shape) > 3:
