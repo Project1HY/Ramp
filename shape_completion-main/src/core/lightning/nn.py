@@ -27,7 +27,7 @@ class CompletionLightningModel(PytorchNet):
         self.hp = self.hparams  # Aliasing
         self._append_config_args()  # Must be done here, seeing we need hp.dev
         self.temp_data = []
-        self.body_part_volume_weights = list(hp.body_part_volume_weights)
+        self.body_part_volume_weights = list(self.hp.body_part_volume_weights)
 
         # self.test_step_data = []
 
@@ -38,6 +38,18 @@ class CompletionLightningModel(PytorchNet):
         self._build_model()
         self.type(dst_type=getattr(torch, self.hparams.UNIVERSAL_PRECISION))  # Transfer to precision
         self._init_model()
+        self.organs_to_lambdas = {
+            "RightArm": self.body_part_volume_weights[0],
+            "LeftArm": self.body_part_volume_weights[1],
+            "Head": self.body_part_volume_weights[2],
+            "RightLeg": self.body_part_volume_weights[3],
+            "LeftLeg": self.body_part_volume_weights[4],
+            "Torso": self.body_part_volume_weights[5]
+        }
+            
+        self.organs_to_lambdas = {k:v  for (k,v) in self.organs_to_lambdas.items() if v>0}
+        self.segmentation_manger=get_segmentation_manger(organs=list(self.organs_to_lambdas.keys()))
+
 
     @staticmethod  # You need to override this method
     def add_model_specific_args(parent_parser):
@@ -231,21 +243,25 @@ class CompletionLightningModel(PytorchNet):
         pred = self.complete(b)
 
         if self.assets.saver is not None:  # TODO - Generalize this
+            b['gt_hi']=list(['_'.join(str(x) for x in hi) for hi in b['gt_hi']])
+            b['tp_hi']=list(['_'.join(str(x) for x in hi) for hi in b['tp_hi']])
             self.assets.saver.save_completions_by_batch(pred, b, set_id)
-        
         if self.hp.visualization_run:
-            self.organs_to_lambdas = {
-                "RightArm": self.body_part_volume_weights[0],
-                "LeftArm": self.body_part_volume_weights[1],
-                "Head": self.body_part_volume_weights[2],
-                "RightLeg": self.body_part_volume_weights[3],
-                "LeftLeg": self.body_part_volume_weights[4],
-                "Torso": self.body_part_volume_weights[5]
-            }
-            
-            self.organs_to_lambdas = {k:v  for (k,v) in self.organs_to_lambdas.items() if v>0}
-            segmentation_manger=get_segmentation_manger(organs=list(self.organs_to_lambdas.keys()))
-            segmented_meshes_watertight = segmentation_manger.get_meshes_of_segments(pred,watertight_mesh=True,center=True)
+            reconstructed_segmented_watertight = self.segmentation_manger.get_meshes_of_segments(pred['completion_xyz'].cpu().detach(),watertight_mesh=True,center=True)
+            gt_segmented_watertight = self.segmentation_manger.get_meshes_of_segments(b['gt'].cpu().detach(),watertight_mesh=True,center=True)
+            tp_segmented_watertight = self.segmentation_manger.get_meshes_of_segments(b['tp'].cpu().detach(),watertight_mesh=True,center=True)
+            for organ in self.organs_to_lambdas.keys():
+                batch_organ = {}
+                
+                batch_organ['gt']=np.array([np.array(gt.vertices) for gt in gt_segmented_watertight[organ]])
+                batch_organ['tp']=np.array([np.array(tp.vertices) for tp in tp_segmented_watertight[organ]])
+                batch_organ['gt_hi'] = b['gt_hi']
+                batch_organ['tp_hi'] = b['tp_hi']
+                pred_organ = {'completion_xyz':np.array([np.array(pred.vertices) for pred in reconstructed_segmented_watertight[organ]])}
+                
+                batch_organ['gt_f']=np.array([np.array(gt.faces) for gt in gt_segmented_watertight[organ]])
+                batch_organ['tp_f']=np.array([np.array(tp.faces) for tp in tp_segmented_watertight[organ]])
+                self.assets.saver.save_completions_by_batch(pred_organ,batch_organ,set_id,organ=organ)
             return
         tp = b['tp']
         results = self.loss.compute_loss_end(b['gt_hi'], b['tp_hi'], b['gt'].cpu().detach().numpy(), b['gt_mask'], tp.cpu().detach().numpy(),pred['completion_xyz'].cpu().detach().numpy(), 'test')

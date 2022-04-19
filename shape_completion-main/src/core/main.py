@@ -40,7 +40,7 @@ def parser():
                    help="T max taken for cosine annealing, if enabled")
     # Dataset Config:
     # NOTE: A well known ML rule: double the learning rate if you double the batch size.
-    p.add_argument('--batch_size', type=int, default=8, help='SGD batch size')
+    p.add_argument('--batch_size', type=int, default=16, help='SGD batch size')
     # TODO: This parameter applies for P & Q, however it can be overridden is some architecture
     p.add_argument('--in_channels', choices=[3, 6, 12], default=6,
                    help='Number of input channels')
@@ -50,7 +50,7 @@ def parser():
                    help="Force train for this amount. Usually we'd early stop using the callback. Use 1 to disable")
     p.add_argument('--max_epochs', type=int, default=None,  # Must be over 1
                    help='Maximum epochs to train for. Use None for close to infinite epochs')
-    p.add_argument('--lr', type=float, default=0.003, help='The learning step to use')
+    p.add_argument('--lr', type=float, default=0.006, help='The learning step to use')
     p.add_argument('--stride', type=int, default=6, help='The learning step to use')
     p.add_argument('--window_size', type=int, default=1, help='The learning step to use')
     p.add_argument('--counts', nargs=3, type=none_or_int, default=(20000, 1000, 2000),  # TODO - Change me as needed
@@ -72,8 +72,8 @@ def parser():
     p.add_argument('--lambdas', nargs="+", type=float, default=(1, 0.01, 0, 0, 0, 0, 0 , 0),
                    help='[XYZ,Normal,Moments,EuclidDistMat,EuclidNormalDistMap,FaceAreas,Volume, Velocity]'
                         'loss multiplication modifiers')
-    p.add_argument('--body_part_volume_weights', nargs=5, type=float, default=(1,0,0,0,0),
-                   help='[Rightarm, Leftarm, Head, Rightleg, Leftleg]'
+    p.add_argument('--body_part_volume_weights', nargs=6, type=float, default=(1,0,0,0,0,0),
+                   help='[Rightarm, Leftarm, Head, Rightleg, Leftleg, Torso]'
                         'loss multiplication modifiers')
 
     p.add_argument('--mask_penalties', nargs=7, type=float, default=(0, 0, 0, 0, 0, 0, 0),
@@ -89,6 +89,7 @@ def parser():
     p.add_argument('--run_frozen_encoder', type=dir_path, default=None, help='flag for using frozen encoder')
     p.add_argument('--centralize_com', action='store_true', help='flag if we want to run baseline model')
     p.add_argument('--baseline', action='store_true', help='flag if we want to run baseline model')
+    p.add_argument('--visualization_run', action='store_true', help='flag if we want to run baseline model')
     p.add_argument('--run_windowed_encoder', action='store_true', help='flag for using a window of consecutive frames based on a chosen stride')
     p.add_argument('--run_windowed_lstm_decoder', action='store_true', help='flag for using a window of consecutive frames based on a chosen stride')
     p.add_argument('--run_transformer_encoder', action='store_true', help='flag for using transformer encoder')
@@ -152,10 +153,22 @@ def train_main():
 
 def test_main():
     banner('Network Init')
-    nn = F2PEncoderDecoderWindowedTemporal(parser())
-    # print(nn.hp)
-    # ldrs = f2p_completion_loaders(nn.hp)
-    ldrs = f2p_completion_loaders(nn.hp, train='DFaustProjRandomWindowed')
+    args = parser()[0].parse_args()
+    if args.baseline:
+        nn= F2PEncoderDecoderBase(parser())
+        # nn.identify_system()
+        ldrs = f2p_completion_loaders(nn.hp, train='DFaustProj')
+    else:
+        if args.run_windowed_encoder:
+            nn = F2PEncoderDecoderWindowed(parser())
+        elif args.run_windowed_lstm_decoder:
+            nn = F2PEncoderDecoderWindowedTemporal(parser())
+            #nn.load_state_dict(torch.load(PATH), strict=False)
+
+        elif args.run_transformer_encoder:
+            nn = F2PPCTDecoderWindowed(parser())
+        # assert False, "window"
+        ldrs = f2p_completion_loaders(nn.hp, train='DFaustProjRandomWindowed')
     # banner('Testing')
     trainer = LightningTrainer(nn, ldrs)
     trainer.test()
@@ -173,5 +186,5 @@ def test_main():
 #
 # ----------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
-    train_main()
-    # test_main()
+    # train_main()
+    test_main()

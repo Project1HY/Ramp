@@ -4,7 +4,7 @@ from geom.mesh.op.cpu.remesh import trunc_to_vertex_mask
 import geom.mesh.io.base
 import geom.mesh.io.animate
 import glob
-
+import numpy as np
 
 class CompletionSaver:
 
@@ -87,7 +87,7 @@ class CompletionSaver:
                 yield str(dump_dp / f"{subject}_{pose}.gif"), geometries_comp, f"{subject}_{pose}"
 
 
-    def save_completions_by_batch(self, pred, b, set_id,test_step_folder=False):
+    def save_completions_by_batch(self, pred, b, set_id,test_step_folder=False, organ=None):
         dump_dp = self.dump_dirs[set_id]
         if test_step_folder:
             dump_dp = dump_dp / "test"
@@ -96,29 +96,31 @@ class CompletionSaver:
         gtrb = pred['completion_xyz']
         if len(gtrb.shape) > 3:
             gtrb = gtrb.reshape(-1, gtrb.shape[-2], gtrb.shape[-1])
-        gtrb = gtrb.cpu().numpy()
+        if not isinstance(gtrb,np.ndarray):
+            gtrb = gtrb.cpu().numpy()
         for i, (gt_hi, tp_hi) in enumerate(zip(b['gt_hi'], b['tp_hi'])):
+            postfix = f"{gt_hi}_tp_{tp_hi}_{organ}" if organ != None else f"{gt_hi}_tp_{tp_hi}"
             gt_hi, tp_hi = '_'.join(str(x) for x in gt_hi), '_'.join(str(x) for x in tp_hi)
             gtr_v = gtrb[i, :, :3]
             if 'gt_f' in b:
                 gt_f = b['gt_f'][i]
             else:
                 gt_f = self.f
-            self.save_func(dump_dp / f'gt_{gt_hi}_tp_{tp_hi}_res', gtr_v, gt_f)
+            self.save_func(dump_dp / f'gt_{postfix}_res', gtr_v, gt_f)
 
             if self.extended_save:
                 gt_v = b['gt'][i, :, :3]
-                self.save_func(dump_dp / f'gt_{gt_hi}_tp_{tp_hi}_gt', gt_v, gt_f)
+                self.save_func(dump_dp / f'gt_{postfix}_gt', gt_v, gt_f)
 
                 if 'gt_mask' in b:
                     gt_part_v, gt_part_f = trunc_to_vertex_mask(gt_v, gt_f, b['gt_mask'][i])
-                    self.save_func(dump_dp / f'gt_{gt_hi}_tp_{tp_hi}_gtpart', gt_part_v, gt_part_f)
+                    self.save_func(dump_dp / f'gt_{postfix}_gtpart', gt_part_v, gt_part_f)
                 elif 'gt_noise' in b:  # TODO - Quick hack for gt_noise. Fix this
-                    self.save_func(dump_dp / f'gt_{gt_hi}_tp_{tp_hi}_gtnoise', b['gt_noise'][i], None)
+                    self.save_func(dump_dp / f'gt_{postfix}_gtnoise', b['gt_noise'][i], None)
 
                 if 'tp_f' in b:
                     tp_f = b['tp_f'][i]
                 else:
                     tp_f = self.f
                 tp_v = b['tp'][i, :, :3]
-                self.save_func(dump_dp / f'gt_{gt_hi}_tp_{tp_hi}_tp', tp_v, tp_f)
+                self.save_func(dump_dp / f'gt_{postfix}_tp', tp_v, tp_f)
