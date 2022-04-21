@@ -29,8 +29,13 @@ class CompletionSaver:
             dp.mkdir(parents=True, exist_ok=True)
             dp = dp / "test"
             dp.mkdir(parents=True, exist_ok=True)
-            
-
+            dp = dp / "best"
+            dp.mkdir(parents=True, exist_ok=True)
+            dp = dp / "worst"
+            dp.mkdir(parents=True, exist_ok=True)
+            dp = dp / "rand"
+            dp.mkdir(parents=True, exist_ok=True)
+    
     def get_completions_as_pil(self, pred, b):
         # TODO - Make this generic, and not key dependent. Insert support for P2P
         gtrb = pred['completion_xyz']
@@ -93,12 +98,18 @@ class CompletionSaver:
                 yield str(dump_dp / f"{subject}_{pose}.gif"), geometries_comp, f"{subject}_{pose}"
 
 
-    def save_completions_by_batch(self, pred, b, set_id,test_step_folder=False, organ=None):
+    def save_completions_by_batch(self, pred, b, set_id,test_step_folder=False, organ=None, selection=None,metric = None):
         dump_dp = self.dump_dirs[set_id]
         if test_step_folder:
             dump_dp = dump_dp / "test"
+        
+        if selection != None:
+            dump_dp = dump_dp / selection
+        if metric != None:
+            dump_dp = dump_dp / metric
         if organ != None:
             dump_dp = dump_dp / organ
+            dump_dp.mkdir(parents=True, exist_ok=True)
         # TODO - Make this generic, and not key dependent. Insert support for P2P
         gtrb = pred['completion_xyz']
         if len(gtrb.shape) > 3:

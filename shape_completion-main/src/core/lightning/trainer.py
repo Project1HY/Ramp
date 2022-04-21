@@ -128,8 +128,7 @@ class LightningTrainer:
                                 #max_epochs = 1,
                                print_nan_grads=False,
                                    resume_cfg=self.hp.resume_cfg,
-a
-asad                            #    resume_from_checkpoint=self.hp.resume_cfg,
+                            #    resume_from_checkpoint=self.hp.resume_cfg,
                                accumulate_grad_batches=self.hp.accumulate_grad_batches,
                             #    profiler=profiler
                                 )

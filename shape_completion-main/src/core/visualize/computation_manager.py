@@ -143,10 +143,11 @@ class ErrorComputationDiffManger():
     def _mean_metrics_over_batch(self,flat_metrics_error_dict:dict):
         return {k:sum(v/v.size(0)) for k,v in flat_metrics_error_dict.items()}
 
-    def get_compute_errors_dict(self,shape_1:dict,shape_2:dict):
+    def get_compute_errors_dict(self,shape_1:dict,shape_2:dict, compute_mean=True):
         res=self._get_compute_errors_dict(shape_1=shape_1,shape_2=shape_2)
         res=self._make_flat_errors_dict(not_flat_metrics_error_dict=res)
-        res=self._mean_metrics_over_batch(flat_metrics_error_dict=res)
+        if compute_mean:
+            res=self._mean_metrics_over_batch(flat_metrics_error_dict=res)
         return res
 
 class Computation():
