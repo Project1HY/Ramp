@@ -2,6 +2,7 @@ import torch
 from torch.optim.lr_scheduler import ReduceLROnPlateau  # , CosineAnnealingLR
 import architecture.loss
 import geom.mesh.op.cpu
+import random
 # from util.mesh.ops import batch_vnrmls
 from collections import defaultdict
 from util.torch.nn import PytorchNet
@@ -46,7 +47,8 @@ class CompletionLightningModel(PytorchNet):
             "LeftLeg": self.body_part_volume_weights[4],
             "Torso": self.body_part_volume_weights[5]
         }
-            
+        self.top_metrics = {'best': [], 'worst': [], 'rand' : []}
+        self.top_subjects = {'best': [], 'worst': [], 'rand' : []}
         self.organs_to_lambdas = {k:v  for (k,v) in self.organs_to_lambdas.items() if v>0}
         self.segmentation_manger=get_segmentation_manger(organs=list(self.organs_to_lambdas.keys()))
 
@@ -240,6 +242,8 @@ class CompletionLightningModel(PytorchNet):
                 "log": log_dict}
     
     def organ_segmentation_saving(self,b,pred,set_id=0):
+        # loss_log = self.loss.compute_segmentation_loss_log(b['gt'],pred['completion_xyz'])
+        # #assert False,f"loss_log {loss_log['Full volume error']}"
         reconstructed_segmented_watertight = self.segmentation_manger.get_meshes_of_segments(pred['completion_xyz'].cpu().detach(),watertight_mesh=True,center=True)
         gt_segmented_watertight = self.segmentation_manger.get_meshes_of_segments(b['gt'].cpu().detach(),watertight_mesh=True,center=True)
         tp_segmented_watertight = self.segmentation_manger.get_meshes_of_segments(b['tp'].cpu().detach(),watertight_mesh=True,center=True)
@@ -254,15 +258,58 @@ class CompletionLightningModel(PytorchNet):
             
             batch_organ['gt_f']=np.array([np.array(gt.faces) for gt in gt_segmented_watertight[organ]])
             batch_organ['tp_f']=np.array([np.array(tp.faces) for tp in tp_segmented_watertight[organ]])
-            self.assets.saver.save_completions_by_batch(pred_organ,batch_organ,set_id,organ=organ)
+        
+        self.compute_segmentation_best_worst(batch_organ['gt'], pred_organ['completion_xyz'])
+        
+        # self.assets.saver.save_completions_by_batch(pred_organ,batch_organ,set_id,organ=organ)
+        # TODO: move this to test end, after saving only N best worst and random sample, define N in main
+    
+    def compute_segmentation_best_worst(self, b, pred, set_id=0):
+        stats = self.loss.compute_segmentation_loss_log(b['gt'],pred['completion_xyz'])
+        metrics = ['volume error']
+        sorted_stats = {}
+        #concat_top_and_curr_b = {}
+        concat_results = {'best' : [], 'worst' : [], 'rand' : []}
+        indices = {'best' : [], 'worst' : [], 'rand' : []}
+        gt_tp_list = zip(b['gt_hi'], b['tp_hi'])
+        sorted_gt_tp_list = {'best' : [], 'worst' : [], 'rand' : []}
+        #best
+        for organ in self.organs_to_lambdas.keys():
+            for item in metrics:
+                val = f'{organ} {item}'
+                #sorted_stats[val], indices['best'][val] = torch.sort(stats[val], dim=0)
+                indices['best'][val] = np.argsort(stats[val].cpu().detach().numpy())
+                indices['worst'][val] = np.flip(indices['best'][val])
+                num_of_indices = indices['best'][val].shape([0])
+                indices['rand'][val] = np.random.choice(num_of_indices, size=10, replace=False)                
+                sorted_stats[val] = [stats[index] for index in indices['best'][val]]
+                sorted_gt_tp_list['best'][val] =  [gt_tp_list[index] for index in indices['best'][val]][:10]
+                sorted_gt_tp_list['worst'][val] =  [gt_tp_list[index] for index in indices['worst'][val]][:10]
+                sorted_gt_tp_list['rand'][val] =  [gt_tp_list[index] for index in indices['rand'][val]][:10]
+                concat_results['best'][val] = np.concatenate((sorted_stats[val][:10], self.top_metrics['best'][val]))
+                concat_results['worst'][val] = np.concatenate((sorted_stats[val][-10:], self.top_metrics['worst'][val]))
+                concat_results['rand'][val] = np.concatenate((random.sample(sorted_stats[val], 10), self.top_metrics['rand'][val]))
+                indices['best'][val] = np.argsort(concat_results['best'][val])
+                indices['worst'][val] = np.argsort(concat_results['worst'][val])
+                indices['rand'][val] = np.random.choice(concat_results['rand'][val].shape[0], size=10, replace=False)  
+                sorted_gt_tp_list['best'][val] = [sorted_gt_tp_list['best'][val][index] for index in indices['best'][val]]
+                sorted_gt_tp_list['worst'][val] = [sorted_gt_tp_list['worst'][val][index] for index in indices['worst'][val]]
+                sorted_gt_tp_list['rand'][val] = [sorted_gt_tp_list['rand'][val][index] for index in indices['rand'][val]]
+                self.top_metrics['best'][val] = concat_results['best'][val][:10]
+                self.top_subjects['best'][val] = sorted_gt_tp_list['best'][val][:10]
+                self.top_metrics['worst'][val] = concat_results['worst'][val][-10:]
+                self.top_subjects['worst'][val] = sorted_gt_tp_list['worst'][val][-10:]
+                self.top_metrics['rand'][val] = concat_results['rand'][val][:10]
+                self.top_subjects['rand'][val] = sorted_gt_tp_list['rand'][val][:10]
+        
     
     def test_step(self, b, batch_idx, set_id=0):
         pred = self.complete(b)
         b['gt_hi']=list(['_'.join(str(x) for x in hi) for hi in b['gt_hi']])
         b['tp_hi']=list(['_'.join(str(x) for x in hi) for hi in b['tp_hi']])
 
-        if self.assets.saver is not None:  # TODO - Generalize this
-            self.assets.saver.save_completions_by_batch(pred, b, set_id)
+        # if self.assets.saver is not None:  # TODO - Generalize this
+            # self.assets.saver.save_completions_by_batch(pred, b, set_id)
         if self.hp.visualization_run:
             self.organ_segmentation_saving(b,pred,set_id)        
             return
@@ -360,6 +407,8 @@ class CompletionLightningModel(PytorchNet):
         result_dict = {k:v for k,v in zip(display_keys,display_vals)}
         wandb.log({"total test results": wandb.Table(columns=list(result_dict.keys()), data=[list(result_dict.values())])})
 
+        display_best_per_organ = 
+
         #self.loss.compute_loss_start()
         # This must be kept as "val_loss" and not "avg_val_loss" due to old_lightning bug
         wandb.log(log_dict)
@@ -367,21 +416,6 @@ class CompletionLightningModel(PytorchNet):
                 "progress_bar": progbar_dict,
                 "log": log_dict}
         
-        
-        # best_metrics = self.loss.return_best_stats() 
-        # best_metrics = ','.join(best_metrics)
-        # vals = ["mean", "volume", "temp"]
-        # #assert False, f"best metrics: {best_metrics}"
-        # wandb.log({"best metrics test": wandb.Table(columns=vals, data=[list(best_metrics)])})
-        # worst_metrics = self.loss.return_worst_stats() 
-        # vals2 = ["mean", "volume", "temp"]
-        # wandb.log({"worst metrics test": wandb.Table(columns=vals2, data=[list(worst_metrics)])})
-        # mean_metrics = self.loss.return_mean_stats() 
-        # vals3 = ["mean", "volume", "temp"]
-        # wandb.log({"mean metrics test": wandb.Table(columns=vals3, data=[list(mean_metrics)])})
-        # return {"test_loss": avg_test_loss,
-        #                 "progress_bar": progbar_dict,
-        #                 "log": log_dict}
     def hyper_params(self):
         return deepcopy(self.hp)
 
