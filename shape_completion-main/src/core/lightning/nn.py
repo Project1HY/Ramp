@@ -27,7 +27,7 @@ class CompletionLightningModel(PytorchNet):
         self.hp = self.hparams  # Aliasing
         self._append_config_args()  # Must be done here, seeing we need hp.dev
         self.temp_data = []
-        self.body_part_volume_weights = list(hp.body_part_volume_weights)
+        self.body_part_volume_weights = list(self.hp.body_part_volume_weights)
 
         # self.test_step_data = []
 
