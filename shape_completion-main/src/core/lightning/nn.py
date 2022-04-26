@@ -155,6 +155,15 @@ class CompletionLightningModel(PytorchNet):
         wandb.run.summary['worst_volume_error_train_gt_hi_tp_hi'] = f"{str(worst_stats['Comp-GT Volume L1'][0])} {str(worst_stats['Comp-GT Volume L1'][1])}"
         wandb.run.summary['worst_template_mean_error_train_gt_hi_tp_hi'] = f"{str(worst_stats['TP-GT Vertex L2'][0])} {str(worst_stats['TP-GT Vertex L2'][1])}"
 
+        display_vals = [log_dict["best_mean_error_train"], log_dict["best_volume_error_train"], log_dict["best_template_mean_error_train"],
+        log_dict["worst_mean_error_train"], log_dict["worst_volume_error_train"], log_dict["worst_template_mean_error_train"], log_dict["mean_error_train"],
+        log_dict["mean_volume_error_train"], log_dict["template_mean_error_train"]]
+
+        display_keys = ["best_mean_error_train", "best_volume_error_train", "best_template_mean_error_train", "worst_mean_error_train",
+        "worst_volume_error_train", "worst_template_mean_error_train", "mean_error_train", "mean_volume_error_train", "template_mean_error_train"]
+        result_dict = {k:v for k,v in zip(display_keys,display_vals)}
+        wandb.log({"total train results": wandb.Table(columns=list(result_dict.keys()), data=[list(result_dict.values())])})
+
         wandb.log(log_dict)
         return output_per_dset
 
@@ -235,6 +244,15 @@ class CompletionLightningModel(PytorchNet):
         wandb.run.summary['worst_volume_error_val_gt_hi_tp_hi'] = f"{str(worst_stats['Comp-GT Volume L1'][0])} {str(worst_stats['Comp-GT Volume L1'][1])}"
         wandb.run.summary['worst_template_mean_error_val_gt_hi_tp_hi'] = f"{str(worst_stats['TP-GT Vertex L2'][0])} {str(worst_stats['TP-GT Vertex L2'][1])}"
 
+        display_vals = [log_dict["best_mean_error_val"], log_dict["best_volume_error_val"], log_dict["best_template_mean_error_val"],
+        log_dict["worst_mean_error_val"], log_dict["worst_volume_error_val"], log_dict["worst_template_mean_error_val"], log_dict["mean_error_val"],
+        log_dict["mean_volume_error_val"], log_dict["template_mean_error_val"]]
+
+        display_keys = ["best_mean_error_val", "best_volume_error_val", "best_template_mean_error_val", "worst_mean_error_val",
+        "worst_volume_error_val", "worst_template_mean_error_val", "mean_error_val", "mean_volume_error_val", "template_mean_error_val"]
+        result_dict = {k:v for k,v in zip(display_keys,display_vals)}
+        wandb.log({"total validation results": wandb.Table(columns=list(result_dict.keys()), data=[list(result_dict.values())])})
+
         self.loss.compute_loss_start('validation')
         # This must be kept as "val_loss" and not "avg_val_loss" due to old_lightning bug
         return {"val_loss": avg_val_loss,  # TODO - Remove double entry for val_koss
@@ -250,15 +268,21 @@ class CompletionLightningModel(PytorchNet):
                 
                 gt_hi = [subject[0] for subject in self.top_subjects[selection][metric]]
                 tp_hi = [subject[1] for subject in self.top_subjects[selection][metric]]
+                mask = [subject[-1] for subject in self.top_subjects[selection][metric]]
+                gt_part = self.segmentation_manger.get_meshes_of_segments(gts,watertight_mesh=True,center=True,mask=mask)
                 reconstructed_segmented_watertight = self.segmentation_manger.get_meshes_of_segments(reconstructions,watertight_mesh=True,center=True)
                 gt_segmented_watertight = self.segmentation_manger.get_meshes_of_segments(gts,watertight_mesh=True,center=True)
                 tp_segmented_watertight = self.segmentation_manger.get_meshes_of_segments(tps,watertight_mesh=True,center=True)
+
                 batch = {}
                 for organ in self.organs_to_lambdas.keys():
                     batch_organ = {}
                     
                     batch_organ['gt']=np.array([np.array(gt.vertices) for gt in gt_segmented_watertight[organ]])
                     batch_organ['tp']=np.array([np.array(tp.vertices) for tp in tp_segmented_watertight[organ]])
+                    batch_organ['gt_part_v']=np.array([np.array(gt_partial.vertices) for gt_partial in gt_part[organ]])
+                    batch_organ['gt_part_f']=np.array([np.array(gt_partial.faces) for gt_partial in gt_part[organ]])
+                    # assert False, f"shape of batch_organ['gt_part_v'] {batch_organ['gt_part_v'][0].shape}"
                     batch_organ['gt_hi'] = gt_hi
                     batch_organ['tp_hi'] = tp_hi
                     pred_organ = {'completion_xyz':np.array([np.array(pred.vertices) for pred in reconstructed_segmented_watertight[organ]])}
@@ -272,6 +296,7 @@ class CompletionLightningModel(PytorchNet):
                 batch['tp'] = tps.cpu().detach().numpy()
                 batch['gt_hi'] = gt_hi
                 batch['tp_hi'] = tp_hi
+                batch['gt_mask'] = mask
                 self.assets.saver.save_completions_by_batch(reconstructions,batch,set_id,selection=selection,metric=metric)
 
         # TODO: move this to test end, after saving only N best worst and random sample, define N in main
@@ -279,9 +304,9 @@ class CompletionLightningModel(PytorchNet):
 
     def compute_segmentation_best_worst(self, b, pred, set_id=0):
         stats = self.loss.compute_segmentation_loss_log(b['gt'],pred['completion_xyz'])
-        metrics = ['volume error']
+        metrics = ['volume error', 'all points centralized l2 error']
         subjects = {'best' : {}, 'worst' : {}, 'rand' : {}}
-        gt_tp_list = list(zip(b['gt_hi'], b['tp_hi'], b['gt'].cpu().detach().numpy(), b['tp'].cpu().detach().numpy(), pred['completion_xyz'].cpu().detach().numpy()))
+        gt_tp_list = list(zip(b['gt_hi'], b['tp_hi'], b['gt'].cpu().detach().numpy(), b['tp'].cpu().detach().numpy(), pred['completion_xyz'].cpu().detach().numpy(), b['gt_mask']))
         #best
         for organ in self.organs:
             for item in metrics:
@@ -394,6 +419,10 @@ class CompletionLightningModel(PytorchNet):
             columns = ["completion subject and pose", "mean velocity"]
             wandb.log({"completion temporal metrics": wandb.Table(columns=columns, data=rows)})
 
+        table_dict = {}
+        for key in log_dict:
+            table_dict[key] = log_dict[key].item() 
+
         wandb.log({"completion test metrics":wandb.Table(columns=list(table_dict.keys()),data=[list(table_dict.values())])})
         
         best_stats = self.loss.return_best_stats('test')
@@ -418,9 +447,9 @@ class CompletionLightningModel(PytorchNet):
         wandb.run.summary['worst_volume_error_test_gt_hi_tp_hi'] = f"{str(worst_stats['Comp-GT Volume L1'][0])} {str(worst_stats['Comp-GT Volume L1'][1])}"
         wandb.run.summary['worst_template_mean_error_test_gt_hi_tp_hi'] = f"{str(worst_stats['TP-GT Vertex L2'][0])} {str(worst_stats['TP-GT Vertex L2'][1])}"
 
-        display_vals = [str(log_dict["best_mean_error_test"]), str(log_dict["best_volume_error_test"]), str(log_dict["best_template_mean_error_test"]),
-        str(log_dict["worst_mean_error_test"]), str(log_dict["worst_volume_error_test"]), str(log_dict["worst_template_mean_error_test"]), str(log_dict["mean_error_test"]),
-        str(log_dict["mean_volume_error_test"]), str(log_dict["template_mean_error_test"])]
+        display_vals = [log_dict["best_mean_error_test"], log_dict["best_volume_error_test"], log_dict["best_template_mean_error_test"],
+        log_dict["worst_mean_error_test"], log_dict["worst_volume_error_test"], log_dict["worst_template_mean_error_test"], log_dict["mean_error_test"],
+        log_dict["mean_volume_error_test"], log_dict["template_mean_error_test"]]
 
         display_keys = ["best_mean_error_test", "best_volume_error_test", "best_template_mean_error_test", "worst_mean_error_test",
         "worst_volume_error_test", "worst_template_mean_error_test", "mean_error_test", "mean_volume_error_test", "template_mean_error_test"]

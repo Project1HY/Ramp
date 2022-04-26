@@ -129,7 +129,10 @@ class CompletionSaver:
             if self.extended_save:
                 gt_v = b['gt'][i, :, :3]
                 self.save_func(dump_dp / f'gt_{postfix}_gt', gt_v, gt_f)
-
+                if 'gt_part_f' in b and 'gt_part_v' in b: 
+                    gt_part_v = b['gt_part_v'][i][:,:3]
+                    gt_part_f = b['gt_f'][i]
+                    self.save_func(dump_dp / f'gt_{postfix}_gtpart', gt_part_v, gt_part_f)
                 if 'gt_mask' in b:
                     gt_part_v, gt_part_f = trunc_to_vertex_mask(gt_v, gt_f, b['gt_mask'][i])
                     self.save_func(dump_dp / f'gt_{postfix}_gtpart', gt_part_v, gt_part_f)
