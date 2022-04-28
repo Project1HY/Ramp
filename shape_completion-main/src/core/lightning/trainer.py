@@ -14,6 +14,7 @@ from pathlib import Path
 import os
 import torch
 import logging as log
+from visualize.get_objects_hardcoded_for_sets_base import get_segmentation_manger
 
 
 #  This class adds additional functionality to the Lightning Trainer, wrapping it with a similar name
@@ -104,9 +105,10 @@ class LightningTrainer:
         # Support for Completion Save:
         if self.hp.save_completions > 0 and self.data.num_test_loaders() > 0:
             # TODO - Generalize to different save methods
+            seg_manager = get_segmentation_manger()
             self.saver = CompletionSaver(exp_dir=self.exp_dp, testset_names=self.data.testset_names(),
                                          extended_save=(self.hp.save_completions == 3),
-                                         f=self.data.faces() if self.hp.save_completions > 1 else None)
+                                         f=self.data.faces() if self.hp.save_completions > 1 else None,centralize_mesh_clouds = self.hp.centralize_mesh_clouds,segmentation_manager =seg_manager)
 
         if self.hp.email_report:
             if self.hp.GCREDS_PATH.is_file():

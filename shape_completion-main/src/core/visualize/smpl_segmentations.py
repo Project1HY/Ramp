@@ -281,6 +281,8 @@ class SegmentationManger():
 
     # get points
 
+    def get_vertex_segs(self)->dict:
+        return {seg_name:seg.get_vertex_seg() for seg_name,seg in self._segmentations.items()}
     def get_points_of_segments(self,v:torch.Tensor)->dict:
         return {seg_name:seg.get_points_of_segments(v=v) for seg_name,seg in self._segmentations.items()}
     def get_bounding_box_points_of_segments(self,v:torch.Tensor)->dict:

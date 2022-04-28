@@ -15,7 +15,6 @@ class F2PEncoderDecoderBase(CompletionLightningModel):
         self.encoder_part = self.encoder_full
         self.decoder = BasicShapeDecoder(code_size=self.hp.in_channels + 2 * self.hp.code_size,
                                          out_channels=self.hp.out_channels, num_convl=self.hp.decoder_convl)
-
     # noinspection PyUnresolvedReferences
     def _init_model(self):
         self.decoder.init_weights()
@@ -49,10 +48,7 @@ class F2PEncoderDecoderBase(CompletionLightningModel):
 
         y = torch.cat((full, part_code, full_code), 2).contiguous()  # [b x nv x (in_channels + 2*code_size)]
         y = self.decoder(y)
-        if self.hp.centralize_com:
-            center_of_mass= torch.mean(y, dim=1, keepdim=True)
-            center_of_mass[:,3:]=0
-            y=y-center_of_mass
+
         return {'completion_xyz': y}
 
 
