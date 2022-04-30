@@ -129,11 +129,12 @@ class NormalizeScale(PreCompilerTransform):
 
 
 class Center(PreCompilerTransform):
-    def __init__(self, slicer=slice(0, 3), keys=('gt', 'tp')):
+    def __init__(self,seg_manager, slicer=slice(0, 3), keys=('gt', 'tp')):
         self._slicer = slicer
         self._keys = keys
 
     def __call__(self, x):
+        assert False,f"x is {x}"
         for k in self._keys:
             center_offset = x[k][:, self._slicer].mean(axis=0, keepdims=True)
             x[k][:, self._slicer] -= center_offset
@@ -144,6 +145,23 @@ class Center(PreCompilerTransform):
                     joint_trans += [trans]
                 x['gt_world_joints'] = np.array(joint_trans)
         return x
+
+    def __repr__(self):
+        return self.__class__.__name__ + f'(channels={self._slicer},keys={self._keys})'
+
+class CenterTorso(PreCompilerTransform):
+    def __init__(self,seg_manager ,slicer=slice(0, 3),keys=('gt', 'tp')):
+        self._slicer = slicer
+        self._keys = keys
+        self.seg_manager = seg_manager
+        self.segmentation = self.seg_manager.get_vertex_segs()['Torso']
+    def __call__(self, x):
+        for k in self._keys:
+            com_copy = x[k][:,self._slicer]
+            com_copy = com_copy[self.segmentation]
+            center_offset = x[k][:, self._slicer].mean(axis=0, keepdims=True)
+            x[k][:, self._slicer] -= center_offset
+        return x        
 
     def __repr__(self):
         return self.__class__.__name__ + f'(channels={self._slicer},keys={self._keys})'

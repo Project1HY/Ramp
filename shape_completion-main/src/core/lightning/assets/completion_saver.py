@@ -1,6 +1,6 @@
 import random
 
-from geom.mesh.op.cpu.remesh import trunc_to_vertex_mask
+from geom.mesh.op.cpu.remesh import trunc_to_vertex_mask,centralize_mesh
 import geom.mesh.io.base
 import geom.mesh.io.animate
 import glob
@@ -8,12 +8,13 @@ import numpy as np
 
 class CompletionSaver:
 
-    def __init__(self, exp_dir, testset_names, extended_save, f):
+    def __init__(self, exp_dir, testset_names, extended_save, f,segmentation_manager,centralize_mesh_clouds=True):
         from cfg import SAVE_MESH_AS
         self.save_func = getattr(geom.mesh.io.base, f'write_{SAVE_MESH_AS}')
         self.read_func = getattr(geom.mesh.io.base, f'read_{SAVE_MESH_AS}')
-
+        self.centralize_mesh_clouds = centralize_mesh_clouds
         self.extended_save = extended_save
+        self.segmentation_manger = segmentation_manager
         self.f = f  # Might be None
 
         self.dump_dirs = []
@@ -39,6 +40,14 @@ class CompletionSaver:
     def get_completions_as_pil(self, pred, b):
         # TODO - Make this generic, and not key dependent. Insert support for P2P
         gtrb = pred['completion_xyz']
+
+        # if self.centralize_mesh_clouds:
+        #     gt_com = self.segmentation_manger.get_center_of_mass_points_of_segments(b['gt'])['Torso']
+        #     tp_com = self.segmentation_manger.get_center_of_mass_points_of_segments(b['tp'])['Torso']
+        #     recon_com = self.segmentation_manger.get_center_of_mass_points_of_segments(gtrb)['Torso']
+        #     b['gt'] = centralize_mesh(b['gt'],gt_com)
+        #     b['tp'] = centralize_mesh(b['tp'],tp_com)
+        #     gtrb = centralize_mesh(pred['completion_xyz'],recon_com)
         gt = b['gt']
         tp = b['tp']
         gt_hi = b['gt_hi']
@@ -52,6 +61,7 @@ class CompletionSaver:
 
         gtrb = gtrb.cpu().numpy()
         pils = []
+        
         for i in range(len(b['gt_hi'])):
             gtr_v = gtrb[i, :, :3]
             gt_v = gt[i, :, :3].cpu().numpy()
@@ -98,6 +108,7 @@ class CompletionSaver:
                 yield str(dump_dp / f"{subject}_{pose}.gif"), geometries_comp, f"{subject}_{pose}"
 
 
+
     def save_completions_by_batch(self, pred, b, set_id,test_step_folder=False, organ=None, selection=None,metric = None):
         dump_dp = self.dump_dirs[set_id]
         if test_step_folder:
@@ -110,10 +121,12 @@ class CompletionSaver:
         if organ != None:
             dump_dp = dump_dp / organ
             dump_dp.mkdir(parents=True, exist_ok=True)
-        # TODO - Make this generic, and not key dependent. Insert support for P2P
-        gtrb = pred['completion_xyz']
+
         if len(gtrb.shape) > 3:
             gtrb = gtrb.reshape(-1, gtrb.shape[-2], gtrb.shape[-1])
+    
+        # TODO - Make this generic, and not key dependent. Insert support for P2P
+        gtrb = pred['completion_xyz']
         if not isinstance(gtrb,np.ndarray):
             gtrb = gtrb.cpu().numpy()
         for i, (gt_hi, tp_hi) in enumerate(zip(b['gt_hi'], b['tp_hi'])):
@@ -129,7 +142,10 @@ class CompletionSaver:
             if self.extended_save:
                 gt_v = b['gt'][i, :, :3]
                 self.save_func(dump_dp / f'gt_{postfix}_gt', gt_v, gt_f)
-
+                if 'gt_part_f' in b and 'gt_part_v' in b: 
+                    gt_part_v = b['gt_part_v'][i][:,:3]
+                    gt_part_f = b['gt_f'][i]
+                    self.save_func(dump_dp / f'gt_{postfix}_gtpart', gt_part_v, gt_part_f)
                 if 'gt_mask' in b:
                     gt_part_v, gt_part_f = trunc_to_vertex_mask(gt_v, gt_f, b['gt_mask'][i])
                     self.save_func(dump_dp / f'gt_{postfix}_gtpart', gt_part_v, gt_part_f)

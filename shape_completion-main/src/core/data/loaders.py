@@ -2,6 +2,7 @@ from data.sets import DatasetMenu,SkinningConfiguration,HomogenicMatCfg
 from data.base import CompletionDataset,ParametricSkinningDataset
 from data.transforms import *
 from typing import Union, List, Tuple
+from visualize.get_objects_hardcoded_for_sets_base import get_segmentation_manger
 
 # Config:
 FULL_SPLIT = [0.8, 0.1, 0.1]
@@ -150,7 +151,10 @@ def _loaders(hp, ds_name='DFaust', cls='train', transforms: Union[List, Tuple] =
     assert cls in ('train', 'vald_test', 'test')
     transforms = list(transforms)
     # transforms.append(L2BallNormalize())  # Always normalize to the L2 Ball
-    transforms.append(Center())
+    if hp.centralize_mesh_clouds:
+        transforms.append(CenterTorso(get_segmentation_manger()))
+    else:
+        transforms.append(Center())
     # Small Rule Corrections:
     batch_size = 1 if 'scan' in ds_name.lower() else hp.batch_size  # TODO - is this needed? Do we need CPU?
     ds: CompletionDataset = DatasetMenu.order(ds_name)

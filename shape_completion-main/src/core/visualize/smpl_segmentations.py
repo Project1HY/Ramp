@@ -8,6 +8,7 @@ from smpl_segmentation_dict import get_valid_n_joints
 from smpl_segmentation_dict import flatten
 from metrics_calculate import get_areas,get_volumes,get_bounding_boxes_points
 from metrics_calculate import get_bounding_box_areas,get_bounding_box_volumes
+from geom.mesh.op.cpu.remesh import trunc_to_vertex_mask
 
 def get_faces_that_will_close_mesh_hole(boundry_edges:list)->list:
     """close_mesh_hole.
@@ -228,7 +229,7 @@ class Segmentation():
         v=self._center_mesh(v_seg=v)
         return get_volumes(v=v,f=f)
 
-    def get_mesh_of_segement(self,v:torch.Tensor,center:bool=True,watertight_mesh:bool=True)->list:
+    def get_mesh_of_segement(self,v:torch.Tensor,center:bool=True,watertight_mesh:bool=True,mask=None)->list:
         """get_mesh_of_segement.
         get a list of  for the given segment of the a mesh.
         this function is calculating this quantety on the whole batch.
@@ -239,13 +240,26 @@ class Segmentation():
             list: the list of the meshes of the segement for the input batch. the i'th entry represent the segement mesh of the i'th model in the batch [batch_size]
         """
         faces=self.get_faces_watertight() if watertight_mesh else self.get_faces_non_watertight()
-        v=v[:,self.get_vertex_seg(),:]
-        if center:
-            v=self._center_mesh(v_seg=v)
+        v = v[:,:,:3]
         res=[]
-        for i in range(v.size(0)):
-            seg_mesh = trimesh.Trimesh(vertices=v[i,:,:], faces=faces, process=False)
-            res.append(seg_mesh)
+        if mask == None:
+            v=v[:,self.get_vertex_seg(),:]
+            if center:
+                v=self._center_mesh(v_seg=v)
+
+            for i in range(v.size(0)):
+                seg_mesh = trimesh.Trimesh(vertices=v[i,:,:], faces=faces, process=False)
+                res.append(seg_mesh)
+        else:
+            for i in range(v.size(0)):
+                cur_mask = np.array(mask[i])
+                segment = np.array(self.get_vertex_seg())
+                actual_mask = np.intersect1d(cur_mask,segment)
+                # assert False, f"actual_mask {actual_mask} shape {actual_mask.shape}"
+                v_part,f_part = trunc_to_vertex_mask(v[i,:,:],faces,actual_mask)
+                
+                seg_mesh = trimesh.Trimesh(vertices=v_part, faces=f_part, process=False)
+                res.append(seg_mesh)
         return res
 
 class SegmentationManger():
@@ -260,13 +274,15 @@ class SegmentationManger():
         return {seg_name:seg.get_volumes_of_segment(v=v) for seg_name,seg in self._segmentations.items()}
     def get_areas_of_segments(self,v:torch.Tensor)->dict:
         return {seg_name:seg.get_areas_of_segment(v=v) for seg_name,seg in self._segmentations.items()}
-    def get_meshes_of_segments(self,v:torch.Tensor,watertight_mesh:str,center:bool=True)->dict:
-        return {seg_name:seg.get_mesh_of_segement(v=v,watertight_mesh=watertight_mesh,center=center) for seg_name,seg in self._segmentations.items()}
+    def get_meshes_of_segments(self,v:torch.Tensor,watertight_mesh:str,center:bool=True,mask=None)->dict:
+        return {seg_name:seg.get_mesh_of_segement(v=v,watertight_mesh=watertight_mesh,center=center,mask=mask) for seg_name,seg in self._segmentations.items()}
     def get_segmentation_list(self)->list:
         return [seg_name for seg_name in self._segmentations.keys()]
 
     # get points
 
+    def get_vertex_segs(self)->dict:
+        return {seg_name:seg.get_vertex_seg() for seg_name,seg in self._segmentations.items()}
     def get_points_of_segments(self,v:torch.Tensor)->dict:
         return {seg_name:seg.get_points_of_segments(v=v) for seg_name,seg in self._segmentations.items()}
     def get_bounding_box_points_of_segments(self,v:torch.Tensor)->dict:

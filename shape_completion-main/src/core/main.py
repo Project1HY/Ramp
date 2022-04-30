@@ -30,7 +30,7 @@ def parser():
                    help='Only works if version != None and and weight_dir exists. '
                         '1st Bool: Whether to attempt restore of early stopping callback. '
                         '2nd Bool: Whether to attempt restore learning rate scheduler')
-    p.add_argument('--save_completions', type=int, choices=[0, 1, 2, 3], default=2,
+    p.add_argument('--save_completions', type=int, choices=[0, 1, 2, 3], default=3,
                    help='Use 0 for no save. Use 1 for vertex only save in obj file. Use 2 for a full mesh save (v&f). '
                         'Use 3 for gt,tp,gt_part,tp_part save as well.')
     p.add_argument('--use_cosine_annealing', type=bool, default=False,
@@ -72,9 +72,11 @@ def parser():
     p.add_argument('--lambdas', nargs="+", type=float, default=(1, 0.01, 0, 0, 0, 0, 0 , 0),
                    help='[XYZ,Normal,Moments,EuclidDistMat,EuclidNormalDistMap,FaceAreas,Volume, Velocity]'
                         'loss multiplication modifiers')
-    p.add_argument('--body_part_volume_weights', nargs=6, type=float, default=(1,0,0,0,0,0),
+    p.add_argument('--body_part_volume_weights', nargs=6, type=float, default=(0,0,1,0,0,0),
                    help='[Rightarm, Leftarm, Head, Rightleg, Leftleg, Torso]'
                         'loss multiplication modifiers')
+    p.add_argument('--centralize_mesh_clouds', action='store_true', help='flag if we want to centralize completion saving')
+
 
     p.add_argument('--mask_penalties', nargs=7, type=float, default=(0, 0, 0, 0, 0, 0, 0),
                    help='[XYZ,Normal,Moments,EuclidDistMat,EuclidNormalDistMap,FaceAreas,Volume]'
@@ -158,7 +160,7 @@ def test_main():
     if args.baseline:
         nn= F2PEncoderDecoderBase(parser())
         # nn.identify_system()
-        nn.hp.counts = (0,0,2000000000000)
+        nn.hp.counts = (0,0,2000000)
         ldrs = f2p_completion_loaders(nn.hp, test='DFaustProj')
     else:
         if args.run_windowed_encoder:
@@ -170,7 +172,7 @@ def test_main():
         elif args.run_transformer_encoder:
             nn = F2PPCTDecoderWindowed(parser())
         # assert False, "window"
-        nn.hp.counts = (0,0,2000000000000)
+        nn.hp.counts = (0,0,2000000)
         ldrs = f2p_completion_loaders(nn.hp, test='DFaustProjRandomWindowed')
     # banner('Testing')
     trainer = LightningTrainer(nn, ldrs)

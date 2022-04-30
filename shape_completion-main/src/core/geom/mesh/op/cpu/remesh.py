@@ -4,7 +4,7 @@ from geom.mesh.io.base import numpy2open3d_mesh, open3d_mesh2numpy, numpy2open3d
 # from geom.mesh.op.cpu.todo.open3d_tutorial import get_armadillo_mesh
 import scipy
 from util.time import time_me
-
+import torch
 
 # TODO - Meshfix
 # [1] Collapse short edges / split long edges
@@ -22,6 +22,12 @@ def remove_faces(v, f, fi):
 def remove_vertices(v, f, vi):
     return trunc_to_vertex_mask(v, f, flip_vertex_mask(v.shape[0], vi))
 
+def centralize_mesh(v,com):
+    com[:,3:]=0
+    com=com.unsqueeze(1)
+    # assert False, f"com shape {com.shape}"
+    v=v-com
+    return v
 
 def trunc_to_vertex_mask(v, f, vi,clean=False):
     if f is None:
