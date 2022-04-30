@@ -151,6 +151,75 @@ class BasicLoss:
 
     def return_mean_stats(self, stage):
         return self.mean[stage]
+    
+    def compute_segmentation_loss_log(self,gt,rec):
+
+        shape1=gt.reshape(-1, gt.shape[-2], gt.shape[-1])[:,:,:3]
+        shape2=rec.reshape(-1, rec.shape[-2], rec.shape[-1])[:,:,:3]
+        return self._err_manger_logging.get_compute_errors_dict(shape_1=shape1.detach(),shape_2=shape2.detach(),compute_mean=False)
+
+    # def compute_segmentation_best_worst(self, gt_hi, tp_hi, gt, masks, tp, comp, stage, face_override=False):
+    #     stats =  self.compute_segmentation_loss_log(gt, rec)
+        
+    #     if len(gt.shape) > 3:
+    #         gt = gt.reshape(-1, gt.shape[-2], gt.shape[-1])
+    #     if len(tp.shape) > 3:
+    #         tp = tp.reshape(-1, tp.shape[-2], tp.shape[-1])
+
+    #     best_vals = {}
+    #     best_vals['Comp-GT Vertex L2'] =  (
+    #         gt_hi[np.argmin(stats['Comp-GT Vertex L2'])],
+    #          tp_hi[np.argmin(stats['Comp-GT Vertex L2'])],
+    #           min(stats['Comp-GT Vertex L2']))
+    #     best_vals['Comp-GT Volume L1'] = (
+    #         gt_hi[np.argmin(stats['Comp-GT Volume L1'])], 
+    #         tp_hi[np.argmin(stats['Comp-GT Volume L1'])], 
+    #         min(stats['Comp-GT Volume L1']))
+    #     best_vals['TP-GT Vertex L2'] = (
+    #         gt_hi[np.argmin(stats['TP-GT Vertex L2'])], 
+    #         tp_hi[np.argmin(stats['TP-GT Vertex L2'])], 
+    #         min(stats['TP-GT Vertex L2']))
+    #     if len(self.best[stage]) != 0:
+    #         if best_vals['Comp-GT Volume L1'][2] < self.best[stage]['Comp-GT Volume L1'][2]:
+    #             self.best[stage]['Comp-GT Volume L1'] = best_vals['Comp-GT Volume L1']
+    #         if best_vals['TP-GT Vertex L2'][2] < self.best[stage]['TP-GT Vertex L2'][2]:
+    #             self.best[stage]['TP-GT Vertex L2'] = best_vals['TP-GT Vertex L2']
+    #         if best_vals['Comp-GT Vertex L2'][2] < self.best[stage]['Comp-GT Vertex L2'][2]:
+    #             self.best[stage]['Comp-GT Vertex L2'] = best_vals['Comp-GT Vertex L2']
+    #     else:
+    #         self.best[stage] = best_vals
+
+    #     worst_vals = {}
+    #     worst_vals['Comp-GT Vertex L2'] =  (
+    #         gt_hi[np.argmax(stats['Comp-GT Vertex L2'])],
+    #          tp_hi[np.argmax(stats['Comp-GT Vertex L2'])],
+    #           max(stats['Comp-GT Vertex L2']))
+    #     worst_vals['Comp-GT Volume L1'] = (
+    #         gt_hi[np.argmax(stats['Comp-GT Volume L1'])], 
+    #         tp_hi[np.argmax(stats['Comp-GT Volume L1'])], 
+    #         max(stats['Comp-GT Volume L1']))
+    #     worst_vals['TP-GT Vertex L2'] = (
+    #         gt_hi[np.argmax(stats['TP-GT Vertex L2'])], 
+    #         tp_hi[np.argmax(stats['TP-GT Vertex L2'])], 
+    #         max(stats['TP-GT Vertex L2']))
+    #     if len(self.worst[stage]) != 0:
+    #         if (stage == 'test'):
+    #             if worst_vals['Comp-GT Volume L1'][2] > self.worst[stage]['Comp-GT Volume L1'][2]:
+    #                 self.worst[stage]['Comp-GT Volume L1'] = worst_vals['Comp-GT Volume L1']
+    #             if worst_vals['TP-GT Vertex L2'][2] > self.worst[stage]['TP-GT Vertex L2'][2]:
+    #                 self.worst[stage]['TP-GT Vertex L2'] = worst_vals['TP-GT Vertex L2']
+    #             if worst_vals['Comp-GT Vertex L2'][2] > self.worst[stage]['Comp-GT Vertex L2'][2]:
+    #                 self.worst[stage]['Comp-GT Vertex L2'] = worst_vals['Comp-GT Vertex L2']
+    #         else:
+    #             if worst_vals['Comp-GT Volume L1'][2] < self.worst[stage]['Comp-GT Volume L1'][2]:
+    #                 self.worst[stage]['Comp-GT Volume L1'] = worst_vals['Comp-GT Volume L1']
+    #             if worst_vals['TP-GT Vertex L2'][2] < self.worst[stage]['TP-GT Vertex L2'][2]:
+    #                 self.worst[stage]['TP-GT Vertex L2'] = worst_vals['TP-GT Vertex L2']
+    #             if worst_vals['Comp-GT Vertex L2'][2] < self.worst[stage]['Comp-GT Vertex L2'][2]:
+    #                 self.worst[stage]['Comp-GT Vertex L2'] = worst_vals['Comp-GT Vertex L2']
+    #     else:
+    #         self.worst[stage] = worst_vals
+         
 
     def compute(self, x, network_output):
         """

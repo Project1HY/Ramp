@@ -29,4 +29,4 @@ export PYTHONPATH=/home/yiftach.ede/Ramp/shape_completion-main/src/core/visualiz
 # mount -o ro //132.68.39.206/gipfs ~/gipfs
 # jupyter lab --no-browser --ip=$(hostname -I) --port-retries=100
 wandb login 19e347e092a58ca11a380ad43bd1fd5103f4d14a
-xvfb-run -a -s "-screen 0 1440x900x24" python src/core/main.py --exp_name LSTM_centralize_lambda --run_windowed_lstm_decoder --window_size 8 --stride 16 --centralize_com --version 33 --batch_size 8 
+xvfb-run -a -s "-screen 0 1440x900x24" python src/core/main.py --exp_name LSTM_smaller_window_lambda --run_windowed_lstm_decoder --window_size 4 --stride 12  --version 1 --batch_size 8 

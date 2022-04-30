@@ -2,6 +2,7 @@ import torch
 from torch.optim.lr_scheduler import ReduceLROnPlateau  # , CosineAnnealingLR
 import architecture.loss
 import geom.mesh.op.cpu
+import random
 # from util.mesh.ops import batch_vnrmls
 from collections import defaultdict
 from util.torch.nn import PytorchNet
@@ -28,7 +29,6 @@ class CompletionLightningModel(PytorchNet):
         self._append_config_args()  # Must be done here, seeing we need hp.dev
         self.temp_data = []
         self.body_part_volume_weights = list(self.hp.body_part_volume_weights)
-
         # self.test_step_data = []
 
         # Bookeeping:
@@ -38,6 +38,20 @@ class CompletionLightningModel(PytorchNet):
         self._build_model()
         self.type(dst_type=getattr(torch, self.hparams.UNIVERSAL_PRECISION))  # Transfer to precision
         self._init_model()
+        self.organs_to_lambdas = {
+            "RightArm": self.body_part_volume_weights[0],
+            "LeftArm": self.body_part_volume_weights[1],
+            "Head": self.body_part_volume_weights[2],
+            "RightLeg": self.body_part_volume_weights[3],
+            "LeftLeg": self.body_part_volume_weights[4],
+            "Torso": self.body_part_volume_weights[5]
+        }
+        self.top_metrics = {'best': {}, 'worst': {}, 'rand' : {}}
+        self.top_subjects = {'best': {}, 'worst': {}, 'rand' : {}}
+        self.organs_to_lambdas = {k:v  for (k,v) in self.organs_to_lambdas.items() if v>0}
+        self.organs = list(self.organs_to_lambdas.keys()) + ["Full"]
+        self.segmentation_manger=get_segmentation_manger(organs=list(self.organs_to_lambdas.keys()))
+
 
     @staticmethod  # You need to override this method
     def add_model_specific_args(parent_parser):
@@ -226,27 +240,96 @@ class CompletionLightningModel(PytorchNet):
         return {"val_loss": avg_val_loss,  # TODO - Remove double entry for val_koss
                 "progress_bar": progbar_dict,
                 "log": log_dict}
+    
+    def organ_segmentation_saving(self,set_id=0):
+        for selection in self.top_subjects.keys():
+            for metric in self.top_subjects[selection]: 
+                reconstructions = torch.Tensor(np.stack([subject[4] for subject in self.top_subjects[selection][metric]]))
+                gts = torch.Tensor(np.stack([subject[2] for subject in self.top_subjects[selection][metric]]))
+                tps = torch.Tensor(np.stack([subject[3] for subject in self.top_subjects[selection][metric]]))
+                
+                gt_hi = [subject[0] for subject in self.top_subjects[selection][metric]]
+                tp_hi = [subject[1] for subject in self.top_subjects[selection][metric]]
+                reconstructed_segmented_watertight = self.segmentation_manger.get_meshes_of_segments(reconstructions,watertight_mesh=True,center=True)
+                gt_segmented_watertight = self.segmentation_manger.get_meshes_of_segments(gts,watertight_mesh=True,center=True)
+                tp_segmented_watertight = self.segmentation_manger.get_meshes_of_segments(tps,watertight_mesh=True,center=True)
+                batch = {}
+                for organ in self.organs_to_lambdas.keys():
+                    batch_organ = {}
+                    
+                    batch_organ['gt']=np.array([np.array(gt.vertices) for gt in gt_segmented_watertight[organ]])
+                    batch_organ['tp']=np.array([np.array(tp.vertices) for tp in tp_segmented_watertight[organ]])
+                    batch_organ['gt_hi'] = gt_hi
+                    batch_organ['tp_hi'] = tp_hi
+                    pred_organ = {'completion_xyz':np.array([np.array(pred.vertices) for pred in reconstructed_segmented_watertight[organ]])}
+                    
+                    batch_organ['gt_f']=np.array([np.array(gt.faces) for gt in gt_segmented_watertight[organ]])
+                    batch_organ['tp_f']=np.array([np.array(tp.faces) for tp in tp_segmented_watertight[organ]])
 
+                    self.assets.saver.save_completions_by_batch(pred_organ,batch_organ,set_id,organ=organ,selection=selection,metric=metric)
+                reconstructions = {'completion_xyz':reconstructions.cpu().detach().numpy()}
+                batch['gt'] = gts.cpu().detach().numpy()
+                batch['tp'] = tps.cpu().detach().numpy()
+                batch['gt_hi'] = gt_hi
+                batch['tp_hi'] = tp_hi
+                self.assets.saver.save_completions_by_batch(reconstructions,batch,set_id,selection=selection,metric=metric)
+
+        # TODO: move this to test end, after saving only N best worst and random sample, define N in main
+        return
+
+    def compute_segmentation_best_worst(self, b, pred, set_id=0):
+        stats = self.loss.compute_segmentation_loss_log(b['gt'],pred['completion_xyz'])
+        metrics = ['volume error']
+        subjects = {'best' : {}, 'worst' : {}, 'rand' : {}}
+        gt_tp_list = list(zip(b['gt_hi'], b['tp_hi'], b['gt'].cpu().detach().numpy(), b['tp'].cpu().detach().numpy(), pred['completion_xyz'].cpu().detach().numpy()))
+        #best
+        for organ in self.organs:
+            for item in metrics:
+                val = f'{organ} {item}'
+                stats[val] = stats[val].cpu().detach().numpy()
+                temp_stats_val = stats[val]
+                subjects['best'][val] = gt_tp_list
+                subjects['worst'][val] = gt_tp_list
+                subjects['rand'][val] = gt_tp_list
+                best_stats = stats[val]
+                worst_stats = stats[val]
+                if val in self.top_metrics['best']:
+                    #best
+                    # assert False,f"{stats[val]}\n,{self.top_metrics['best'][val]}"
+                    best_stats = np.concatenate((stats[val],self.top_metrics['best'][val]))
+                    subjects['best'][val] += self.top_subjects['best'][val]
+                    #worst
+                    worst_stats = np.concatenate((stats[val],self.top_metrics['worst'][val]))
+                    subjects['worst'][val] += self.top_subjects['worst'][val]                   
+                    
+                    #random
+                    subjects['rand'][val] += self.top_subjects['rand'][val]
+                    indices_best = np.argsort(best_stats)
+                    indices_worst = np.argsort(-worst_stats)
+
+                stats[val]=temp_stats_val
+                
+                indices_best = np.argsort(best_stats)
+                indices_worst = np.argsort(-worst_stats)
+                # try:
+                self.top_subjects['best'][val] = [subjects['best'][val][index] for index in indices_best][:10]
+                self.top_metrics['best'][val] = best_stats[indices_best][:10]
+
+                self.top_subjects['worst'][val] = [subjects['worst'][val][index] for index in indices_worst][:10]
+                self.top_metrics['worst'][val] = worst_stats[indices_worst][:10]
+
+                self.top_subjects['rand'][val] = list(np.random.permutation(subjects['rand'][val])[:10])
+                    
     def test_step(self, b, batch_idx, set_id=0):
         pred = self.complete(b)
+        b['gt_hi']=list(['_'.join(str(x) for x in hi) for hi in b['gt_hi']])
+        b['tp_hi']=list(['_'.join(str(x) for x in hi) for hi in b['tp_hi']])
 
-        if self.assets.saver is not None:  # TODO - Generalize this
-            self.assets.saver.save_completions_by_batch(pred, b, set_id)
-        
+        # if self.assets.saver is not None:  # TODO - Generalize this
+            # self.assets.saver.save_completions_by_batch(pred, b, set_id)
         if self.hp.visualization_run:
-            self.organs_to_lambdas = {
-                "RightArm": self.body_part_volume_weights[0],
-                "LeftArm": self.body_part_volume_weights[1],
-                "Head": self.body_part_volume_weights[2],
-                "RightLeg": self.body_part_volume_weights[3],
-                "LeftLeg": self.body_part_volume_weights[4],
-                "Torso": self.body_part_volume_weights[5]
-            }
-            
-            self.organs_to_lambdas = {k:v  for (k,v) in self.organs_to_lambdas.items() if v>0}
-            segmentation_manger=get_segmentation_manger(organs=list(self.organs_to_lambdas.keys()))
-            segmented_meshes_watertight = segmentation_manger.get_meshes_of_segments(pred,watertight_mesh=True,center=True)
-            return
+            self.compute_segmentation_best_worst(b,pred,set_id)        
+            return self.loss.compute(b, pred)
         tp = b['tp']
         results = self.loss.compute_loss_end(b['gt_hi'], b['tp_hi'], b['gt'].cpu().detach().numpy(), b['gt_mask'], tp.cpu().detach().numpy(),pred['completion_xyz'].cpu().detach().numpy(), 'test')
 
@@ -277,6 +360,28 @@ class CompletionLightningModel(PytorchNet):
     def test_end(self, outputs):
         if self.assets.data.num_test_loaders() == 1:
             outputs = [outputs]  # Incase singleton case
+        log_dict, progbar_dict = {}, {}
+
+        avg_test_loss = 0
+        # assert False,f"self metrics {self.top_metrics}, self subjects {self.top_subjects}"
+
+        for i in range(len(outputs)):  # Number of test datasets
+            ds_name = self.assets.data.index2test_ds_name(i)
+            for k in outputs[i][0].keys():
+                log_dict[f'{k}_test_{ds_name}'] = torch.stack([x[k] for x in outputs[i]]).mean()
+            ds_test_loss = log_dict[f'total_loss_test_{ds_name}']
+            progbar_dict[f'test_loss_{ds_name}'] = ds_test_loss
+            if i == 0:  # Always use the first dataset as the test loss
+                avg_test_loss = ds_test_loss
+                progbar_dict['test_loss'] = avg_test_loss
+        if self.hp.visualization_run:
+            if self.assets.saver is not None:  # TODO - Generalize this            
+                self.organ_segmentation_saving()
+
+            return {"test_loss": avg_test_loss,  # TODO - Remove double entry for val_koss
+                "progress_bar": progbar_dict,
+                "log": log_dict}
+        
         if self.assets.saver is not None:  # TODO - Generalize this
             rows = []
             for completion_gif_path, completion, completion_name in tqdm.tqdm(self.assets.saver.load_completions()):
@@ -288,21 +393,7 @@ class CompletionLightningModel(PytorchNet):
                 rows += [[completion_name, mean_velocity]]
             columns = ["completion subject and pose", "mean velocity"]
             wandb.log({"completion temporal metrics": wandb.Table(columns=columns, data=rows)})
-        log_dict, progbar_dict = {}, {}
-        avg_test_loss = 0
 
-        for i in range(len(outputs)):  # Number of test datasets
-            ds_name = self.assets.data.index2test_ds_name(i)
-            for k in outputs[i][0].keys():
-                log_dict[f'{k}_test_{ds_name}'] = torch.stack([x[k] for x in outputs[i]]).mean()
-            ds_test_loss = log_dict[f'total_loss_test_{ds_name}']
-            progbar_dict[f'test_loss_{ds_name}'] = ds_test_loss
-            if i == 0:  # Always use the first dataset as the test loss
-                avg_test_loss = ds_test_loss
-                progbar_dict['test_loss'] = avg_test_loss
-        table_dict = {}
-        for key in log_dict:
-            table_dict[key] = log_dict[key].item()    
         wandb.log({"completion test metrics":wandb.Table(columns=list(table_dict.keys()),data=[list(table_dict.values())])})
         
         best_stats = self.loss.return_best_stats('test')
@@ -343,21 +434,6 @@ class CompletionLightningModel(PytorchNet):
                 "progress_bar": progbar_dict,
                 "log": log_dict}
         
-        
-        # best_metrics = self.loss.return_best_stats() 
-        # best_metrics = ','.join(best_metrics)
-        # vals = ["mean", "volume", "temp"]
-        # #assert False, f"best metrics: {best_metrics}"
-        # wandb.log({"best metrics test": wandb.Table(columns=vals, data=[list(best_metrics)])})
-        # worst_metrics = self.loss.return_worst_stats() 
-        # vals2 = ["mean", "volume", "temp"]
-        # wandb.log({"worst metrics test": wandb.Table(columns=vals2, data=[list(worst_metrics)])})
-        # mean_metrics = self.loss.return_mean_stats() 
-        # vals3 = ["mean", "volume", "temp"]
-        # wandb.log({"mean metrics test": wandb.Table(columns=vals3, data=[list(mean_metrics)])})
-        # return {"test_loss": avg_test_loss,
-        #                 "progress_bar": progbar_dict,
-        #                 "log": log_dict}
     def hyper_params(self):
         return deepcopy(self.hp)
 

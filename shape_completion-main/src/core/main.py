@@ -89,6 +89,8 @@ def parser():
     p.add_argument('--run_frozen_encoder', type=dir_path, default=None, help='flag for using frozen encoder')
     p.add_argument('--centralize_com', action='store_true', help='flag if we want to run baseline model')
     p.add_argument('--baseline', action='store_true', help='flag if we want to run baseline model')
+    p.add_argument('--visualization_run', action='store_true', help='flag if we want to run baseline model')
+    p.add_argument('--deterministic', action='store_true', help='flag if we want to run baseline model')
     p.add_argument('--run_windowed_encoder', action='store_true', help='flag for using a window of consecutive frames based on a chosen stride')
     p.add_argument('--run_windowed_lstm_decoder', action='store_true', help='flag for using a window of consecutive frames based on a chosen stride')
     p.add_argument('--run_transformer_encoder', action='store_true', help='flag for using transformer encoder')
@@ -156,7 +158,8 @@ def test_main():
     if args.baseline:
         nn= F2PEncoderDecoderBase(parser())
         # nn.identify_system()
-        ldrs = f2p_completion_loaders(nn.hp, train='DFaustProj')
+        nn.hp.counts = (0,0,2000000000000)
+        ldrs = f2p_completion_loaders(nn.hp, test='DFaustProj')
     else:
         if args.run_windowed_encoder:
             nn = F2PEncoderDecoderWindowed(parser())
@@ -167,7 +170,8 @@ def test_main():
         elif args.run_transformer_encoder:
             nn = F2PPCTDecoderWindowed(parser())
         # assert False, "window"
-        ldrs = f2p_completion_loaders(nn.hp, train='DFaustProjRandomWindowed')
+        nn.hp.counts = (0,0,2000000000000)
+        ldrs = f2p_completion_loaders(nn.hp, test='DFaustProjRandomWindowed')
     # banner('Testing')
     trainer = LightningTrainer(nn, ldrs)
     trainer.test()
@@ -185,5 +189,5 @@ def test_main():
 #
 # ----------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
-    # train_main()
-    test_main()
+    train_main()
+    # test_main()

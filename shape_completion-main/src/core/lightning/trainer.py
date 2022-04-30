@@ -1,6 +1,8 @@
 from lightning.pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from lightning.pytorch_lightning.loggers import TestTubeLogger, WandbLogger
 from lightning.pytorch_lightning import Trainer
+from pytorch_lightning import seed_everything
+
 from lightning.assets.completion_saver import CompletionSaver
 from lightning.assets.emailer import TensorboardEmailer
 import wandb
@@ -77,6 +79,8 @@ class LightningTrainer:
                                  n_verts=self.data.num_verts())  # TODO - Cannot currently train on Scans due to this:
 
     def _init_trainer(self, fast_dev_run):
+        if self.hp.deterministic:
+            seed_everything(42, workers=True)
 
         if self.hp.plotter_class is not None:
             plt_class = getattr(lightning.assets.plotter, self.hp.plotter_class)
@@ -86,6 +90,9 @@ class LightningTrainer:
         tb_log = TestTubeLogger(save_dir=self.hp.PRIMARY_RESULTS_DIR, description=f"{self.hp.exp_name} Experiment",
                                 name=self.hp.exp_name, version=self.hp.version)
         wandb_log = WandbLogger(project="my-test-project", entity="temporal_shape_recon",name=self.hp.exp_name, id=f"{self.hp.exp_name}{self.hp.version}")
+        # wandb_logger.experiment.config["counts"] = self.hp.counts
+        # wandb.config.update(allow_val_change=True)
+        # wandb_log.experiment.config.update({'counts':self.hp.counts},allow_val_change=True)
         self.exp_dp = Path(os.path.dirname(tb_log.experiment.log_dir)).resolve()  # Extract experiment path
         checkpoint = ModelCheckpoint(filepath=self.exp_dp / 'checkpoints', save_top_k=1, verbose=True,
                                      prefix='weight', monitor='val_loss', mode='min', period=1)
@@ -118,6 +125,7 @@ class LightningTrainer:
                             #    logger=tb_log,
                                min_epochs=self.hp.force_train_epoches,
                                 max_epochs=self.hp.max_epochs,
+                                #max_epochs = 1,
                                print_nan_grads=False,
                                    resume_cfg=self.hp.resume_cfg,
                             #    resume_from_checkpoint=self.hp.resume_cfg,
