@@ -67,7 +67,11 @@ def get_faces_that_will_close_mesh_hole(boundry_edges:list)->list:
 def get_alligned_faces_by_vertex_mask(f:torch.Tensor,vertices_mask:list)->torch.Tensor:
     #f dim [n_faces,3]
     #vertices_mask contain n_vertecies elements of boolians
-    f=f.type(dtype=torch.int)
+    if isinstance(f,torch.Tensor):
+        f=f.type(dtype=torch.int)
+        f=f.numpy()
+    # else:
+    #     f=f-1
     faces_mask_cnt=[]
     seen_already=0
     for v in vertices_mask:
@@ -77,7 +81,6 @@ def get_alligned_faces_by_vertex_mask(f:torch.Tensor,vertices_mask:list)->torch.
     faces_mask_cnt=torch.Tensor(faces_mask_cnt).type(torch.int)
     #convet to numpy
     faces_mask_cnt=faces_mask_cnt.numpy()
-    f=f.numpy()
     res=faces_mask_cnt[f]
     #return to torch
     res=torch.Tensor(res)
@@ -116,6 +119,7 @@ class Segmentation():
     def __init__(self,full_mesh:trimesh,segmentation:dict):
         seg_mesh = trimesh.Trimesh(vertices=full_mesh.vertices, faces=full_mesh.faces[segmentation['faces'],:],process=False)
         self._faces_watertight,self._vertex_seg,self._faces_non_watertight=close_mesh(seg_mesh)
+        self._faces_temp = segmentation['faces']
     def get_vertex_seg(self):
         return self._vertex_seg
     def get_faces_watertight(self):
@@ -229,7 +233,7 @@ class Segmentation():
         v=self._center_mesh(v_seg=v)
         return get_volumes(v=v,f=f)
 
-    def get_mesh_of_segement(self,v:torch.Tensor,center:bool=True,watertight_mesh:bool=True,mask=None)->list:
+    def get_mesh_of_segement(self,v:torch.Tensor,center:bool=True,watertight_mesh:bool=True,mask=None,faces=None)->list:
         """get_mesh_of_segement.
         get a list of  for the given segment of the a mesh.
         this function is calculating this quantety on the whole batch.
@@ -239,7 +243,8 @@ class Segmentation():
         Returns:
             list: the list of the meshes of the segement for the input batch. the i'th entry represent the segement mesh of the i'th model in the batch [batch_size]
         """
-        faces=self.get_faces_watertight() if watertight_mesh else self.get_faces_non_watertight()
+        if faces is None:
+            faces=self.get_faces_watertight() if watertight_mesh else self.get_faces_non_watertight()
         v = v[:,:,:3]
         res=[]
         if mask == None:
@@ -253,12 +258,14 @@ class Segmentation():
         else:
             for i in range(v.size(0)):
                 cur_mask = np.array(mask[i])
+                # assert False,f"mask {cur_mask}"
                 segment = np.array(self.get_vertex_seg())
                 actual_mask = np.intersect1d(cur_mask,segment)
-                # assert False, f"actual_mask {actual_mask} shape {actual_mask.shape}"
-                v_part,f_part = trunc_to_vertex_mask(v[i,:,:],faces,actual_mask)
-                
-                seg_mesh = trimesh.Trimesh(vertices=v_part, faces=f_part, process=False)
+                vertices_new,faces_new=trunc_to_vertex_mask(v[i,:,:],faces,actual_mask)
+                # assert False, f"faces_new {faces_new}"
+                # vertices_new=v[i,actual_mask,:]
+
+                seg_mesh = trimesh.Trimesh(vertices=vertices_new, faces=faces_new, process=False)
                 res.append(seg_mesh)
         return res
 
@@ -274,8 +281,8 @@ class SegmentationManger():
         return {seg_name:seg.get_volumes_of_segment(v=v) for seg_name,seg in self._segmentations.items()}
     def get_areas_of_segments(self,v:torch.Tensor)->dict:
         return {seg_name:seg.get_areas_of_segment(v=v) for seg_name,seg in self._segmentations.items()}
-    def get_meshes_of_segments(self,v:torch.Tensor,watertight_mesh:str,center:bool=True,mask=None)->dict:
-        return {seg_name:seg.get_mesh_of_segement(v=v,watertight_mesh=watertight_mesh,center=center,mask=mask) for seg_name,seg in self._segmentations.items()}
+    def get_meshes_of_segments(self,v:torch.Tensor,watertight_mesh:str,center:bool=True,mask=None,faces=None)->dict:
+        return {seg_name:seg.get_mesh_of_segement(v=v,watertight_mesh=watertight_mesh,center=center,mask=mask,faces=faces) for seg_name,seg in self._segmentations.items()}
     def get_segmentation_list(self)->list:
         return [seg_name for seg_name in self._segmentations.keys()]
 

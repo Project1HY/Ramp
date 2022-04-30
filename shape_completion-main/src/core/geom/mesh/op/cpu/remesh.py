@@ -41,7 +41,6 @@ def trunc_to_vertex_mask(v, f, vi,clean=False):
         f2 = vlut[f]
         # Keep only faces with valid vertices:
         f2 = f2[np.sum(f2 == -1, axis=1) == 0, :]
-
         # TODO - Can we use this instead of clean_mesh?
         # faces = faces.reshape(-1)
         # unique_points_index = np.unique(faces)
@@ -142,6 +141,7 @@ def clean_mesh(v, f, merge_eps=1e-5, remove_outlier=True, outlier_radius=0.05, n
         bad_faces = list(np.where(np.sum(f > v.shape[0], axis=1) > 0)[0])
         if bad_faces:
             M = M.remove_triangles_by_index(bad_faces)
+
         # Merge points that sit atop each other
         M = M.merge_close_vertices(merge_eps)
         M = M.remove_degenerate_triangles().remove_duplicated_triangles().remove_unreferenced_vertices()
@@ -149,8 +149,9 @@ def clean_mesh(v, f, merge_eps=1e-5, remove_outlier=True, outlier_radius=0.05, n
         # bad_vertices= list(set(f.ravel()) - set(np.unique(f.ravel())))
         # v,f = remove_vertices(v,f,bad_vertices)
         v2, f2 = open3d_mesh2numpy(M)
-
-    assert np.max(f2) + 1 <= v2.shape[0], "Invalid mesh cleaning detected"
+    # a = np.max(f2)
+    # assert False,f"f max {np.max(f2) + 1} f2 {f2}"
+    assert np.max(f2) + 1 <= v2.shape[0], f"Invalid mesh cleaning detected, {np.max(f2) + 1} {v2.shape[0]}"
     return v2, f2
 
 

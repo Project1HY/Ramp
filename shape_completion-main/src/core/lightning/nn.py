@@ -101,7 +101,7 @@ class CompletionLightningModel(PytorchNet):
 
         results['gt_hi'] = b['gt_hi']
         results['tp_hi'] = b['tp_hi']
-
+        
         results['gt_hi'] = list(['_'.join(str(x) for x in hi) for hi in results['gt_hi']])
         results['tp_hi'] = list(['_'.join(str(x) for x in hi) for hi in results['tp_hi']])
 
@@ -269,8 +269,8 @@ class CompletionLightningModel(PytorchNet):
                 gt_hi = [subject[0] for subject in self.top_subjects[selection][metric]]
                 tp_hi = [subject[1] for subject in self.top_subjects[selection][metric]]
                 mask = [subject[-1] for subject in self.top_subjects[selection][metric]]
-                gt_part = self.segmentation_manger.get_meshes_of_segments(gts,watertight_mesh=True,center=True,mask=mask)
-                reconstructed_segmented_watertight = self.segmentation_manger.get_meshes_of_segments(reconstructions,watertight_mesh=True,center=True)
+                gt_part = self.segmentation_manger.get_meshes_of_segments(gts,watertight_mesh=False,center=True,mask=mask,faces=self.assets.data.faces())
+                reconstructed_segmented_watertight = self.segmentation_manger.get_meshes_of_segments(reconstructions,watertight_mesh=True,center=True,)
                 gt_segmented_watertight = self.segmentation_manger.get_meshes_of_segments(gts,watertight_mesh=True,center=True)
                 tp_segmented_watertight = self.segmentation_manger.get_meshes_of_segments(tps,watertight_mesh=True,center=True)
 
