@@ -381,7 +381,6 @@ class CompletionLightningModel(PytorchNet):
         
         return self.loss.compute(b, pred)
 
-
     def test_end(self, outputs):
         if self.assets.data.num_test_loaders() == 1:
             outputs = [outputs]  # Incase singleton case
@@ -409,7 +408,7 @@ class CompletionLightningModel(PytorchNet):
         
         if self.assets.saver is not None:  # TODO - Generalize this
             rows = []
-            for completion_gif_path, completion, completion_name in tqdm.tqdm(self.assets.saver.load_completions()):
+            for completion_gif_path, completion, completion_name in tqdm.tqdm(self.assets.saver.load_completions(color_func=geom.mesh.cpu.velocity)):
                 wandb.log({"completion_video": wandb.Video(completion_gif_path, fps=60, format="gif")})
                 completion = np.array(completion)
                 completions_shifted = completion[1:]

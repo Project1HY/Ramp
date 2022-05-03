@@ -75,7 +75,7 @@ class CompletionSaver:
             pils += [geom.mesh.io.base.numpy_to_pil(cur_gt_hi,cur_tp_hi,gtr_v,gt_v,tp_v, gt_f)]
         return pils
 
-    def load_completions(self, set_id=0,test_step=False):
+    def load_completions(self, set_id=0,test_step=False,color_func=None):
         dump_dp = self.dump_dirs[set_id]
         if test_step:
             dump_dp = dump_dp/"test"
@@ -103,8 +103,11 @@ class CompletionSaver:
                     frame_paths += [subjects[subject][pose][frame][0]]
                 subjects[subject][pose] = frame_paths
                 geometries_comp = [geom.mesh.io.base.read_ply_verts(path) for path in subjects[subject][pose]]
+                colors = None
+                if color_func is not None:
+                    colors = colors_func(geometries_comp)
                 geom.mesh.io.animate.animate(geometries_comp, self.f, str(dump_dp / f"{subject}_{pose}.gif"),
-                                             titles=[f"{subject}_{pose}"] * len(frame_paths))
+                                             titles=[f"{subject}_{pose}"] * len(frame_paths),colors=colors)
                 yield str(dump_dp / f"{subject}_{pose}.gif"), geometries_comp, f"{subject}_{pose}"
 
 
