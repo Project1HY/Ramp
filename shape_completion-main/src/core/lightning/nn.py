@@ -269,7 +269,7 @@ class CompletionLightningModel(PytorchNet):
                 gt_hi = [subject[0] for subject in self.top_subjects[selection][metric]]
                 tp_hi = [subject[1] for subject in self.top_subjects[selection][metric]]
                 mask = [subject[-1] for subject in self.top_subjects[selection][metric]]
-                gt_part = self.segmentation_manger.get_meshes_of_segments(gts,watertight_mesh=True,center=True,mask=mask)
+                gt_part = self.segmentation_manger.get_meshes_of_segments(gts,watertight_mesh=False,center=True,mask=mask)
                 reconstructed_segmented_watertight = self.segmentation_manger.get_meshes_of_segments(reconstructions,watertight_mesh=True,center=True)
                 gt_segmented_watertight = self.segmentation_manger.get_meshes_of_segments(gts,watertight_mesh=True,center=True)
                 tp_segmented_watertight = self.segmentation_manger.get_meshes_of_segments(tps,watertight_mesh=True,center=True)
