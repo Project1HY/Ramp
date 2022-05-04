@@ -22,20 +22,20 @@ class CompletionSaver:
             dp = exp_dir / 'completions' / ts_name
             dp.mkdir(parents=True, exist_ok=True)
             self.dump_dirs.append(dp)
+            dp = dp / "test"
+            dp.mkdir(parents=True, exist_ok=True)
             dp = exp_dir / 'completions' / ts_name / 'RightArm'
             dp.mkdir(parents=True, exist_ok=True)
             dp = exp_dir / 'completions' / ts_name / 'RightLeg'
             dp.mkdir(parents=True, exist_ok=True)
             dp = exp_dir / 'completions' / ts_name / 'Head'
             dp.mkdir(parents=True, exist_ok=True)
-            dp = dp / "test"
-            dp.mkdir(parents=True, exist_ok=True)
-            dp = dp / "best"
-            dp.mkdir(parents=True, exist_ok=True)
-            dp = dp / "worst"
-            dp.mkdir(parents=True, exist_ok=True)
-            dp = dp / "rand"
-            dp.mkdir(parents=True, exist_ok=True)
+            # dp = dp / "best"
+            # dp.mkdir(parents=True, exist_ok=True)
+            # dp = dp / "worst"
+            # dp.mkdir(parents=True, exist_ok=True)
+            # dp = dp / "rand"
+            # dp.mkdir(parents=True, exist_ok=True)
     
     def get_completions_as_pil(self, pred, b):
         # TODO - Make this generic, and not key dependent. Insert support for P2P
@@ -75,11 +75,15 @@ class CompletionSaver:
             pils += [geom.mesh.io.base.numpy_to_pil(cur_gt_hi,cur_tp_hi,gtr_v,gt_v,tp_v, gt_f)]
         return pils
 
-    def load_completions(self, set_id=0,test_step=False):
+    def load_completions(self, set_id=0,test_step=False,color_func=None):
         dump_dp = self.dump_dirs[set_id]
         if test_step:
+            dump_dp_prior = dump_dp
             dump_dp = dump_dp/"test"
-        completions = glob.glob(f"{str(dump_dp)}/*.ply")
+            # assert False,f"here?? dump_dp {dump_dp} prior {dump_dp_prior}"
+
+        completions = glob.glob(f"{str(dump_dp)}/*_res.ply")
+
         subjects = {}
         for file in completions:
             filename = file.split("/")[-1]
@@ -103,7 +107,11 @@ class CompletionSaver:
                     frame_paths += [subjects[subject][pose][frame][0]]
                 subjects[subject][pose] = frame_paths
                 geometries_comp = [geom.mesh.io.base.read_ply_verts(path) for path in subjects[subject][pose]]
-                geom.mesh.io.animate.animate(geometries_comp, self.f, str(dump_dp / f"{subject}_{pose}.gif"),
+                colors = None
+                if color_func is not None:
+                    colors = color_func(geometries_comp)
+                    
+                geom.mesh.io.animate.animate(geometries_comp, self.f, str(dump_dp / f"{subject}_{pose}.gif"),colors=colors,
                                              titles=[f"{subject}_{pose}"] * len(frame_paths))
                 yield str(dump_dp / f"{subject}_{pose}.gif"), geometries_comp, f"{subject}_{pose}"
 
@@ -122,11 +130,12 @@ class CompletionSaver:
             dump_dp = dump_dp / organ
             dump_dp.mkdir(parents=True, exist_ok=True)
 
+        gtrb = pred['completion_xyz']
+
         if len(gtrb.shape) > 3:
             gtrb = gtrb.reshape(-1, gtrb.shape[-2], gtrb.shape[-1])
     
         # TODO - Make this generic, and not key dependent. Insert support for P2P
-        gtrb = pred['completion_xyz']
         if not isinstance(gtrb,np.ndarray):
             gtrb = gtrb.cpu().numpy()
         for i, (gt_hi, tp_hi) in enumerate(zip(b['gt_hi'], b['tp_hi'])):
@@ -144,7 +153,7 @@ class CompletionSaver:
                 self.save_func(dump_dp / f'gt_{postfix}_gt', gt_v, gt_f)
                 if 'gt_part_f' in b and 'gt_part_v' in b: 
                     gt_part_v = b['gt_part_v'][i][:,:3]
-                    gt_part_f = b['gt_f'][i]
+                    gt_part_f = b['gt_part_f'][i]
                     self.save_func(dump_dp / f'gt_{postfix}_gtpart', gt_part_v, gt_part_f)
                 if 'gt_mask' in b:
                     gt_part_v, gt_part_f = trunc_to_vertex_mask(gt_v, gt_f, b['gt_mask'][i])

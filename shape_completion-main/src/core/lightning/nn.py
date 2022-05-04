@@ -101,7 +101,7 @@ class CompletionLightningModel(PytorchNet):
 
         results['gt_hi'] = b['gt_hi']
         results['tp_hi'] = b['tp_hi']
-
+        
         results['gt_hi'] = list(['_'.join(str(x) for x in hi) for hi in results['gt_hi']])
         results['tp_hi'] = list(['_'.join(str(x) for x in hi) for hi in results['tp_hi']])
 
@@ -269,8 +269,8 @@ class CompletionLightningModel(PytorchNet):
                 gt_hi = [subject[0] for subject in self.top_subjects[selection][metric]]
                 tp_hi = [subject[1] for subject in self.top_subjects[selection][metric]]
                 mask = [subject[-1] for subject in self.top_subjects[selection][metric]]
-                gt_part = self.segmentation_manger.get_meshes_of_segments(gts,watertight_mesh=False,center=True,mask=mask)
-                reconstructed_segmented_watertight = self.segmentation_manger.get_meshes_of_segments(reconstructions,watertight_mesh=True,center=True)
+                gt_part = self.segmentation_manger.get_meshes_of_segments(gts,watertight_mesh=False,center=True,mask=mask,faces=self.assets.data.faces())
+                reconstructed_segmented_watertight = self.segmentation_manger.get_meshes_of_segments(reconstructions,watertight_mesh=True,center=True,)
                 gt_segmented_watertight = self.segmentation_manger.get_meshes_of_segments(gts,watertight_mesh=True,center=True)
                 tp_segmented_watertight = self.segmentation_manger.get_meshes_of_segments(tps,watertight_mesh=True,center=True)
 
@@ -349,9 +349,16 @@ class CompletionLightningModel(PytorchNet):
         pred = self.complete(b)
         b['gt_hi']=list(['_'.join(str(x) for x in hi) for hi in b['gt_hi']])
         b['tp_hi']=list(['_'.join(str(x) for x in hi) for hi in b['tp_hi']])
-
-        # if self.assets.saver is not None:  # TODO - Generalize this
-            # self.assets.saver.save_completions_by_batch(pred, b, set_id)
+        pred_reshaped = {'completion_xyz':None}
+        if len(pred['completion_xyz'].shape)>3:
+            shape_pred = pred['completion_xyz'].shape
+            gt_tp_shape = (shape_pred[0]*shape_pred[1],shape_pred[2],b['gt'].shape[-1])
+            pred['completion_xyz']=pred['completion_xyz'].reshape(shape_pred[0]*shape_pred[1],shape_pred[2],shape_pred[3])
+            b['gt'] = b['gt'].reshape(gt_tp_shape)
+            b['tp'] = b['tp'].reshape(gt_tp_shape)
+        
+        if self.assets.saver is not None:  # TODO - Generalize this
+            self.assets.saver.save_completions_by_batch(pred, b, set_id,test_step_folder=True)
         if self.hp.visualization_run:
             self.compute_segmentation_best_worst(b,pred,set_id)        
             return self.loss.compute(b, pred)
@@ -381,7 +388,6 @@ class CompletionLightningModel(PytorchNet):
         
         return self.loss.compute(b, pred)
 
-
     def test_end(self, outputs):
         if self.assets.data.num_test_loaders() == 1:
             outputs = [outputs]  # Incase singleton case
@@ -409,7 +415,7 @@ class CompletionLightningModel(PytorchNet):
         
         if self.assets.saver is not None:  # TODO - Generalize this
             rows = []
-            for completion_gif_path, completion, completion_name in tqdm.tqdm(self.assets.saver.load_completions()):
+            for completion_gif_path, completion, completion_name in tqdm.tqdm(self.assets.saver.load_completions(test_step=True,color_func=geom.mesh.op.cpu.base.velocity)):
                 wandb.log({"completion_video": wandb.Video(completion_gif_path, fps=60, format="gif")})
                 completion = np.array(completion)
                 completions_shifted = completion[1:]

@@ -129,12 +129,11 @@ class NormalizeScale(PreCompilerTransform):
 
 
 class Center(PreCompilerTransform):
-    def __init__(self,seg_manager, slicer=slice(0, 3), keys=('gt', 'tp')):
+    def __init__(self   , slicer=slice(0, 3), keys=('gt', 'tp')):
         self._slicer = slicer
         self._keys = keys
 
     def __call__(self, x):
-        assert False,f"x is {x}"
         for k in self._keys:
             center_offset = x[k][:, self._slicer].mean(axis=0, keepdims=True)
             x[k][:, self._slicer] -= center_offset
@@ -159,7 +158,7 @@ class CenterTorso(PreCompilerTransform):
         for k in self._keys:
             com_copy = x[k][:,self._slicer]
             com_copy = com_copy[self.segmentation]
-            center_offset = x[k][:, self._slicer].mean(axis=0, keepdims=True)
+            center_offset = com_copy[:, self._slicer].mean(axis=0, keepdims=True)
             x[k][:, self._slicer] -= center_offset
         return x        
 
