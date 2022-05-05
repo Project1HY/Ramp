@@ -97,7 +97,8 @@ class CompletionLightningModel(PytorchNet):
         pass
         tp = b['tp']
         results = self.loss.compute_loss_end(b['gt_hi'], b['tp_hi'], b['gt'].cpu().detach().numpy(), b['gt_mask'], tp.cpu().detach().numpy(),pred['completion_xyz'].cpu().detach().numpy(), stage)
-        # results = self.loss.compute_loss_end(b['gt_hi'], b['tp_hi'], b['gt'].cpu().detach().numpy(), b['gt_mask'], tp.cpu().detach().numpy(),pred['completion_xyz'].cpu().detach().numpy())
+        wandb.define_metric("loss", summary="min")
+        log_dict = {"loss": results}
 
         results['gt_hi'] = b['gt_hi']
         results['tp_hi'] = b['tp_hi']
@@ -112,6 +113,7 @@ class CompletionLightningModel(PytorchNet):
         data = list(map(list, itertools.zip_longest(*results.values(),fillvalue=None)))
         keys = list(results.keys())
 
+        wandb.log(log_dict)
         wandb.log({f"static metrics {stage}": wandb.Table(columns=keys, data=data)})
 
 
@@ -120,6 +122,7 @@ class CompletionLightningModel(PytorchNet):
         loss_dict = self.loss.compute(b, completion)
         loss_dict = {f'{k}_train': v for k, v in loss_dict.items()}  # make different logs for train, test, validation
         train_loss = loss_dict['total_loss_train']
+        wandb.define_metric("loss", summary="min")
         if batch_idx == 0:
             self.report_static_metrics(b,completion,"train")
         
