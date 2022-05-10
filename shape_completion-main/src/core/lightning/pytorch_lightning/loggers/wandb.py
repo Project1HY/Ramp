@@ -86,7 +86,7 @@ class WandbLogger(LightningLoggerBase):
 
     @rank_zero_only
     def log_hyperparams(self, params):
-        self.experiment.config.update(params)
+        self.experiment.config.update(params,allow_val_change=True)
 
     @rank_zero_only
     def log_metrics(self, metrics, step=None):

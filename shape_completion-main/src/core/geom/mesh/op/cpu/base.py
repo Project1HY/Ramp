@@ -221,7 +221,7 @@ def surface_area(v, f):
 
 def velocity(vs):
     vs_paired = (zip(vs,vs[1:]))
-    return [vs_next-vs for (vs,vs_next) in vs_paired]
+    return [np.linalg.norm(vs_next-vs,axis=-1) for (vs,vs_next) in vs_paired]
 # ---------------------------------------------------------------------------------------------------------------------#
 #                                                             Connectivity
 # ---------------------------------------------------------------------------------------------------------------------#

@@ -124,7 +124,6 @@ class CompletionSaver:
         if organ != None:
             dump_dp = dump_dp / organ
             dump_dp.mkdir(parents=True, exist_ok=True)
-
         gtrb = pred['completion_xyz']
 
         if len(gtrb.shape) > 3:
