@@ -158,7 +158,7 @@ class CenterTorso(PreCompilerTransform):
         for k in self._keys:
             com_copy = x[k][:,self._slicer]
             com_copy = com_copy[self.segmentation]
-            center_offset = com_copy.mean(axis=0, keepdims=True)
+            center_offset = com_copy[:, self._slicer].mean(axis=0, keepdims=True)
             x[k][:, self._slicer] -= center_offset
         return x        
 

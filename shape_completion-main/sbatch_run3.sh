@@ -24,7 +24,7 @@ CONDA_ENV=ProjectHY
 unset XDG_RUNTIME_DIR
 source $CONDA_HOME/etc/profile.d/conda.sh
 conda activate $CONDA_ENV
-export PYTHONPATH=/home/ido.igip1/Ramp/shape_completion-main/src/core/visualize:$PYTHONPATH.
+export PYTHONPATH=/home/yiftach.ede/Ramp/shape_completion-main/src/core/visualize:$PYTHONPATH.
 # mkdir ~/gipfs
 # mount -o ro //132.68.39.206/gipfs ~/gipfs
 # jupyter lab --no-browser --ip=$(hostname -I) --port-retries=100

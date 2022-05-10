@@ -1,10 +1,11 @@
 from geom.mesh.io.base_plot import plotter, stringify, add_mesh, busy_wait
 
 
-def animate(vs, f=None,colors=None, gif_name=None, titles=None, first_frame_index=0, pause=0.05,
+def animate(vs, f=None, gif_name=None, titles=None, first_frame_index=0, pause=0.05,
             callback_func=None, setup_func=None, **plt_args):
 
-        
+    colors = plt_args['colors']
+    
     p = plotter()
     color = 'w' if colors is None else colors[first_frame_index]
 

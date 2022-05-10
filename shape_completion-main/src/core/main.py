@@ -156,7 +156,6 @@ def train_main():
 
 def test_main():
     banner('Network Init')
-
     args = parser()[0].parse_args()
     if args.baseline:
         nn= F2PEncoderDecoderBase(parser())

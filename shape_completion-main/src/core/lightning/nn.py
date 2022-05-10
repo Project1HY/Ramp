@@ -97,7 +97,8 @@ class CompletionLightningModel(PytorchNet):
         pass
         tp = b['tp']
         results = self.loss.compute_loss_end(b['gt_hi'], b['tp_hi'], b['gt'].cpu().detach().numpy(), b['gt_mask'], tp.cpu().detach().numpy(),pred['completion_xyz'].cpu().detach().numpy(), stage)
-        # results = self.loss.compute_loss_end(b['gt_hi'], b['tp_hi'], b['gt'].cpu().detach().numpy(), b['gt_mask'], tp.cpu().detach().numpy(),pred['completion_xyz'].cpu().detach().numpy())
+        wandb.define_metric("loss", summary="min")
+        log_dict = {"loss": results}
 
         results['gt_hi'] = b['gt_hi']
         results['tp_hi'] = b['tp_hi']
@@ -112,6 +113,7 @@ class CompletionLightningModel(PytorchNet):
         data = list(map(list, itertools.zip_longest(*results.values(),fillvalue=None)))
         keys = list(results.keys())
 
+        wandb.log(log_dict)
         wandb.log({f"static metrics {stage}": wandb.Table(columns=keys, data=data)})
 
 
@@ -120,6 +122,7 @@ class CompletionLightningModel(PytorchNet):
         loss_dict = self.loss.compute(b, completion)
         loss_dict = {f'{k}_train': v for k, v in loss_dict.items()}  # make different logs for train, test, validation
         train_loss = loss_dict['total_loss_train']
+        wandb.define_metric("loss", summary="min")
         if batch_idx == 0:
             self.report_static_metrics(b,completion,"train")
         
@@ -364,9 +367,16 @@ class CompletionLightningModel(PytorchNet):
         pred = self.complete(b)
         b['gt_hi']=list(['_'.join(str(x) for x in hi) for hi in b['gt_hi']])
         b['tp_hi']=list(['_'.join(str(x) for x in hi) for hi in b['tp_hi']])
-
-        # if self.assets.saver is not None:  # TODO - Generalize this
-            # self.assets.saver.save_completions_by_batch(pred, b, set_id)
+        pred_reshaped = {'completion_xyz':None}
+        if len(pred['completion_xyz'].shape)>3:
+            shape_pred = pred['completion_xyz'].shape
+            gt_tp_shape = (shape_pred[0]*shape_pred[1],shape_pred[2],b['gt'].shape[-1])
+            pred['completion_xyz']=pred['completion_xyz'].reshape(shape_pred[0]*shape_pred[1],shape_pred[2],shape_pred[3])
+            b['gt'] = b['gt'].reshape(gt_tp_shape)
+            b['tp'] = b['tp'].reshape(gt_tp_shape)
+        
+        if self.assets.saver is not None:  # TODO - Generalize this
+            self.assets.saver.save_completions_by_batch(pred, b, set_id,test_step_folder=True)
         if self.hp.visualization_run:
             assert len(b['gt'])<=12, f"len of b is {len(b['gt'])}"
             self.compute_segmentation_best_worst(b,pred,set_id)        

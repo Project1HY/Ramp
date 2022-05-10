@@ -2,6 +2,8 @@ import pyvista as pv
 import numpy as np
 import torch
 import time
+from pyvista.plotting.colors import string_to_rgb, hexcolors
+import vtk
 
 _DEF_PYVISTA_LIGHT_PARAMS = {'ambient': 0.0, 'diffuse': 1.0, 'specular': 0.0, 'specular_power': 100.0}
 _DEF_LIGHT_PARAMS = {'ambient': 0.3, 'diffuse': 0.6, 'specular': 1, 'specular_power': 20}
@@ -110,10 +112,51 @@ def add_lines(p, v, lines, line_width=1, line_color='darkblue', **plt_args):
     p.add_mesh(tubes, smooth_shading=True, **plt_args)
     return p
 
+def parse_color(color  = 'cyan', opacity = None):
+    """Parse color into a vtk friendly rgb list.
+    Values returned will be between 0 and 1.
+    """
+    if isinstance(color, str):
+        try:
+            color = list(string_to_rgb(color))
+        except ValueError:  # TODO - might cause a crash
+            color_obj = vtk.vtkNamedColors()
+            color = np.array(color_obj.GetColor3d(color))
+    elif len(color) == 3 or len(color) == 4:
+        color = list(color)  # Handle numpy arrays
+    else:
+        raise ValueError(f"Invalid color input: ({color} "
+                         f"Must be string, rgb list, or hex color string.  "
+                         f"Examples: color='white'/ 'w' / [1, 1, 1] / '#FFFFFF'")
+    # Handle opacity
+    if opacity is not None:
+        assert isinstance(opacity, (float, int))
+        color.insert(3, opacity)
+
+    if any([c > 1 for c in color]):
+        assert sum([c > 255 for c in color]) == 0, f"Invalid color values in range: {color}"
+        color = [c / 255 for c in color]
+    else:
+        color = [float(c) for c in color]
+    return color
+
+
+
+def color_to_pyvista_color_params(color, repeats=1):
+    color = torch2numpy(color)
+
+    if isinstance(color, str) or len(color) == 3:
+        return {'color': parse_color(color)}
+
+    else:
+        color = np.asanyarray(color)
+        if repeats > 1:
+            color = np.repeat(color, axis=0, repeats=repeats)
+        return {'scalars': color, 'rgb': color.squeeze().ndim == 2}
 
 def add_mesh(p, v, f=None, n=None, lines=None,  # Input
              style='surface', smooth_shading=True, eye_dome=False, depth_peeling=False, lighting=None,  # Global arg
-             camera_pos=None,
+             camera_pos=None,color='w',colors=None,
              edge_color='darkblue', line_color='darkblue', cmap='rainbow',
              show_edges=False, clim=None, show_scalar_bar=False,  # Color options
              point_size=6, line_width=1,  # Scales
@@ -139,14 +182,18 @@ def add_mesh(p, v, f=None, n=None, lines=None,  # Input
             add_lines(p, v, lines=lines, line_width=line_width, line_color=line_color, cmap=cmap, opacity=opacity,
                       lighting=lighting, **light_params)
 
+
+
     style = _STYLE_RENAMINGS.get(style, style)  # Translation of styles for insertion to Pyvista
     # Point Size = Diameter of a point (VTK Manual), expressed in Screen Units - automatically scaled by camera
+    color_params = color_to_pyvista_color_params(color)
+
     p.add_mesh(mesh, style=style, smooth_shading=smooth_shading, cmap=cmap, show_edges=show_edges,
                point_size=point_size, render_points_as_spheres=render_points_as_spheres,
                edge_color=edge_color,
                opacity=opacity, lighting=lighting, clim=clim, line_width=line_width, render_lines_as_tubes=True,
                show_scalar_bar=show_scalar_bar, stitle='',
-               **light_params)
+               **light_params,**color_params)
 
     if camera_pos is None:
         camera_pos = _N_VERTICES_TO_CAM_POS.get(len(v), None)

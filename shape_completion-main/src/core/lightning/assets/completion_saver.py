@@ -22,20 +22,20 @@ class CompletionSaver:
             dp = exp_dir / 'completions' / ts_name
             dp.mkdir(parents=True, exist_ok=True)
             self.dump_dirs.append(dp)
+            dp = dp / "test"
+            dp.mkdir(parents=True, exist_ok=True)
             dp = exp_dir / 'completions' / ts_name / 'RightArm'
             dp.mkdir(parents=True, exist_ok=True)
             dp = exp_dir / 'completions' / ts_name / 'RightLeg'
             dp.mkdir(parents=True, exist_ok=True)
             dp = exp_dir / 'completions' / ts_name / 'Head'
             dp.mkdir(parents=True, exist_ok=True)
-            dp = dp / "test"
-            dp.mkdir(parents=True, exist_ok=True)
-            dp = dp / "best"
-            dp.mkdir(parents=True, exist_ok=True)
-            dp = dp / "worst"
-            dp.mkdir(parents=True, exist_ok=True)
-            dp = dp / "rand"
-            dp.mkdir(parents=True, exist_ok=True)
+            # dp = dp / "best"
+            # dp.mkdir(parents=True, exist_ok=True)
+            # dp = dp / "worst"
+            # dp.mkdir(parents=True, exist_ok=True)
+            # dp = dp / "rand"
+            # dp.mkdir(parents=True, exist_ok=True)
     
     def get_completions_as_pil(self, pred, b):
         # TODO - Make this generic, and not key dependent. Insert support for P2P
@@ -78,8 +78,12 @@ class CompletionSaver:
     def load_completions(self, set_id=0,test_step=False,color_func=None):
         dump_dp = self.dump_dirs[set_id]
         if test_step:
+            dump_dp_prior = dump_dp
             dump_dp = dump_dp/"test"
-        completions = glob.glob(f"{str(dump_dp)}/*.ply")
+            # assert False,f"here?? dump_dp {dump_dp} prior {dump_dp_prior}"
+
+        completions = glob.glob(f"{str(dump_dp)}/*_res.ply")
+
         subjects = {}
         for file in completions:
             filename = file.split("/")[-1]
@@ -105,9 +109,10 @@ class CompletionSaver:
                 geometries_comp = [geom.mesh.io.base.read_ply_verts(path) for path in subjects[subject][pose]]
                 colors = None
                 if color_func is not None:
-                    colors = colors_func(geometries_comp)
-                geom.mesh.io.animate.animate(geometries_comp, self.f, str(dump_dp / f"{subject}_{pose}.gif"),
-                                             titles=[f"{subject}_{pose}"] * len(frame_paths),colors=colors)
+                    colors = color_func(geometries_comp)
+                    
+                geom.mesh.io.animate.animate(geometries_comp, self.f, str(dump_dp / f"{subject}_{pose}.gif"),colors=colors,
+                                             titles=[f"{subject}_{pose}"] * len(frame_paths))
                 yield str(dump_dp / f"{subject}_{pose}.gif"), geometries_comp, f"{subject}_{pose}"
 
 
