@@ -129,7 +129,7 @@ class NormalizeScale(PreCompilerTransform):
 
 
 class Center(PreCompilerTransform):
-    def __init__(self   , slicer=slice(0, 3), keys=('gt', 'tp')):
+    def __init__(self, slicer=slice(0, 3), keys=('gt', 'tp')):
         self._slicer = slicer
         self._keys = keys
 

@@ -53,7 +53,7 @@ def parser():
     p.add_argument('--lr', type=float, default=0.006, help='The learning step to use')
     p.add_argument('--stride', type=int, default=6, help='The learning step to use')
     p.add_argument('--window_size', type=int, default=1, help='The learning step to use')
-    p.add_argument('--counts', nargs=3, type=none_or_int, default=(20000, 1000, 2000),  # TODO - Change me as needed
+    p.add_argument('--counts', nargs=3, type=none_or_int, default=(160, 16, 1600),  # TODO - Change me as needed
                    help='The default train,validation and test counts. Recommended [8000-20000, 500-1000, 500-1000]. '
                         'Use None to take all examples in the partition - '
                         'for big datasets, this could blow up the epoch')
@@ -160,7 +160,6 @@ def test_main():
     if args.baseline:
         nn= F2PEncoderDecoderBase(parser())
         # nn.identify_system()
-        #nn.hp.counts = (0,0,20000)
         ldrs = f2p_completion_loaders(nn.hp, test='DFaustProj')
     else:
         if args.run_windowed_encoder:
@@ -172,7 +171,6 @@ def test_main():
         elif args.run_transformer_encoder:
             nn = F2PPCTDecoderWindowed(parser())
         # assert False, "window"
-        #nn.hp.counts = (0,0,20000)
         ldrs = f2p_completion_loaders(nn.hp, test='DFaustProjRandomWindowed')
     # banner('Testing')
     trainer = LightningTrainer(nn, ldrs)
@@ -191,5 +189,5 @@ def test_main():
 #
 # ----------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
-    train_main()
-    #test_main()
+    #train_main()
+    test_main()

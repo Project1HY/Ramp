@@ -29,4 +29,6 @@ export PYTHONPATH=/home/yiftach.ede/Ramp/shape_completion-main/src/core/visualiz
 # mount -o ro //132.68.39.206/gipfs ~/gipfs
 # jupyter lab --no-browser --ip=$(hostname -I) --port-retries=100
 wandb login 19e347e092a58ca11a380ad43bd1fd5103f4d14a
-xvfb-run -a -s "-screen 0 1440x900x24" python src/core/main.py --exp_name LSTM_smaller_window_lambda --run_windowed_lstm_decoder --window_size 4 --stride 12  --version 1 --batch_size 8 
+export WANDB_MODE="offline"
+#xvfb-run -a -s "-screen 0 1440x900x24" python src/core/main.py --exp_name baseline_full_volume_gipdeep_fixed_run --baseline --body_part_volume_weights 1 1 1 1 1 1 --version 2 --visualization_run
+xvfb-run -a -s "-screen 0 1440x900x24" python src/core/main.py --exp_name LSTM_12_window_size --run_windowed_lstm_decoder --batch_size 12 --lr 0.003 --window_size 12 --stride 16 --version 4 --body_part_volume_weights 0 0 0 0 0 0 

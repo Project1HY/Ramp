@@ -302,11 +302,16 @@ class CompletionLightningModel(PytorchNet):
         for selection in self.top_subjects.keys():
             assert False, f"selections self.top_subjects.keys()"
             for metric in self.top_subjects[selection]: 
+                #assert False, f"selection key {selection} metric {metric}"
+                # assert False, f"best stats {self.top_metrics['best'][metric]} \n  worst_stats {self.top_metrics['worst'][metric]} "
+
                 reconstructions = torch.Tensor(np.stack([subject[4] for subject in self.top_subjects[selection][metric]]))
                 gts = torch.Tensor(np.stack([subject[2] for subject in self.top_subjects[selection][metric]]))
                 tps = torch.Tensor(np.stack([subject[3] for subject in self.top_subjects[selection][metric]]))
                 
                 gt_hi = [subject[0] for subject in self.top_subjects[selection][metric]]
+                gt_hi_best = [subject[0] for subject in self.top_subjects["best"][metric]]
+                gt_hi_worst = [subject[0] for subject in self.top_subjects["worst"][metric]]
                 tp_hi = [subject[1] for subject in self.top_subjects[selection][metric]]
                 mask = [subject[-1] for subject in self.top_subjects[selection][metric]]
                 gt_part = self.segmentation_manger.get_meshes_of_segments(gts,watertight_mesh=False,center=True,mask=mask,faces=self.assets.data.faces())
@@ -348,25 +353,31 @@ class CompletionLightningModel(PytorchNet):
         subjects = {'best' : {}, 'worst' : {}, 'rand' : {}}
         gt_tp_list = list(zip(b['gt_hi'], b['tp_hi'], b['gt'].cpu().detach().numpy(), b['tp'].cpu().detach().numpy(), pred['completion_xyz'].cpu().detach().numpy(), b['gt_mask']))
         #best
+        count = {'best':{},'worst':{},'rand':{}}
+        val_array = []
         for organ in self.organs:
             for item in metrics:
+                assert len(gt_tp_list)<=22, f"gt_tp_list {gt_tp_list}"
+
+                subjects = {'best' : {}, 'worst' : {}, 'rand' : {}}
                 val = f'{organ} {item}'
+                val_array += [val]
                 stats[val] = stats[val].cpu().detach().numpy()
+                subjects['best'][val] = gt_tp_list.copy()
+                subjects['worst'][val] = gt_tp_list.copy()
+                subjects['rand'][val] = gt_tp_list.copy()
                 temp_stats_val = stats[val]
-                subjects['best'][val] = gt_tp_list
-                subjects['worst'][val] = gt_tp_list
-                subjects['rand'][val] = gt_tp_list
                 best_stats = stats[val]
                 worst_stats = stats[val]
+
                 if val in self.top_metrics['best']:
+                    # assert count['best'][val]<=1,f"what? {count['best'][val]}"
                     #best
-                    # assert False,f"{stats[val]}\n,{self.top_metrics['best'][val]}"
                     best_stats = np.concatenate((stats[val],self.top_metrics['best'][val]))
                     subjects['best'][val] += self.top_subjects['best'][val]
                     #worst
                     worst_stats = np.concatenate((stats[val],self.top_metrics['worst'][val]))
                     subjects['worst'][val] += self.top_subjects['worst'][val]                   
-                    
                     #random
                     subjects['rand'][val] += self.top_subjects['rand'][val]
                     indices_best = np.argsort(best_stats)
@@ -376,15 +387,19 @@ class CompletionLightningModel(PytorchNet):
                 
                 indices_best = np.argsort(best_stats)
                 indices_worst = np.argsort(-worst_stats)
+                best_gt_tp = [(subject[0],subject[1]) for subject in subjects['best'][val]]
+                worst_gt_tp = [(subject[0],subject[1]) for subject in subjects['worst'][val]]
                 # try:
                 self.top_subjects['best'][val] = [subjects['best'][val][index] for index in indices_best][:10]
                 self.top_metrics['best'][val] = best_stats[indices_best][:10]
 
                 self.top_subjects['worst'][val] = [subjects['worst'][val][index] for index in indices_worst][:10]
                 self.top_metrics['worst'][val] = worst_stats[indices_worst][:10]
-
                 self.top_subjects['rand'][val] = list(np.random.permutation(subjects['rand'][val])[:10])
-                    
+                real_best_gt_tp = [(subject[0],subject[1]) for subject in self.top_subjects['best'][val]]
+                real_worst_gt_tp = [(subject[0],subject[1]) for subject in self.top_subjects['worst'][val]]
+
+        # assert False, f"val array {val_array}"                    
     def test_step(self, b, batch_idx, set_id=0):
         pred = self.complete(b)
         b['gt_hi']=list(['_'.join(str(x) for x in hi) for hi in b['gt_hi']])
@@ -400,6 +415,7 @@ class CompletionLightningModel(PytorchNet):
         if self.assets.saver is not None:  # TODO - Generalize this
             self.assets.saver.save_completions_by_batch(pred, b, set_id,test_step_folder=True)
         if self.hp.visualization_run:
+            assert len(b['gt'])<=12, f"len of b is {len(b['gt'])}"
             self.compute_segmentation_best_worst(b,pred,set_id)        
             return self.loss.compute(b, pred)
         tp = b['tp']
@@ -455,12 +471,12 @@ class CompletionLightningModel(PytorchNet):
         
         if self.assets.saver is not None:  # TODO - Generalize this
             rows = []
-            for completion_gif_path, completion, completion_name in tqdm.tqdm(self.assets.saver.load_completions(test_step=True,color_func=geom.mesh.op.cpu.base.velocity)):
+            for completion_gif_path, completion, completion_name in tqdm.tqdm(self.assets.saver.load_completions( )):
                 wandb.log({"completion_video": wandb.Video(completion_gif_path, fps=60, format="gif")})
                 completion = np.array(completion)
                 completions_shifted = completion[1:]
                 completion = completion[:-1]
-                mean_velocity = np.mean(completions_shifted - completion)
+                mean_velocity = np.mean(abs(completions_shifted - completion))
                 rows += [[completion_name, mean_velocity]]
             columns = ["completion subject and pose", "mean velocity"]
             wandb.log({"completion temporal metrics": wandb.Table(columns=columns, data=rows)})
