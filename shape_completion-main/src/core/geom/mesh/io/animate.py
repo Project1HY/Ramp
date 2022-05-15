@@ -7,7 +7,9 @@ def animate(vs, f=None, gif_name=None, titles=None, first_frame_index=0, pause=0
     colors = plt_args['colors']
     
     p = plotter()
-    color = 'w' if colors is None else colors[first_frame_index]
+    #assert False, f'colors are {colors} first index is {first_frame_index}'
+    #color = 'w' if colors is None else colors[first_frame_index]
+    color ='w'
 
     add_mesh(p, vs[first_frame_index], f, color=color , as_a_single_mesh=True, **plt_args)
     if setup_func is not None:

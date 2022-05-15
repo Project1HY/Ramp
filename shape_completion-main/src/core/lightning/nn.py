@@ -30,7 +30,6 @@ class CompletionLightningModel(PytorchNet):
         self.temp_data = []
         self.body_part_volume_weights = list(self.hp.body_part_volume_weights)
         # self.test_step_data = []
-
         # Bookeeping:
         self.assets = None  # Set by Trainer
         self.loss, self.opt = None, None
@@ -97,8 +96,8 @@ class CompletionLightningModel(PytorchNet):
         pass
         tp = b['tp']
         results = self.loss.compute_loss_end(b['gt_hi'], b['tp_hi'], b['gt'].cpu().detach().numpy(), b['gt_mask'], tp.cpu().detach().numpy(),pred['completion_xyz'].cpu().detach().numpy(), stage)
-        wandb.define_metric("loss", summary="min")
-        log_dict = {"loss": results}
+        #wandb.define_metric("loss", summary="min")
+        #log_dict = {"loss": results}
 
         results['gt_hi'] = b['gt_hi']
         results['tp_hi'] = b['tp_hi']
@@ -113,7 +112,7 @@ class CompletionLightningModel(PytorchNet):
         data = list(map(list, itertools.zip_longest(*results.values(),fillvalue=None)))
         keys = list(results.keys())
 
-        wandb.log(log_dict)
+        #wandb.log(log_dict)
         wandb.log({f"static metrics {stage}": wandb.Table(columns=keys, data=data)})
 
 
@@ -122,7 +121,7 @@ class CompletionLightningModel(PytorchNet):
         loss_dict = self.loss.compute(b, completion)
         loss_dict = {f'{k}_train': v for k, v in loss_dict.items()}  # make different logs for train, test, validation
         train_loss = loss_dict['total_loss_train']
-        wandb.define_metric("loss", summary="min")
+        #wandb.define_metric("loss", summary="min")
         if batch_idx == 0:
             self.report_static_metrics(b,completion,"train")
         
@@ -134,8 +133,42 @@ class CompletionLightningModel(PytorchNet):
             'log': loss_dict
         }
 
-    def training_end(self, output_per_dset):
+    def on_epoch_end(self, outputs):
         log_dict = {}
+        #assert False, f'output {outputs}'
+        #ds_name = self.assets.data.curr_trainset_name()
+        for k in outputs[0].keys(): 
+            log_dict[f'{k}'] = 0
+        for i in range(len(outputs)):  # Number of validation datasets
+                #assert False, f'info is {outputs[i][k]}'
+                #log_dict[f'{k}_train_{ds_name}'] = torch.stack([x[k] for x in outputs[i]]).mean()
+            for k in outputs[i].keys():
+                log_dict[f'{k}'] += outputs[i][k]
+        for k in outputs[0].keys(): 
+            log_dict[f'{k}'] = log_dict[f'{k}']/len(outputs)
+        #assert False, f'log dict is {log_dict}'
+
+    def training_end(self, output_per_dset):
+        # if self.assets.data.num_vald_loaders() == 1:
+            # output_per_dset = [output_per_dset]  # Incase singleton case, due to PL default behaviour
+        log_dict = {}
+        # , progbar_dict, avg_train_loss = {}, {}, 0
+        # for i in range(len(output_per_dset)):  # Number of validation datasets
+        #     ds_name = self.assets.data.index2validation_ds_name(i)
+        #     for k in output_per_dset[i][0].keys():  # Compute validation loss per dataset
+        #         log_dict[f'{k}_train_{ds_name}'] = torch.stack([x[k] for x in output_per_dset[i]]).mean()
+        #     ds_train_loss = log_dict[f'total_loss_train_{ds_name}']
+        #     prog_bar_name = f'train_loss_{ds_name}'
+        #     progbar_dict[prog_bar_name] = ds_train_loss
+        #     ds_train_loss_cpu = ds_train_loss.item()
+        #     if ds_train_loss_cpu < self.min_losses[prog_bar_name]:
+        #         self.min_losses[prog_bar_name] = ds_train_loss_cpu
+        #     log_dict[f'{prog_bar_name}_min'] = self.min_losses[prog_bar_name]
+        #     if i == 0:  # Always use the first dataset as the validation loss
+        #         avg_train_loss = ds_train_loss
+        #         progbar_dict['train_loss'] = avg_train_loss
+        # self.assets.plt.push(new_data=self.temp_data, new_epoch=self.current_epoch)
+        
         best_stats = self.loss.return_best_stats('train')
         log_dict["best_mean_error_train"]=best_stats['Comp-GT Vertex L2'][2]
         log_dict["best_volume_error_train"]=best_stats['Comp-GT Volume L1'][2]
@@ -202,6 +235,7 @@ class CompletionLightningModel(PytorchNet):
         return self.loss.compute(b, pred)
 
     def validation_end(self, output_per_dset):
+        #assert False, f'outputs are {output_per_dset}'
         gc.collect()
         if self.assets.data.num_vald_loaders() == 1:
             output_per_dset = [output_per_dset]  # Incase singleton case, due to PL default behaviour
@@ -220,7 +254,9 @@ class CompletionLightningModel(PytorchNet):
             if i == 0:  # Always use the first dataset as the validation loss
                 avg_val_loss = ds_val_loss
                 progbar_dict['val_loss'] = avg_val_loss
+        #assert False, f'log dict is {log_dict}'
         self.assets.plt.push(new_data=self.temp_data, new_epoch=self.current_epoch)
+        
 
         lr = self.learning_rate(self.opt)  # Also log learning rate
         progbar_dict['lr'], log_dict['lr'] = lr, lr
@@ -264,6 +300,7 @@ class CompletionLightningModel(PytorchNet):
     
     def organ_segmentation_saving(self,set_id=0):
         for selection in self.top_subjects.keys():
+            assert False, f"selections self.top_subjects.keys()"
             for metric in self.top_subjects[selection]: 
                 reconstructions = torch.Tensor(np.stack([subject[4] for subject in self.top_subjects[selection][metric]]))
                 gts = torch.Tensor(np.stack([subject[2] for subject in self.top_subjects[selection][metric]]))

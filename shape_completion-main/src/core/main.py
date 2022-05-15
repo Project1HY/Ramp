@@ -72,7 +72,7 @@ def parser():
     p.add_argument('--lambdas', nargs="+", type=float, default=(1, 0.01, 0, 0, 0, 0, 0 , 0),
                    help='[XYZ,Normal,Moments,EuclidDistMat,EuclidNormalDistMap,FaceAreas,Volume, Velocity]'
                         'loss multiplication modifiers')
-    p.add_argument('--body_part_volume_weights', nargs=6, type=float, default=(0,0,1,0,0,0),
+    p.add_argument('--body_part_volume_weights', nargs=6, type=float, default=(0,0,0,0,0,0),
                    help='[Rightarm, Leftarm, Head, Rightleg, Leftleg, Torso]'
                         'loss multiplication modifiers')
     p.add_argument('--centralize_mesh_clouds', action='store_true', help='flag if we want to centralize completion saving')
@@ -160,7 +160,7 @@ def test_main():
     if args.baseline:
         nn= F2PEncoderDecoderBase(parser())
         # nn.identify_system()
-        nn.hp.counts = (0,0,2000000)
+        #nn.hp.counts = (0,0,20000)
         ldrs = f2p_completion_loaders(nn.hp, test='DFaustProj')
     else:
         if args.run_windowed_encoder:
@@ -172,7 +172,7 @@ def test_main():
         elif args.run_transformer_encoder:
             nn = F2PPCTDecoderWindowed(parser())
         # assert False, "window"
-        nn.hp.counts = (0,0,2000000)
+        #nn.hp.counts = (0,0,20000)
         ldrs = f2p_completion_loaders(nn.hp, test='DFaustProjRandomWindowed')
     # banner('Testing')
     trainer = LightningTrainer(nn, ldrs)
@@ -192,4 +192,4 @@ def test_main():
 # ----------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
     train_main()
-    # test_main()
+    #test_main()

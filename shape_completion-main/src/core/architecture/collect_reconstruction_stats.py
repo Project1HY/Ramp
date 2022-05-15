@@ -56,7 +56,7 @@ def collect_reconstruction_stats(gts,masks, tps, comps,faces):
         
         
         compvol_pre_icp = trimesh.Trimesh(vertices = comp_pre_icp, faces=faces, process=False).volume
-        vol_err_pre_icp[i] = abs(gtvol - compvol_pre_icp)/gtvol
+        vol_err_pre_icp[i] = abs(gtvol - compvol_pre_icp)/abs(gtvol)
 
         # Align Part<->Res
         #part = icp(part[:,:3],comp[:,:3],True)

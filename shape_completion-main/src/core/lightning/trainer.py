@@ -45,6 +45,7 @@ class LightningTrainer:
             self._init_training_assets()
             # log.info(f'Training on dataset: {self.data.curr_trainset_name()}')
             self.testing_only = False
+
         self._trainer(debug_mode).fit(self.nn, self.data.train_ldr, self.data.vald_ldrs, self.data.test_ldrs)        # train_dataloader=None, val_dataloader=None, test_dataloader=None
 
     def test(self):
@@ -78,7 +79,7 @@ class LightningTrainer:
             plt_class = getattr(lightning.assets.plotter, self.hp.plotter_class)
             self.plt = plt_class(faces=self.data.faces(),
                                  n_verts=self.data.num_verts())  # TODO - Cannot currently train on Scans due to this:
-
+       
     def _init_trainer(self, fast_dev_run):
         if self.hp.deterministic:
             seed_everything(42, workers=True)
@@ -91,12 +92,30 @@ class LightningTrainer:
         tb_log = TestTubeLogger(save_dir=self.hp.PRIMARY_RESULTS_DIR, description=f"{self.hp.exp_name} Experiment",
                                 name=self.hp.exp_name, version=self.hp.version)
         wandb_log = WandbLogger(project="my-test-project", entity="temporal_shape_recon",name=self.hp.exp_name, id=f"{self.hp.exp_name}{self.hp.version}")
+        wandb_log.experiment.define_metric(f"total_loss_val_{self.data.curr_trainset_name()}", summary="min")
+        wandb_log.experiment.define_metric(f"Full volume normalized error_val_{self.data.curr_trainset_name()}", summary="min")
+        wandb_log.experiment.define_metric(f"Full volume error_val_{self.data.curr_trainset_name()}", summary="min")
+        wandb_log.experiment.define_metric(f"Full all points centralized l2 error_val_{self.data.curr_trainset_name()}", summary="min")
+        wandb_log.experiment.define_metric(f"xyz_comp_val_{self.data.curr_trainset_name()}", summary="min")
+
+        #wandb_log.experiment.define_metric(f"total_loss_test_{self.data.curr_trainset_name()}", summary="min")
+        #wandb_log.experiment.define_metric(f"Full volume normalized error_test_{self.data.curr_trainset_name()}", summary="min")
+        #wandb_log.experiment.define_metric(f"Full volume error_test_{self.data.curr_trainset_name()}", summary="min")
+        #wandb_log.experiment.define_metric(f"Full all points centralized l2 error_test_{self.data.curr_trainset_name()}", summary="min")
+        #wandb_log.experiment.define_metric(f"xyz_comp_test_{self.data.curr_trainset_name()}", summary="min")
+        wandb_log.experiment.define_metric(f"total_loss_train", summary="min")
+        wandb_log.experiment.define_metric(f"Full volume normalized error_train", summary="min")
+        wandb_log.experiment.define_metric(f"Full volume error_train", summary="min")
+        wandb_log.experiment.define_metric(f"Full all points centralized l2 error_train", summary="min")
+        wandb_log.experiment.define_metric(f"xyz_comp_train", summary="min")
+
         # wandb_logger.experiment.config["counts"] = self.hp.counts
         # wandb.config.update(allow_val_change=True)
         # wandb_log.experiment.config.update({'counts':self.hp.counts},allow_val_change=True)
         self.exp_dp = Path(os.path.dirname(tb_log.experiment.log_dir)).resolve()  # Extract experiment path
         checkpoint = ModelCheckpoint(filepath=self.exp_dp / 'checkpoints', save_top_k=1, verbose=True,
                                      prefix='weight', monitor='val_loss', mode='min', period=1)
+                                
 
         # Support for Auto-Tensorboard:
         # if self.hp.use_auto_tensorboard > 0:
