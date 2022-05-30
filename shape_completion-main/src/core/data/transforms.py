@@ -149,7 +149,7 @@ class Center(PreCompilerTransform):
         return self.__class__.__name__ + f'(channels={self._slicer},keys={self._keys})'
 
 class CenterTorso(PreCompilerTransform):
-    def __init__(self,seg_manager ,slicer=slice(0, 3),keys=('gt', 'tp')):
+    def __init__(self ,seg_manager,slicer=slice(0, 3),keys=('gt', 'tp')):
         self._slicer = slicer
         self._keys = keys
         self.seg_manager = seg_manager

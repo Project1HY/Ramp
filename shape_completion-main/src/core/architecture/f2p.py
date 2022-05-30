@@ -4,6 +4,7 @@ import torch
 from architecture.encoders import PointNetShapeEncoder, DgcnnShapeEncoder, PCTShapeEncoder
 from architecture.decoders import BasicShapeDecoder, LSTMDecoder
 from architecture.base import Template, Regressor
+from visualize.get_objects_hardcoded_for_sets_base import get_segmentation_manger
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -11,6 +12,8 @@ from architecture.base import Template, Regressor
 # ----------------------------------------------------------------------------------------------------------------------
 class F2PEncoderDecoderBase(CompletionLightningModel):
     def _build_model(self):
+        self.seg_manager = get_segmentation_manger()
+        self.segmentation = self.seg_manager.get_vertex_segs()['Torso']
         self.encoder_full = PointNetShapeEncoder(in_channels=self.hp.in_channels, code_size=self.hp.code_size)
         self.encoder_part = self.encoder_full
         self.decoder = BasicShapeDecoder(code_size=self.hp.in_channels + 2 * self.hp.code_size,
@@ -48,7 +51,14 @@ class F2PEncoderDecoderBase(CompletionLightningModel):
 
         y = torch.cat((full, part_code, full_code), 2).contiguous()  # [b x nv x (in_channels + 2*code_size)]
         y = self.decoder(y)
-
+        if self.hp.centralize_com:
+            center_of_mass= torch.mean(y, dim=1, keepdim=True)
+            center_of_mass[:,3:]=0
+            y=y-center_of_mass
+        if self.hp.centralize_mesh_clouds:
+            center_of_mass= torch.mean(y[:,self.segmentation,:], dim=1, keepdim=True)
+            center_of_mass[:,3:]=0
+            y=y-center_of_mass
         return {'completion_xyz': y}
 
 

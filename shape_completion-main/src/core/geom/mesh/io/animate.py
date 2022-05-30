@@ -18,11 +18,11 @@ def animate(vs, f=None, gif_name=None, titles=None, first_frame_index=0, pause=0
         titles = stringify(titles)
         p.add_text(titles[first_frame_index], position='upper_edge', name='my_title')
     p.show(auto_close=False, full_screen=True)
-    colors = ['w']*len(vs) if colors is not None else colors
+    colors = ['w']*len(vs) if colors is None else colors
     # Open a gif
     if gif_name is not None:
         p.open_gif(gif_name)
-
+    # assert False,f"colors {colors}"
     for i, (v,color) in enumerate(zip(vs,colors)):
         if titles is not None:
             p.add_text(titles[i], position='upper_edge', name='my_title')

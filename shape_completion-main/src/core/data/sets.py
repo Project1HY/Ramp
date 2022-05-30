@@ -6,6 +6,7 @@ import os
 from torch.utils.data.sampler import Sampler
 import random
 from util.torch.data import SubsetChoiceSampler
+import json
 
 try:
     # This snippet is needed to solve the unpickling error. See shorturl.at/jktw2
@@ -184,6 +185,85 @@ class DFaust(ParametricCompletionDataset):
     def _hi2proj_path_semantic_cuts(self, hi):
         return self._proj_dir / hi[0] / hi[1] / f'{hi[2]:>05}_{hi[3]}.npz'
 
+class DFaustFilteredSubjects(ParametricCompletionDataset):
+    def __init__(self, deformation,filter_path = "/home/ido.igip1/Ramp/shape_completion-main/subjects_tps.json", data_dir_override=r"./DFaust/"):
+        with open(filter_path) as f:
+            jdata = json.load(f)
+            subjects = jdata["items"]
+            self.gt_to_tp = {}
+            self._hit_data = {}
+            for subject in subjects:
+                tup = (subject['gt_subject'],subject['gt_pose'],subject['gt_animation_index'])
+                self.gt_to_tp[tup] = (subject['tp_subject'],subject['tp_pose'],subject['tp_animation_index'])
+                self._hit_data[subject['gt_subject']] = {}
+                self._hit_data[subject['gt_subject']][subject['gt_pose']]={}
+                self._hit_data[subject['gt_subject']][subject['gt_pose']][subject['gt_animation_index']]=10
+            self.subjects = subjects
+
+        super().__init__(n_verts=6890, data_dir_override=data_dir_override, deformation=deformation, cls='synthetic',
+                         suspected_corrupt=False)
+        # self._full_dir = Path(r'D:\yift_hadas_data\DFAUST_VERT_PICK')
+        self._full_dir = self._vert_pick
+        #                 "gt_subject":"",
+        # "gt_pose":"",
+        # "gt_animation_index":"",
+        # "gt_azimuth":"",
+        # "tp_subject":"",
+        # "tp_pose":"",
+        # "tp_animation_index":"",
+        # "tp_azimuth":""
+
+
+    def _datapoint_via_f2p(self, si):
+        si_gt, si_tp = self._tupled_index_map(si)
+        tp_dict = self._datapoint_via_full(si_tp)
+        gt_dict = self._datapoint_via_part(si_gt)
+
+        gt_hi_path = gt_dict['gt_hi'][:-1]
+        tp_path = self.gt_to_tp[gt_hi_path]
+        tp_dict = self._full_dict_by_hi(tp_path)
+        gt_dict['tp'], gt_dict['tp_hi'], gt_dict['tp_f'] = tp_dict['gt'], tp_dict['gt_hi'], tp_dict['gt_f']
+        return gt_dict
+
+        
+    def _construct_hit(self):  # Override
+        hit = self._hit_data
+        return HierarchicalIndexTree(hit, in_memory=True)
+    
+    def _hi2proj_path_default(self, hi):
+        return self._proj_dir / f'{hi[0]}{hi[1]}{hi[2]:>05}_{hi[3]}.npz'
+
+    def _hi2full_path_default(self, hi):
+        return self._full_dir / hi[0] / hi[1] / f'{hi[2]:>05}.npy'
+
+    def _hi2proj_path_semantic_cuts(self, hi):
+        return self._proj_dir / hi[0] / hi[1] / f'{hi[2]:>05}_{hi[3]}.npz'
+
+
+
+class DFaustFiltered(ParametricCompletionDataset):
+    def __init__(self, deformation,filter_path = "/home/ido.igip1/Ramp/shape_completion-main/filter.json", data_dir_override=r"./DFaust/"):
+        super().__init__(n_verts=6890, data_dir_override=data_dir_override, deformation=deformation, cls='synthetic',
+                         suspected_corrupt=False)
+        # self._full_dir = Path(r'D:\yift_hadas_data\DFAUST_VERT_PICK')
+        self._full_dir = self._vert_pick
+        with open(filter_path) as f:
+            jdata = json.load(f)
+            self.subjects = jdata["subjects"]
+            self.poses = jdata["poses"]
+            self._hit = self._hit.keep_ids_by_depth(subjects, 1)            
+            self._hit = self._hit.keep_ids_by_depth(poses, 2)
+
+    def _hi2proj_path_default(self, hi):
+        return self._proj_dir / f'{hi[0]}{hi[1]}{hi[2]:>05}_{hi[3]}.npz'
+
+    def _hi2full_path_default(self, hi):
+        return self._full_dir / hi[0] / hi[1] / f'{hi[2]:>05}.npy'
+
+    def _hi2proj_path_semantic_cuts(self, hi):
+        return self._proj_dir / hi[0] / hi[1] / f'{hi[2]:>05}_{hi[3]}.npz'
+
+
 
 class DFaustSequential(ParametricCompletionDataset):
     NULL_SHAPE_SI = 0
@@ -192,6 +272,7 @@ class DFaustSequential(ParametricCompletionDataset):
         super().__init__(n_verts=6890, data_dir_override=data_dir_override, deformation=deformation, cls='synthetic',
                          suspected_corrupt=False)
         self._hits = []
+        
         # print("yiftach now is :",self._full_dir)
         self._full_dir = self._vert_pick
 
@@ -701,6 +782,9 @@ class DatasetMenu:
 
         'DFaustProj': (DFaust, AzimuthalProjection()),
         'DFaustProjSequential': (DFaustSequential, AzimuthalProjection()),
+        "DFaustFilteredProj":(DFaustFiltered,AzimuthalProjection()),
+        "DFaustFilteredSubjectsProj":(DFaustFilteredSubjects,AzimuthalProjection()),
+    
         'DFaustProjRandomWindowed': (DFaustWindowedSequential, AzimuthalProjection()),
         'DFaustSemCuts': (DFaust, SemanticCut(n_expected_proj=4)),
 

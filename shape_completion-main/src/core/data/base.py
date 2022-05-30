@@ -492,6 +492,7 @@ class CompletionDataset(HitIndexedDataset, ABC):
         si_gt, si_tp = self._tupled_index_map(si)
         tp_dict = self._datapoint_via_full(si_tp)
         gt_dict = self._datapoint_via_part(si_gt)
+        assert False, f"si {si} tp_dict {tp_dict} gt_dict {gt_dict}"
         gt_dict['tp'], gt_dict['tp_hi'], gt_dict['tp_f'] = tp_dict['gt'], tp_dict['gt_hi'], tp_dict['gt_f']
         return gt_dict
 
@@ -514,6 +515,7 @@ class CompletionDataset(HitIndexedDataset, ABC):
 
     def _datapoint_via_rand_f2p(self, si):
         gt_dict = self._datapoint_via_part(si)  # si is gt_si
+        assert False, f"here be dragons"
         tp_hi = self._hit.random_path_from_partial_path([gt_dict['gt_hi'][0]])[:-1]  # Shorten hi by 1
         # tp_hi = gt_dict['gt_hi'][:-1]
         tp_dict = self._full_dict_by_hi(tp_hi)

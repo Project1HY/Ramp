@@ -86,8 +86,9 @@ class LSTMDecoder(BaseDecoder):
         x = x.transpose(2, 1).contiguous()  # [b*window x nv x in_channels]
         x = self.convolutions(x)
         x = x.reshape(bs, window_size, -1)
-        x, _ = self.lstm(x)
-        
+        x, (a,b) = self.lstm(x)
+        a = a.detach()
+        b = b.detach()
         x = x.reshape(bs*window_size,-1)
         x = self.reshape_matrix(x).reshape(bs,window_size, nv, 3)
         #assert False, f"out shape is {out.shape}"

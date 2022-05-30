@@ -21,14 +21,14 @@ def get_defult_dir_values()->dict():
     #get defult dir values and beats and dmpls num
     cached_dataset_objects_dir=os.path.join(os.curdir,'cached_objects')
     #smpl_segmentation_dir=os.path.join(os.curdir,'smpl_segmentations_data')
-    smpl_segmentation_file=os.path.join('/','home','yiftach.ede','Ramp','shape_completion-main','src','core','visualize','smpl_segmentations_data','mixamo_smpl_segmentation.pkl')
+    smpl_segmentation_file=os.path.join('/','home','ido.igip1','Ramp','shape_completion-main','src','core','visualize','smpl_segmentations_data','mixamo_smpl_segmentation.pkl')
     soft_link_dir=os.path.join(os.curdir,'soft_links')
     num_betas=16
     num_dmpls=8
     sampling_dir=os.path.join(os.curdir,'sampling')
     if platform == "linux" or platform == "linux2":
         amass_dir=os.path.join('/','media','omer','7B59-9DC0','Technion','Projects','ProjectB','AmassDataset','amass_dir') #defult folder for linux
-        base_smplh_and_dmpls_dir=os.path.join('/','home','yiftach.ede','datasets','data') #defult folder for linux
+        base_smplh_and_dmpls_dir=os.path.join('/','home','ido.igip1','Ramp','shape_completion-main','datasets','data') #defult folder for linux
         smplh_dir=os.path.join(base_smplh_and_dmpls_dir,'SLMPH/slmph/') #defult folder for linux
         dmpl_dir=os.path.join(base_smplh_and_dmpls_dir,'DMPL_DIR/dmpls/') #defult folder for linux
     else:

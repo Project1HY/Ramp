@@ -53,7 +53,7 @@ def parser():
     p.add_argument('--lr', type=float, default=0.006, help='The learning step to use')
     p.add_argument('--stride', type=int, default=6, help='The learning step to use')
     p.add_argument('--window_size', type=int, default=1, help='The learning step to use')
-    p.add_argument('--counts', nargs=3, type=none_or_int, default=(160, 16, 1600),  # TODO - Change me as needed
+    p.add_argument('--counts', nargs=3, type=none_or_int, default=(200000000, 1000, 2000),  # TODO - Change me as needed
                    help='The default train,validation and test counts. Recommended [8000-20000, 500-1000, 500-1000]. '
                         'Use None to take all examples in the partition - '
                         'for big datasets, this could blow up the epoch')
@@ -72,7 +72,7 @@ def parser():
     p.add_argument('--lambdas', nargs="+", type=float, default=(1, 0.01, 0, 0, 0, 0, 0 , 0),
                    help='[XYZ,Normal,Moments,EuclidDistMat,EuclidNormalDistMap,FaceAreas,Volume, Velocity]'
                         'loss multiplication modifiers')
-    p.add_argument('--body_part_volume_weights', nargs=6, type=float, default=(0,0,1,0,0,0),
+    p.add_argument('--body_part_volume_weights', nargs=6, type=float, default=(0,0,0,0,0,0),
                    help='[Rightarm, Leftarm, Head, Rightleg, Leftleg, Torso]'
                         'loss multiplication modifiers')
     p.add_argument('--centralize_mesh_clouds', action='store_true', help='flag if we want to centralize completion saving')
@@ -92,6 +92,7 @@ def parser():
     p.add_argument('--centralize_com', action='store_true', help='flag if we want to run baseline model')
     p.add_argument('--baseline', action='store_true', help='flag if we want to run baseline model')
     p.add_argument('--visualization_run', action='store_true', help='flag if we want to run baseline model')
+    p.add_argument('--animation_run', action='store_true', help='flag if we want to run baseline model')
     p.add_argument('--deterministic', action='store_true', help='flag if we want to run baseline model')
     p.add_argument('--run_windowed_encoder', action='store_true', help='flag for using a window of consecutive frames based on a chosen stride')
     p.add_argument('--run_windowed_lstm_decoder', action='store_true', help='flag for using a window of consecutive frames based on a chosen stride')
@@ -128,7 +129,7 @@ def train_main():
     if args.baseline:
         nn= F2PEncoderDecoderBase(parser())
         # nn.identify_system()
-        ldrs = f2p_completion_loaders(nn.hp, train='DFaustProj')
+        ldrs = f2p_completion_loaders(nn.hp, train='DFaustFilteredSubjectsProj')
     else:
         if args.run_windowed_encoder:
             nn = F2PEncoderDecoderWindowed(parser())
@@ -160,7 +161,8 @@ def test_main():
     if args.baseline:
         nn= F2PEncoderDecoderBase(parser())
         # nn.identify_system()
-        ldrs = f2p_completion_loaders(nn.hp, test='DFaustProj')
+        # assert False, f"hp {nn.hp}"
+        ldrs = f2p_completion_loaders(nn.hp, test='DFaustFilteredSubjectsProj')
     else:
         if args.run_windowed_encoder:
             nn = F2PEncoderDecoderWindowed(parser())
@@ -189,5 +191,5 @@ def test_main():
 #
 # ----------------------------------------------------------------------------------------------------------------------
 if __name__ == '__main__':
-    #train_main()
+    # train_main()
     test_main()

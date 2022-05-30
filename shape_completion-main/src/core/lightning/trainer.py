@@ -90,7 +90,8 @@ class LightningTrainer:
         # Checkpointing and Logging:
         tb_log = TestTubeLogger(save_dir=self.hp.PRIMARY_RESULTS_DIR, description=f"{self.hp.exp_name} Experiment",
                                 name=self.hp.exp_name, version=self.hp.version)
-        wandb_log = WandbLogger(project="my-test-project", entity="temporal_shape_recon",name=self.hp.exp_name, id=f"{self.hp.exp_name}{self.hp.version}")
+        vis = "_animate_" if self.hp.animation_run else "" 
+        wandb_log = WandbLogger(project="my-test-project", entity="temporal_shape_recon",name=self.hp.exp_name, id=f"{self.hp.exp_name}{vis}{self.hp.version}")
         # wandb_logger.experiment.config["counts"] = self.hp.counts
         # wandb.config.update(allow_val_change=True)
         # wandb_log.experiment.config.update({'counts':self.hp.counts},allow_val_change=True)

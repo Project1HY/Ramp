@@ -113,8 +113,8 @@ class CompletionLightningModel(PytorchNet):
         data = list(map(list, itertools.zip_longest(*results.values(),fillvalue=None)))
         keys = list(results.keys())
 
-        wandb.log(log_dict)
-        wandb.log({f"static metrics {stage}": wandb.Table(columns=keys, data=data)})
+        # wandb.log(log_dict)
+        # wandb.log({f"static metrics {stage}": wandb.Table(columns=keys, data=data)})
 
 
     def training_step(self, b, batch_idx):
@@ -165,9 +165,9 @@ class CompletionLightningModel(PytorchNet):
         display_keys = ["best_mean_error_train", "best_volume_error_train", "best_template_mean_error_train", "worst_mean_error_train",
         "worst_volume_error_train", "worst_template_mean_error_train", "mean_error_train", "mean_volume_error_train", "template_mean_error_train"]
         result_dict = {k:v for k,v in zip(display_keys,display_vals)}
-        wandb.log({"total train results": wandb.Table(columns=list(result_dict.keys()), data=[list(result_dict.values())])})
+        # wandb.log({"total train results": wandb.Table(columns=list(result_dict.keys()), data=[list(result_dict.values())])})
 
-        wandb.log(log_dict)
+        # wandb.log(log_dict)
         return output_per_dset
 
     def on_validation_start(self):
@@ -184,7 +184,7 @@ class CompletionLightningModel(PytorchNet):
             batch_validation_mesh = batch_validation_mesh.numpy()[-1]
             if self.assets.saver is not None:  # TODO - Generalize this
                 images = self.assets.saver.get_completions_as_pil(pred, b)
-                wandb.log({"completions": [wandb.Image(image) for image in images]})
+                # wandb.log({"completions": [wandb.Image(image) for image in images]})
 
         if batch_idx == 0 and set_id == 0 and self.assets.plt is not None and self.assets.plt.cache_is_filled():
             # On first batch, of first dataset, only if plotter exists and only if training step has been activated
@@ -254,7 +254,7 @@ class CompletionLightningModel(PytorchNet):
         display_keys = ["best_mean_error_val", "best_volume_error_val", "best_template_mean_error_val", "worst_mean_error_val",
         "worst_volume_error_val", "worst_template_mean_error_val", "mean_error_val", "mean_volume_error_val", "template_mean_error_val"]
         result_dict = {k:v for k,v in zip(display_keys,display_vals)}
-        wandb.log({"total validation results": wandb.Table(columns=list(result_dict.keys()), data=[list(result_dict.values())])})
+        # wandb.log({"total validation results": wandb.Table(columns=list(result_dict.keys()), data=[list(result_dict.values())])})
 
         self.loss.compute_loss_start('validation')
         # This must be kept as "val_loss" and not "avg_val_loss" due to old_lightning bug
@@ -378,7 +378,7 @@ class CompletionLightningModel(PytorchNet):
         if self.assets.saver is not None:  # TODO - Generalize this
             self.assets.saver.save_completions_by_batch(pred, b, set_id,test_step_folder=True)
         if self.hp.visualization_run:
-            assert len(b['gt'])<=12, f"len of b is {len(b['gt'])}"
+            #assert len(b['gt'])<=12, f"len of b is {len(b['gt'])}"
             self.compute_segmentation_best_worst(b,pred,set_id)        
             return self.loss.compute(b, pred)
         tp = b['tp']
@@ -398,7 +398,7 @@ class CompletionLightningModel(PytorchNet):
         keys = list(results.keys())
 
 
-        wandb.log({"static metrics": wandb.Table(columns=keys, data=data)})
+        # wandb.log({"static metrics": wandb.Table(columns=keys, data=data)})
         #new_test_data = self.assets.plt.prepare_plotter_dict(b, pred)
         # if len(self.test_step_data)==0:
         #     self.test_step_data=[results]
@@ -434,8 +434,8 @@ class CompletionLightningModel(PytorchNet):
         
         if self.assets.saver is not None:  # TODO - Generalize this
             rows = []
-            for completion_gif_path, completion, completion_name in tqdm.tqdm(self.assets.saver.load_completions( )):
-                wandb.log({"completion_video": wandb.Video(completion_gif_path, fps=60, format="gif")})
+            for completion_gif_path, completion, completion_name in tqdm.tqdm(self.assets.saver.load_completions(test_step=True)):
+                # wandb.log({"completion_video": wandb.Video(completion_gif_path, fps=60, format="gif")})
                 completion = np.array(completion)
                 completions_shifted = completion[1:]
                 completion = completion[:-1]
@@ -448,7 +448,7 @@ class CompletionLightningModel(PytorchNet):
         for key in log_dict:
             table_dict[key] = log_dict[key].item() 
 
-        wandb.log({"completion test metrics":wandb.Table(columns=list(table_dict.keys()),data=[list(table_dict.values())])})
+        # wandb.log({"completion test metrics":wandb.Table(columns=list(table_dict.keys()),data=[list(table_dict.values())])})
         
         best_stats = self.loss.return_best_stats('test')
         log_dict["best_mean_error_test"]=best_stats['Comp-GT Vertex L2'][2]
@@ -479,11 +479,11 @@ class CompletionLightningModel(PytorchNet):
         display_keys = ["best_mean_error_test", "best_volume_error_test", "best_template_mean_error_test", "worst_mean_error_test",
         "worst_volume_error_test", "worst_template_mean_error_test", "mean_error_test", "mean_volume_error_test", "template_mean_error_test"]
         result_dict = {k:v for k,v in zip(display_keys,display_vals)}
-        wandb.log({"total test results": wandb.Table(columns=list(result_dict.keys()), data=[list(result_dict.values())])})
+        # wandb.log({"total test results": wandb.Table(columns=list(result_dict.keys()), data=[list(result_dict.values())])})
 
         #self.loss.compute_loss_start()
         # This must be kept as "val_loss" and not "avg_val_loss" due to old_lightning bug
-        wandb.log(log_dict)
+        # wandb.log(log_dict)
         return {"test_loss": avg_test_loss,  # TODO - Remove double entry for val_koss
                 "progress_bar": progbar_dict,
                 "log": log_dict}
