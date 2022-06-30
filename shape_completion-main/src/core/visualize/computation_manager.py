@@ -63,7 +63,7 @@ def get_valid_error_computations_type_list():
     res=[]
 
     #bounding_box=['','bounding box']
-    bounding_box=[False,True]
+    bounding_box=[False]
     quantity_for_shapes=['volume']
         # ,'surface area','surface area to volume ratio'] TODO: Enable more when needed
     #normalizations=['','normalized']
@@ -75,9 +75,11 @@ def get_valid_error_computations_type_list():
 
     point_types=['all points']
     #,'center of mass point','bounding box points']TODO: Enable more when needed
-    quantity_for_points=['l1','l2','l infinity']
-    centralizions=[True] #TODO add false if wanted
-    normalizations_points=[False] #TODO add true if wanted
+    quantity_for_points=['l2']
+
+    # quantity_for_points=['l1','l2','l infinity']
+    centralizions=[False] #TODO add false if wanted
+    normalizations_points=[False,True] #TODO add true if wanted
 
     for point_type in point_types:
         for quantity in quantity_for_points:
@@ -107,7 +109,7 @@ def get_valid_error_computations_type_list_for_flow():
 
 class ErrorComputationDiffManger():
     def __init__(self,f:torch.Tensor,segmentation_manger:SegmentationManger,computation_type_list:list=get_valid_error_computations_type_list()):
-        assert(set([comp.get_str() for comp in computation_type_list]).issubset(set(comp.get_str() for comp in get_valid_error_computations_type_list())))
+        # assert(set([comp.get_str() for comp in computation_type_list]).issubset(set(comp.get_str() for comp in get_valid_error_computations_type_list())))
         #assert(set(computation_type_list).issubset(set(get_valid_error_computations_type_list()))) I can implement __hash__ to compare it.but this is really redundant right now..
         self._f=f
         self._computation_type_list=computation_type_list
@@ -238,6 +240,7 @@ class Computation():
 
     def _get_attr_for_both_shapes(self,attr_name:str)->(torch.Tensor,torch.Tensor):
         assert(attr_name in self._get_valid_attrs())
+        # assert attr_name=="volume", f"attr name _get_{attr_name}"
         f=getattr(self,f'_get_{attr_name}')
         return {i:f(i) for i in self._shape_nums}
 
@@ -256,16 +259,45 @@ class Computation():
     def _get_error_diff_from_quantities_dict(self,quantities_dict:dict,normalization_needed:bool)->dict:
         #for shapes
         diff_dict={seg_name:torch.abs(quantities_dict[1][seg_name]-quantities_dict[2][seg_name]) for seg_name in quantities_dict[1].keys()}
-        if normalization_needed:
-            diff_dict={seg_name:(diff_dict[seg_name]/quantities_dict[1][seg_name])*100 for seg_name in diff_dict.keys()}
+        
+        # if normalization_needed:
+            # diff_dict={seg_name:(diff_dict[seg_name]/quantities_dict[1][seg_name])*100 for seg_name in diff_dict.keys()}
         return diff_dict
+    def _get_norm_of_diff_for_shape_dict(self,diff_dist_dict:dict,quantities_dict:dict,order,normalization_needed:bool):
+        #divide_by= 1 if not normalization_needed else 
+        calculate_dist_norm=lambda value:torch.sum(torch.sum(value**2,dim=-1),dim=-1)
+        # assert False, f"shape of diff_dist_dict {diff_dist_dict['Full'].shape}"
+        res={seg_name:calculate_dist_norm(value) for seg_name,value in diff_dist_dict.items()}
+        if normalization_needed:
+            divide_by={seg_name:value.size(1)*value.size(2) for seg_name,value in diff_dist_dict.items()}
+            # assert False, f"divide by {divide_by}"
+            normalized=lambda seg_name:res[seg_name]/divide_by[seg_name]
+            res={seg_name:normalized(seg_name) for seg_name,value in res.items()}
+        return res
+    def _get_norm_of_diff_for_shape_dict_2(self,diff_dist_dict:dict,quantities_dict:dict,order,normalization_needed:bool):
+        #divide_by= 1 if not normalization_needed else 
+        calculate_dist_norm=lambda value:torch.sum(torch.sum(value**2,dim=-1),dim=-1)
+        # assert False, f"shape of diff_dist_dict {diff_dist_dict['Full'].shape}"
+        # res={seg_name:calculate_dist_norm(value) for seg_name,value in diff_dist_dict.items()}
+        # res_quants = {seg_name:calculate_dist_norm(value) for seg_name,value in quantities_dict[1].items()}
+        # assert False, f"res {res} res_quant {res_quants}\n diff_dist_dict {diff_dist_dict['Full'].shape} quant_dict {quantities_dict[1]['Full'].shape}"
+        
+        res = {seg_name_res:value_res/value_res_quant for ((seg_name_res,value_res),(seg_name_quant,value_res_quant)) in zip(diff_dist_dict.items(),quantities_dict[1].items())}
+        if normalization_needed:
+            divide_by={seg_name:value.size(1)*value.size(2) for seg_name,value in diff_dist_dict.items()}
+            # assert False, f"divide by {divide_by}"
+            normalized=lambda seg_name:res[seg_name]/divide_by[seg_name]
+            res={seg_name:normalized(seg_name) for seg_name,value in res.items()}
+        return res
 
     def _get_norm_of_diff_for_points_dict(self,diff_dist_dict:dict,order,normalization_needed:bool):
         #divide_by= 1 if not normalization_needed else 
-        calculate_dist_norm=lambda value:torch.sum(torch.norm(value,dim=2,p=order),dim=1)
+        calculate_dist_norm=lambda value:torch.sum(torch.sum(value**2,dim=-1),dim=-1)
+        # assert False, f"shape of diff_dist_dict {diff_dist_dict['Full'].shape}"
         res={seg_name:calculate_dist_norm(value) for seg_name,value in diff_dist_dict.items()}
         if normalization_needed:
-            divide_by={seg_name:value.size(1) for seg_name,value in diff_dist_dict.items()}
+            divide_by={seg_name:value.size(1)*value.size(2) for seg_name,value in diff_dist_dict.items()}
+            # assert False, f"divide by {divide_by}"
             normalized=lambda seg_name:res[seg_name]/divide_by[seg_name]
             res={seg_name:normalized(seg_name) for seg_name,value in res.items()}
         return res
@@ -293,8 +325,11 @@ class Computation():
         attr_name=re.sub(' normalized','',shape_computation_type.get_str())
         attr_name=re.sub(' ','_',attr_name)
         quantities_dict=self._get_attr_for_both_shapes(attr_name=attr_name)
-        return self._get_error_diff_from_quantities_dict(quantities_dict=quantities_dict,normalization_needed=normalization_needed)
-
+        error_diff = self._get_error_diff_from_quantities_dict(quantities_dict=quantities_dict,normalization_needed=normalization_needed)
+        if normalization_needed:
+            return self._get_norm_of_diff_for_shape_dict_2(error_diff,quantities_dict,2,normalization_needed=False)
+        return error_diff
+    
     def _computePointDiff(self,point_computation_type:PointsComputationType)->dict:
         #will save it on my cache
         point_type,quantity,centralized,normalization_needed=point_computation_type.get_tuple()
@@ -302,6 +337,7 @@ class Computation():
         points_attr_name=re.sub(' '+quantity,'',points_attr_name)
         points_attr_name=re.sub(' ','_',points_attr_name)
         points_dict_for_both_shapes=self._get_attr_for_both_shapes(attr_name=points_attr_name)
+        # assert False, f"points_dict_for_both_shapes: {points_dict_for_both_shapes.keys()}"
         order=self._get_order(quantity=quantity)
         res=self._get_error_diff_from_dist_dict(points_dict_for_both_shapes,order,normalization_needed)
         #NOTE this can be efficent if we would cache the points distance results

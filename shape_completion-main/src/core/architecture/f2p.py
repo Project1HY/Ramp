@@ -1,8 +1,8 @@
 from lightning.nn import CompletionLightningModel
 from test_tube import HyperOptArgumentParser
 import torch
-from architecture.encoders import PointNetShapeEncoder, DgcnnShapeEncoder, PCTShapeEncoder
-from architecture.decoders import BasicShapeDecoder, LSTMDecoder
+from architecture.encoders import PointNetShapeEncoder,PointNetShapeEncoderSinActivation, DgcnnShapeEncoder, PCTShapeEncoder
+from architecture.decoders import BasicShapeDecoder, LSTMDecoder,BasicShapeDecoderSiren
 from architecture.base import Template, Regressor
 from visualize.get_objects_hardcoded_for_sets_base import get_segmentation_manger
 
@@ -61,6 +61,16 @@ class F2PEncoderDecoderBase(CompletionLightningModel):
             y=y-center_of_mass
         return {'completion_xyz': y}
 
+
+class F2PEncoderDecoderBaseSiren(F2PEncoderDecoderBase):
+    def _build_model(self):
+        self.seg_manager = get_segmentation_manger()
+        self.segmentation = self.seg_manager.get_vertex_segs()['Torso']
+        self.encoder_full = PointNetShapeEncoderSinActivation(in_channels=self.hp.in_channels, code_size=self.hp.code_size)
+        self.encoder_part = self.encoder_full
+        self.decoder = BasicShapeDecoderSiren(code_size=self.hp.in_channels + 2 * self.hp.code_size,
+                                         out_channels=self.hp.out_channels, num_convl=self.hp.decoder_convl)
+        # noinspection PyUnresolvedReferences
 
 class F2PEncoderDecoderWindowed(CompletionLightningModel):
     def _build_model(self):

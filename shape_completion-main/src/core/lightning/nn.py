@@ -30,7 +30,6 @@ class CompletionLightningModel(PytorchNet):
         self.temp_data = []
         self.body_part_volume_weights = list(self.hp.body_part_volume_weights)
         # self.test_step_data = []
-
         # Bookeeping:
         self.assets = None  # Set by Trainer
         self.loss, self.opt = None, None
@@ -97,8 +96,8 @@ class CompletionLightningModel(PytorchNet):
         pass
         tp = b['tp']
         results = self.loss.compute_loss_end(b['gt_hi'], b['tp_hi'], b['gt'].cpu().detach().numpy(), b['gt_mask'], tp.cpu().detach().numpy(),pred['completion_xyz'].cpu().detach().numpy(), stage)
-        wandb.define_metric("loss", summary="min")
-        log_dict = {"loss": results}
+        #wandb.define_metric("loss", summary="min")
+        #log_dict = {"loss": results}
 
         results['gt_hi'] = b['gt_hi']
         results['tp_hi'] = b['tp_hi']
@@ -122,7 +121,7 @@ class CompletionLightningModel(PytorchNet):
         loss_dict = self.loss.compute(b, completion)
         loss_dict = {f'{k}_train': v for k, v in loss_dict.items()}  # make different logs for train, test, validation
         train_loss = loss_dict['total_loss_train']
-        wandb.define_metric("loss", summary="min")
+        #wandb.define_metric("loss", summary="min")
         if batch_idx == 0:
             self.report_static_metrics(b,completion,"train")
         
@@ -134,8 +133,42 @@ class CompletionLightningModel(PytorchNet):
             'log': loss_dict
         }
 
-    def training_end(self, output_per_dset):
+    def on_epoch_end(self, outputs):
         log_dict = {}
+        #assert False, f'output {outputs}'
+        #ds_name = self.assets.data.curr_trainset_name()
+        for k in outputs[0].keys(): 
+            log_dict[f'{k}'] = 0
+        for i in range(len(outputs)):  # Number of validation datasets
+                #assert False, f'info is {outputs[i][k]}'
+                #log_dict[f'{k}_train_{ds_name}'] = torch.stack([x[k] for x in outputs[i]]).mean()
+            for k in outputs[i].keys():
+                log_dict[f'{k}'] += outputs[i][k]
+        for k in outputs[0].keys(): 
+            log_dict[f'{k}'] = log_dict[f'{k}']/len(outputs)
+        #assert False, f'log dict is {log_dict}'
+
+    def training_end(self, output_per_dset):
+        # if self.assets.data.num_vald_loaders() == 1:
+            # output_per_dset = [output_per_dset]  # Incase singleton case, due to PL default behaviour
+        log_dict = {}
+        # , progbar_dict, avg_train_loss = {}, {}, 0
+        # for i in range(len(output_per_dset)):  # Number of validation datasets
+        #     ds_name = self.assets.data.index2validation_ds_name(i)
+        #     for k in output_per_dset[i][0].keys():  # Compute validation loss per dataset
+        #         log_dict[f'{k}_train_{ds_name}'] = torch.stack([x[k] for x in output_per_dset[i]]).mean()
+        #     ds_train_loss = log_dict[f'total_loss_train_{ds_name}']
+        #     prog_bar_name = f'train_loss_{ds_name}'
+        #     progbar_dict[prog_bar_name] = ds_train_loss
+        #     ds_train_loss_cpu = ds_train_loss.item()
+        #     if ds_train_loss_cpu < self.min_losses[prog_bar_name]:
+        #         self.min_losses[prog_bar_name] = ds_train_loss_cpu
+        #     log_dict[f'{prog_bar_name}_min'] = self.min_losses[prog_bar_name]
+        #     if i == 0:  # Always use the first dataset as the validation loss
+        #         avg_train_loss = ds_train_loss
+        #         progbar_dict['train_loss'] = avg_train_loss
+        # self.assets.plt.push(new_data=self.temp_data, new_epoch=self.current_epoch)
+        
         best_stats = self.loss.return_best_stats('train')
         log_dict["best_mean_error_train"]=best_stats['Comp-GT Vertex L2'][2]
         log_dict["best_volume_error_train"]=best_stats['Comp-GT Volume L1'][2]
@@ -167,7 +200,7 @@ class CompletionLightningModel(PytorchNet):
         result_dict = {k:v for k,v in zip(display_keys,display_vals)}
         # wandb.log({"total train results": wandb.Table(columns=list(result_dict.keys()), data=[list(result_dict.values())])})
 
-        # wandb.log(log_dict)
+        wandb.log(log_dict)
         return output_per_dset
 
     def on_validation_start(self):
@@ -202,6 +235,7 @@ class CompletionLightningModel(PytorchNet):
         return self.loss.compute(b, pred)
 
     def validation_end(self, output_per_dset):
+        #assert False, f'outputs are {output_per_dset}'
         gc.collect()
         if self.assets.data.num_vald_loaders() == 1:
             output_per_dset = [output_per_dset]  # Incase singleton case, due to PL default behaviour
@@ -220,7 +254,9 @@ class CompletionLightningModel(PytorchNet):
             if i == 0:  # Always use the first dataset as the validation loss
                 avg_val_loss = ds_val_loss
                 progbar_dict['val_loss'] = avg_val_loss
+        #assert False, f'log dict is {log_dict}'
         self.assets.plt.push(new_data=self.temp_data, new_epoch=self.current_epoch)
+        
 
         lr = self.learning_rate(self.opt)  # Also log learning rate
         progbar_dict['lr'], log_dict['lr'] = lr, lr
@@ -265,16 +301,11 @@ class CompletionLightningModel(PytorchNet):
     def organ_segmentation_saving(self,set_id=0):
         for selection in self.top_subjects.keys():
             for metric in self.top_subjects[selection]: 
-                #assert False, f"selection key {selection} metric {metric}"
-                # assert False, f"best stats {self.top_metrics['best'][metric]} \n  worst_stats {self.top_metrics['worst'][metric]} "
-
                 reconstructions = torch.Tensor(np.stack([subject[4] for subject in self.top_subjects[selection][metric]]))
                 gts = torch.Tensor(np.stack([subject[2] for subject in self.top_subjects[selection][metric]]))
                 tps = torch.Tensor(np.stack([subject[3] for subject in self.top_subjects[selection][metric]]))
                 
                 gt_hi = [subject[0] for subject in self.top_subjects[selection][metric]]
-                gt_hi_best = [subject[0] for subject in self.top_subjects["best"][metric]]
-                gt_hi_worst = [subject[0] for subject in self.top_subjects["worst"][metric]]
                 tp_hi = [subject[1] for subject in self.top_subjects[selection][metric]]
                 mask = [subject[-1] for subject in self.top_subjects[selection][metric]]
                 gt_part = self.segmentation_manger.get_meshes_of_segments(gts,watertight_mesh=False,center=True,mask=mask,faces=self.assets.data.faces())
@@ -298,21 +329,23 @@ class CompletionLightningModel(PytorchNet):
                     batch_organ['gt_f']=np.array([np.array(gt.faces) for gt in gt_segmented_watertight[organ]])
                     batch_organ['tp_f']=np.array([np.array(tp.faces) for tp in tp_segmented_watertight[organ]])
 
-                    self.assets.saver.save_completions_by_batch(pred_organ,batch_organ,set_id,organ=organ,selection=selection,metric=metric)
+                    self.assets.saver.save_completions_by_batch(pred_organ,batch_organ,set_id,organ=organ,selection=selection,metric=metric,force_save=True)
+                    # assert False, f"self.top_metrics {self.top_metrics['best'][metric]}"
                 reconstructions = {'completion_xyz':reconstructions.cpu().detach().numpy()}
                 batch['gt'] = gts.cpu().detach().numpy()
                 batch['tp'] = tps.cpu().detach().numpy()
                 batch['gt_hi'] = gt_hi
                 batch['tp_hi'] = tp_hi
                 batch['gt_mask'] = mask
-                self.assets.saver.save_completions_by_batch(reconstructions,batch,set_id,selection=selection,metric=metric)
-
+                self.assets.saver.save_completions_by_batch(reconstructions,batch,set_id,selection=selection,metric=metric,force_save=True)
         # TODO: move this to test end, after saving only N best worst and random sample, define N in main
         return
 
     def compute_segmentation_best_worst(self, b, pred, set_id=0):
         stats = self.loss.compute_segmentation_loss_log(b['gt'],pred['completion_xyz'])
-        metrics = ['volume error', 'all points centralized l2 error']
+        # metrics = ['volume error', 'all points l2 error']
+        metrics = ['all points l2 error']
+
         subjects = {'best' : {}, 'worst' : {}, 'rand' : {}}
         gt_tp_list = list(zip(b['gt_hi'], b['tp_hi'], b['gt'].cpu().detach().numpy(), b['tp'].cpu().detach().numpy(), pred['completion_xyz'].cpu().detach().numpy(), b['gt_mask']))
         #best
@@ -320,7 +353,7 @@ class CompletionLightningModel(PytorchNet):
         val_array = []
         for organ in self.organs:
             for item in metrics:
-                assert len(gt_tp_list)<=22, f"gt_tp_list {gt_tp_list}"
+                # assert len(gt_tp_list)<=22, f"gt_tp_list {gt_tp_list}"
 
                 subjects = {'best' : {}, 'worst' : {}, 'rand' : {}}
                 val = f'{organ} {item}'
@@ -353,12 +386,12 @@ class CompletionLightningModel(PytorchNet):
                 best_gt_tp = [(subject[0],subject[1]) for subject in subjects['best'][val]]
                 worst_gt_tp = [(subject[0],subject[1]) for subject in subjects['worst'][val]]
                 # try:
-                self.top_subjects['best'][val] = [subjects['best'][val][index] for index in indices_best][:10]
-                self.top_metrics['best'][val] = best_stats[indices_best][:10]
+                self.top_subjects['best'][val] = [subjects['best'][val][index] for index in indices_best][:2000]
+                self.top_metrics['best'][val] = best_stats[indices_best][:2000]
 
-                self.top_subjects['worst'][val] = [subjects['worst'][val][index] for index in indices_worst][:10]
-                self.top_metrics['worst'][val] = worst_stats[indices_worst][:10]
-                self.top_subjects['rand'][val] = list(np.random.permutation(subjects['rand'][val])[:10])
+                self.top_subjects['worst'][val] = [subjects['worst'][val][index] for index in indices_worst][:2000]
+                self.top_metrics['worst'][val] = worst_stats[indices_worst][:2000]
+                self.top_subjects['rand'][val] = list(np.random.permutation(subjects['rand'][val])[:2000])
                 real_best_gt_tp = [(subject[0],subject[1]) for subject in self.top_subjects['best'][val]]
                 real_worst_gt_tp = [(subject[0],subject[1]) for subject in self.top_subjects['worst'][val]]
 
@@ -434,8 +467,9 @@ class CompletionLightningModel(PytorchNet):
         
         if self.assets.saver is not None:  # TODO - Generalize this
             rows = []
-            for completion_gif_path, completion, completion_name in tqdm.tqdm(self.assets.saver.load_completions(test_step=True)):
+            for completion_gif_path, completion, completion_name in tqdm.tqdm(self.assets.saver.load_completions(test_step=True,create_gif = self.hp.create_animation_gifs)):
                 # wandb.log({"completion_video": wandb.Video(completion_gif_path, fps=60, format="gif")})
+
                 completion = np.array(completion)
                 completions_shifted = completion[1:]
                 completion = completion[:-1]
@@ -483,7 +517,7 @@ class CompletionLightningModel(PytorchNet):
 
         #self.loss.compute_loss_start()
         # This must be kept as "val_loss" and not "avg_val_loss" due to old_lightning bug
-        # wandb.log(log_dict)
+        wandb.log(log_dict)
         return {"test_loss": avg_test_loss,  # TODO - Remove double entry for val_koss
                 "progress_bar": progbar_dict,
                 "log": log_dict}

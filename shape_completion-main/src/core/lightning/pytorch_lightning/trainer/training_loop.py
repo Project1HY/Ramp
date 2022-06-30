@@ -415,7 +415,7 @@ class TrainerTrainLoopMixin(ABC):
             device = xm.xla_device()
             train_dataloader = xla_pl.ParallelLoader(train_dataloader, [device])
             train_dataloader = train_dataloader.per_device_loader(device)
-
+        results = []
         # run epoch
         for batch_idx, batch in self.profiler.profile_iterable(
             enumerate(train_dataloader), "get_train_batch"
@@ -434,7 +434,10 @@ class TrainerTrainLoopMixin(ABC):
             # ---------------
             output = self.run_training_batch(batch, batch_idx)
             batch_result, grad_norm_dic, batch_step_metrics = output
-
+            metric_dict = {}
+            for (k,v) in batch_step_metrics.items():
+                metric_dict[k]=v.detach()
+            results += [metric_dict]
             # when returning -1 from train_step, we end epoch early
             early_stop_epoch = batch_result == -1
 
@@ -484,7 +487,7 @@ class TrainerTrainLoopMixin(ABC):
         if self.is_function_implemented('on_epoch_end'):
             model = self.get_model()
             with self.profiler.profile('on_epoch_end'):
-                model.on_epoch_end()
+                model.on_epoch_end(results)
 
     def run_training_batch(self, batch, batch_idx):
         # track grad norms

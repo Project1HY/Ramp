@@ -151,10 +151,10 @@ def _loaders(hp, ds_name='DFaust', cls='train', transforms: Union[List, Tuple] =
     assert cls in ('train', 'vald_test', 'test')
     transforms = list(transforms)
     # transforms.append(L2BallNormalize())  # Always normalize to the L2 Ball
-    if hp.centralize_mesh_clouds:
-        transforms.append(CenterTorso(get_segmentation_manger()))
-    else:
-        transforms.append(Center())
+    # if hp.centralize_mesh_clouds:
+        # transforms.append(CenterTorso(get_segmentation_manger()))
+    # else:
+    transforms.append(Center())
     # Small Rule Corrections:
     batch_size = 1 if 'scan' in ds_name.lower() else hp.batch_size  # TODO - is this needed? Do we need CPU?
     ds: CompletionDataset = DatasetMenu.order(ds_name)
@@ -199,13 +199,14 @@ def _multiloaders(hp, train_names, vald_test_names, test_names, method='rand_f2p
            [_loaders(hp, ds_name=name, cls='vald_test', method=method, transforms=transforms) for name in
             vald_test_names] + \
            [_loaders(hp, ds_name=name, cls='test', method=method, transforms=transforms) for name in test_names]
-
+    ldrs_pre = ldrs
     ldrs = list(zip(*ldrs))
     for i, ldr_set in enumerate(ldrs):
         ldr_set = list(filter(None, ldr_set))
         if len(ldr_set) == 0:
             ldr_set = None
         ldrs[i] = ldr_set
+
     return ldrs
 
 

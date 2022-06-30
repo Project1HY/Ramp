@@ -23,6 +23,19 @@ class PointNetShapeEncoder(BaseEncoder):
     def forward(self, x):
         return self.graph(x)
 
+class PointNetShapeEncoderSinActivation(BaseEncoder):
+    def __init__(self, code_size=1024, in_channels=3):
+        super().__init__(code_size=code_size, in_channels=in_channels)
+
+        self.graph = nn.Sequential(
+            PointNetGlobalFeaturesSinActivation(self.code_size, self.in_channels),
+            nn.Linear(self.code_size, self.code_size),
+            nn.BatchNorm1d(self.code_size)
+        )
+
+    def forward(self, x):
+        return torch.sin(self.graph(x))
+
 class PCTShapeEncoder(BaseEncoder):
     def __init__(self, code_size=1024, in_channels=3):
         super().__init__(code_size=code_size, in_channels=in_channels)
@@ -56,6 +69,27 @@ class PointNetGlobalFeatures(BaseEncoder):
         x = self.bn3(self.conv3(x))  # [B x code_size x n]
         x, _ = torch.max(x, 2)  # [B x code_size]
         return x
+
+class PointNetGlobalFeaturesSinActivation(BaseEncoder):
+    def __init__(self, code_size, in_channels):
+        super().__init__(code_size=code_size, in_channels=in_channels)
+        self.conv1 = nn.Conv1d(in_channels, 64, 1)
+        self.conv2 = nn.Conv1d(64, 128, 1)
+        self.conv3 = nn.Conv1d(128, code_size, 1)
+        self.bn1 = nn.BatchNorm1d(64)
+        self.bn2 = nn.BatchNorm1d(128)
+        self.bn3 = nn.BatchNorm1d(code_size)
+
+    def forward(self, x):
+        # Input: Batch of Point Clouds : [b x num_vertices X in_channels]
+        # Output: The global feature vector : [b x code_size]
+        x = x.transpose(2, 1).contiguous()  # [b x in_channels x num_vertices]
+        x = torch.sin(self.bn1(self.conv1(x)))
+        x = torch.sin(self.bn2(self.conv2(x)))  # [B x 128 x n]
+        x = self.bn3(self.conv3(x))  # [B x code_size x n]
+        x, _ = torch.max(x, 2)  # [B x code_size]
+        return x
+
 
 
 class DgcnnShapeEncoder(BaseEncoder):

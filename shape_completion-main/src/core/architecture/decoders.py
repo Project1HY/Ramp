@@ -43,6 +43,38 @@ class BasicShapeDecoder(BaseDecoder):
         out = out.transpose(2, 1)
         return out
 
+class BasicShapeDecoderSiren(BaseDecoder):
+    CCFG = [1, 1, 2, 4, 8, 16, 16]  # Enlarge this if you need more
+
+    def __init__(self, code_size, out_channels, num_convl):
+        super().__init__(code_size=code_size, out_channels=out_channels)
+
+        if num_convl > len(self.CCFG):
+            raise NotImplementedError("Please enlarge the Conv Config vector")
+
+        self.thl = nn.Tanh()
+        self.convls = []
+        self.bnls = []
+        for i in range(num_convl - 1):
+            self.convls.append(nn.Conv1d(self.code_size // self.CCFG[i], self.code_size // self.CCFG[i + 1], 1))
+            self.bnls.append(nn.BatchNorm1d(self.code_size // self.CCFG[i + 1]))
+        self.convls.append(nn.Conv1d(self.code_size // self.CCFG[num_convl - 1], self.out_channels, 1))
+        self.convls = nn.ModuleList(self.convls)
+        self.bnls = nn.ModuleList(self.bnls)
+
+    # noinspection PyUnresolvedReferences
+    def forward(self, x):
+        """
+        :param x:  Point code for each point: [b x nv x pnt_code_size] pnt_code_size == in_channels + 2*shape_code
+        :return: predicted coordinates for each point, after the deformation [B x nv x 3]
+        """
+        x = x.transpose(2, 1).contiguous()  # [b x nv x in_channels]
+        for convl, bnl in zip(self.convls[:-1], self.bnls):
+            x = torch.sin(bnl(convl(x)))
+        out = 2 * self.thl(self.convls[-1](x))  # TODO - Fix this constant - we need a global scale
+        out = out.transpose(2, 1)
+        return out
+
 
 class LSTMDecoder(BaseDecoder):
     def __init__(self, code_size, out_channels, layer_count, bidirectional, dropout, n_verts, hidden_size, seq_len=3):

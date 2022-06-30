@@ -5,15 +5,17 @@ import geom.mesh.io.base
 import geom.mesh.io.animate
 import glob
 import numpy as np
+import json
 
 class CompletionSaver:
 
-    def __init__(self, exp_dir, testset_names, extended_save, f,segmentation_manager,centralize_mesh_clouds=True):
+    def __init__(self, exp_dir, testset_names, extended_save, f,segmentation_manager,centralize_mesh_clouds=True,should_save=True):
         from cfg import SAVE_MESH_AS
         self.save_func = getattr(geom.mesh.io.base, f'write_{SAVE_MESH_AS}')
         self.read_func = getattr(geom.mesh.io.base, f'read_{SAVE_MESH_AS}')
         self.centralize_mesh_clouds = centralize_mesh_clouds
         self.extended_save = extended_save
+        self.should_save=should_save
         self.segmentation_manger = segmentation_manager
         self.f = f  # Might be None
 
@@ -75,7 +77,7 @@ class CompletionSaver:
             pils += [geom.mesh.io.base.numpy_to_pil(cur_gt_hi,cur_tp_hi,gtr_v,gt_v,tp_v, gt_f)]
         return pils
 
-    def load_completions(self, set_id=0,test_step=False,color_func=geom.mesh.op.cpu.base.velocity):
+    def load_completions(self, set_id=0,test_step=False,color_func=None,create_gif=True):
         dump_dp = self.dump_dirs[set_id]
         if test_step:
             dump_dp_prior = dump_dp
@@ -111,13 +113,34 @@ class CompletionSaver:
                 if color_func is not None:
                     colors = color_func(geometries_comp)
                 colored = "_colored" if colors is not None else ""
-                geom.mesh.io.animate.animate(geometries_comp, self.f, str(dump_dp / f"{subject}_{pose}{colored}.gif"),colors=colors,
-                                             titles=[f"{subject}_{pose}"] * len(frame_paths))
+                if create_gif:
+                    geom.mesh.io.animate.animate(geometries_comp, self.f, str(dump_dp / f"{subject}_{pose}{colored}.gif"),colors=colors,
+                                                titles=[f"{subject}_{pose}"] * len(frame_paths))
                 yield str(dump_dp / f"{subject}_{pose}{colored}.gif"), geometries_comp, f"{subject}_{pose}{colored}"
 
+    def save_metric_by_batch(self,metrics,b,set_id,test_step_folder=False, selection=None,metric = None):
+        dump_dp = self.dump_dirs[set_id]
+        if test_step_folder:
+            dump_dp = dump_dp / "test"
+        
+        if selection != None:
+            dump_dp = dump_dp / selection
+        if metric != None:
+            dump_dp = dump_dp / metric
+        data = {}
+        for (metric_data,gt_hi) in zip(metrics,b['gt_hi']):
+            data[gt_hi]=float(metric_data)
+        file_name = f"{metric.replace(' ','_')}_{selection}.json"
+        with open(dump_dp/file_name,'w') as f:
+            # jdata = json.dumps(data)
+            # f.write(jdata)
+            json.dump(data,f,indent=6)
+        # assert False, f"metrics {data} , metric {metric.replace(' ','_')} selection {selection}"
+        
 
-
-    def save_completions_by_batch(self, pred, b, set_id,test_step_folder=False, organ=None, selection=None,metric = None):
+    def save_completions_by_batch(self, pred, b, set_id,test_step_folder=False, organ=None, selection=None,metric = None,force_save=False):
+        if not self.should_save and not force_save:
+            return
         dump_dp = self.dump_dirs[set_id]
         if test_step_folder:
             dump_dp = dump_dp / "test"
@@ -147,7 +170,7 @@ class CompletionSaver:
                 gt_f = self.f
             self.save_func(dump_dp / f'gt_{postfix}_res', gtr_v, gt_f)
 
-            if self.extended_save:
+            if self.extended_save or force_save:
                 gt_v = b['gt'][i, :, :3]
                 self.save_func(dump_dp / f'gt_{postfix}_gt', gt_v, gt_f)
                 if 'gt_part_f' in b and 'gt_part_v' in b: 

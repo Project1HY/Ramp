@@ -23,6 +23,9 @@ def parser():
     # Check-pointing
     p.add_argument('--exp_name', type=str, default='Test',  # TODO - Don't forget to change me!
                    help='The experiment name. Leave empty for default')
+    p.add_argument('--exp_id', type=str, default='Test',  # TODO - Don't forget to change me!
+                   help='The experiment name. Leave empty for default')
+
     p.add_argument('--version', type=none_or_int, default=None,
                    help='Weights will be saved at weight_dir=exp_name/version_{version}. '
                         'Use NonFe to automatically choose an unused version')
@@ -40,7 +43,7 @@ def parser():
                    help="T max taken for cosine annealing, if enabled")
     # Dataset Config:
     # NOTE: A well known ML rule: double the learning rate if you double the batch size.
-    p.add_argument('--batch_size', type=int, default=16, help='SGD batch size')
+    p.add_argument('--batch_size', type=int, default=5, help='SGD batch size')
     # TODO: This parameter applies for P & Q, however it can be overridden is some architecture
     p.add_argument('--in_channels', choices=[3, 6, 12], default=6,
                    help='Number of input channels')
@@ -53,7 +56,7 @@ def parser():
     p.add_argument('--lr', type=float, default=0.006, help='The learning step to use')
     p.add_argument('--stride', type=int, default=6, help='The learning step to use')
     p.add_argument('--window_size', type=int, default=1, help='The learning step to use')
-    p.add_argument('--counts', nargs=3, type=none_or_int, default=(200000000, 1000, 2000),  # TODO - Change me as needed
+    p.add_argument('--counts', nargs=3, type=none_or_int, default=(20000, 1000, 20000),  # TODO - Change me as needed
                    help='The default train,validation and test counts. Recommended [8000-20000, 500-1000, 500-1000]. '
                         'Use None to take all examples in the partition - '
                         'for big datasets, this could blow up the epoch')
@@ -88,16 +91,18 @@ def parser():
                    help='The loss class')  # TODO - generalize this
     p.add_argument('--encoder_type', type=int, choices=[1, 2, 10], default=10,
                    help='The encoder type')  # TODO - generalize this
-    p.add_argument('--run_frozen_encoder', type=dir_path, default=None, help='flag for using frozen encoder')
     p.add_argument('--centralize_com', action='store_true', help='flag if we want to run baseline model')
     p.add_argument('--baseline', action='store_true', help='flag if we want to run baseline model')
+
     p.add_argument('--visualization_run', action='store_true', help='flag if we want to run baseline model')
     p.add_argument('--animation_run', action='store_true', help='flag if we want to run baseline model')
     p.add_argument('--deterministic', action='store_true', help='flag if we want to run baseline model')
     p.add_argument('--run_windowed_encoder', action='store_true', help='flag for using a window of consecutive frames based on a chosen stride')
     p.add_argument('--run_windowed_lstm_decoder', action='store_true', help='flag for using a window of consecutive frames based on a chosen stride')
     p.add_argument('--run_transformer_encoder', action='store_true', help='flag for using transformer encoder')
-    p.add_argument('--profile', action='store_true', help='flag for using transformer encoder')
+    p.add_argument('--create_animation_gifs', action='store_true', help='put this if you want animations to be created')
+    p.add_argument('--siren', action='store_true', help='flag if we want to run baseline siren model')
+
 
     # Computation
     p.add_argument('--gpus', type=none_or_int, default=-1, help='Use -1 to use all available. Use None to run on CPU')
@@ -128,7 +133,9 @@ def train_main():
     args = parser()[0].parse_args()
     if args.baseline:
         nn= F2PEncoderDecoderBase(parser())
-        # nn.identify_system()
+        ldrs = f2p_completion_loaders(nn.hp, train='DFaustProj')
+    elif args.siren:
+        nn = F2PEncoderDecoderBaseSiren(parser())
         ldrs = f2p_completion_loaders(nn.hp, train='DFaustFilteredSubjectsProj')
     else:
         if args.run_windowed_encoder:
@@ -137,13 +144,10 @@ def train_main():
             nn = F2PEncoderDecoderWindowedTemporal(parser())
             #nn.load_state_dict(torch.load(PATH), strict=False)
 
-        elif args.run_transformer_encoder:
-            nn = F2PPCTDecoderWindowed(parser())
+        # elif args.run_transformer_encoder:
+            # nn = F2PPCTDecoderWindowed(parser())
         # assert False, "window"
         ldrs = f2p_completion_loaders(nn.hp, train='DFaustProjRandomWindowed')
-    if args.run_frozen_encoder is not None:
-        nn.load_state_dict(torch.load(args.run_frozen_encoder)['state_dict'], strict=False) 
-        nn.freeze_params()
     nn.identify_system()
 
 
@@ -158,15 +162,17 @@ def train_main():
 def test_main():
     banner('Network Init')
     args = parser()[0].parse_args()
+    
     if args.baseline:
         nn= F2PEncoderDecoderBase(parser())
-        # nn.identify_system()
-        # assert False, f"hp {nn.hp}"
+        ldrs = f2p_completion_loaders(nn.hp, test='DFaustProj')
+    elif args.siren:
+        nn = F2PEncoderDecoderBaseSiren(parser())
         ldrs = f2p_completion_loaders(nn.hp, test='DFaustFilteredSubjectsProj')
     else:
         if args.run_windowed_encoder:
             nn = F2PEncoderDecoderWindowed(parser())
-        elif args.run_windowed_lstm_decoder:
+        elif args.run_windowed_lstm_decoder: 
             nn = F2PEncoderDecoderWindowedTemporal(parser())
             #nn.load_state_dict(torch.load(PATH), strict=False)
 

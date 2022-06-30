@@ -54,7 +54,7 @@ def vertex_velocity(v_comp_t, v_ground_t):
 
     velocity_comp = (v_comp_t - shifted_v_comp)
     velocity_ground = (v_ground_t - shifted_v_ground)
-    diff = torch.norm(velocity_ground - velocity_comp,p=1)
+    diff = torch.mean((velocity_ground - velocity_comp)**2)
     return diff
 
 

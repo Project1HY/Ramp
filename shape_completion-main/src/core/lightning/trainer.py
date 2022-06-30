@@ -26,7 +26,6 @@ class LightningTrainer:
         self.nn.assets = self
         # Link hp to self for quick access:
         self.hp = self.nn.hp
-
         self.data = ParametricData(loader_complex)
         self.hp = self.data.append_data_args(self.hp)
 
@@ -45,6 +44,7 @@ class LightningTrainer:
             self._init_training_assets()
             # log.info(f'Training on dataset: {self.data.curr_trainset_name()}')
             self.testing_only = False
+
         self._trainer(debug_mode).fit(self.nn, self.data.train_ldr, self.data.vald_ldrs, self.data.test_ldrs)        # train_dataloader=None, val_dataloader=None, test_dataloader=None
 
     def test(self):
@@ -78,7 +78,7 @@ class LightningTrainer:
             plt_class = getattr(lightning.assets.plotter, self.hp.plotter_class)
             self.plt = plt_class(faces=self.data.faces(),
                                  n_verts=self.data.num_verts())  # TODO - Cannot currently train on Scans due to this:
-
+       
     def _init_trainer(self, fast_dev_run):
         if self.hp.deterministic:
             seed_everything(42, workers=True)
@@ -90,26 +90,48 @@ class LightningTrainer:
         # Checkpointing and Logging:
         tb_log = TestTubeLogger(save_dir=self.hp.PRIMARY_RESULTS_DIR, description=f"{self.hp.exp_name} Experiment",
                                 name=self.hp.exp_name, version=self.hp.version)
-        vis = "_animate_" if self.hp.animation_run else "" 
-        wandb_log = WandbLogger(project="my-test-project", entity="temporal_shape_recon",name=self.hp.exp_name, id=f"{self.hp.exp_name}{vis}{self.hp.version}")
+        wandb_log = WandbLogger(project="my-test-project", entity="temporal_shape_recon",name=self.hp.exp_name, id=f"{self.hp.exp_id}")
+        wandb_log.experiment.define_metric(f"total_loss_val_{self.data.curr_trainset_name()}", summary="min")
+        wandb_log.experiment.define_metric(f"Full volume normalized error_val_{self.data.curr_trainset_name()}", summary="min")
+        wandb_log.experiment.define_metric(f"RightArm volume normalized error_val_{self.data.curr_trainset_name()}", summary="min")
+        wandb_log.experiment.define_metric(f"RightArm volume error_val_{self.data.curr_trainset_name()}", summary="min")
+        wandb_log.experiment.define_metric(f"Full volume error_val_{self.data.curr_trainset_name()}", summary="min")
+        wandb_log.experiment.define_metric(f"Full all points centralized l2 error_val_{self.data.curr_trainset_name()}", summary="min")
+        wandb_log.experiment.define_metric(f"xyz_comp_val_{self.data.curr_trainset_name()}", summary="min")
+
+        #wandb_log.experiment.define_metric(f"total_loss_test_{self.data.curr_trainset_name()}", summary="min")
+        #wandb_log.experiment.define_metric(f"Full volume normalized error_test_{self.data.curr_trainset_name()}", summary="min")
+        #wandb_log.experiment.define_metric(f"Full volume error_test_{self.data.curr_trainset_name()}", summary="min")
+        #wandb_log.experiment.define_metric(f"Full all points centralized l2 error_test_{self.data.curr_trainset_name()}", summary="min")
+        #wandb_log.experiment.define_metric(f"xyz_comp_test_{self.data.curr_trainset_name()}", summary="min")
+        wandb_log.experiment.define_metric(f"total_loss_train", summary="min")
+        wandb_log.experiment.define_metric(f"Full volume normalized error_train", summary="min")
+        wandb_log.experiment.define_metric(f"RightArm volume normalized error_train", summary="min")
+        wandb_log.experiment.define_metric(f"RightArm volume error_train", summary="min")
+        wandb_log.experiment.define_metric(f"Full volume error_train", summary="min")
+        wandb_log.experiment.define_metric(f"Full all points centralized l2 error_train", summary="min")
+        wandb_log.experiment.define_metric(f"xyz_comp_train", summary="min")
+
         # wandb_logger.experiment.config["counts"] = self.hp.counts
         # wandb.config.update(allow_val_change=True)
         # wandb_log.experiment.config.update({'counts':self.hp.counts},allow_val_change=True)
         self.exp_dp = Path(os.path.dirname(tb_log.experiment.log_dir)).resolve()  # Extract experiment path
         checkpoint = ModelCheckpoint(filepath=self.exp_dp / 'checkpoints', save_top_k=1, verbose=True,
                                      prefix='weight', monitor='val_loss', mode='min', period=1)
+                                
 
         # Support for Auto-Tensorboard:
         # if self.hp.use_auto_tensorboard > 0:
         #     self.tb_sup = TensorboardSupervisor(mode=self.hp.use_auto_tensorboard)
 
         # Support for Completion Save:
-        if self.hp.save_completions > 0 and self.data.num_test_loaders() > 0:
-            # TODO - Generalize to different save methods
-            seg_manager = get_segmentation_manger()
-            self.saver = CompletionSaver(exp_dir=self.exp_dp, testset_names=self.data.testset_names(),
+        seg_manager = get_segmentation_manger()
+        self.saver = CompletionSaver(exp_dir=self.exp_dp, testset_names=self.data.testset_names(),
                                          extended_save=(self.hp.save_completions == 3),
-                                         f=self.data.faces() if self.hp.save_completions > 1 else None,centralize_mesh_clouds = self.hp.centralize_mesh_clouds,segmentation_manager =seg_manager)
+                                         f=self.data.faces() ,centralize_mesh_clouds = self.hp.centralize_mesh_clouds,segmentation_manager =seg_manager,should_save=self.hp.save_completions > 1 and self.data.num_test_loaders() > 0)
+
+        # if self.hp.save_completions > 0 and self.data.num_test_loaders() > 0:
+            # TODO - Generalize to different save methods
 
         if self.hp.email_report:
             if self.hp.GCREDS_PATH.is_file():
@@ -156,7 +178,6 @@ class ParametricData:
             self.train_ldr = self.train_ldr[0]
         self.vald_ldrs = to_list(loader_complex[1], encapsulate_none=False)
         self.test_ldrs = to_list(loader_complex[2], encapsulate_none=False)
-
         # Presuming all loaders stem from the SAME parametric model
         self.rep_ldr = first([self.train_ldr] + self.vald_ldrs + self.test_ldrs,
                              lambda x: x is not None)  # TODO - fix this for scans
